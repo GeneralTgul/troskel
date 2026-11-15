@@ -55,7 +55,9 @@ def _run(protocol, ramp_stages=9):
 
 def _saved_test(ctx: AppContext, athlete: Athlete | None = None) -> tuple[Athlete, Session]:
     a = athlete or ctx.store.save_athlete(Athlete(None, "Bo", "Ek", date(1988, 4, 12), height_cm=180, resting_hr=55))
-    p = library.hr_zones_for_level("recreational")
+    # 4 min steps (the choice beside the 3 min default): the simulated runner's VO2max from the steps lies
+    # right at the 15 % limit against Uth-Sørensen with 3 min ones
+    p = library.hr_zones_for_level("recreational", stage_s=240)
     r = _run(p)
     end = r.samples[-1].t_s
     s = Session(None, a.id, TestKind.HR_ZONES, T0, T0 + timedelta(seconds=end), protocol_name=p.name,
@@ -83,7 +85,7 @@ def test_wizard_offers_the_test_and_builds_the_protocol(demo_window, qtbot):
     assert (card.title, card.desc) == ("Puls- och fartzoner", "Utan laktat: fart för dina zoner och maxpuls")
     p = nt.protocol
     assert p.kind == "hr_zones" and p.builder == "hr_zones" and p.open_ended
-    assert nt.p_n.value() == 5 and nt.p_len.value() == 240 and nt.p_incline.value() == 1.0
+    assert nt.p_n.value() == 5 and nt.p_len.value() == 180 and nt.p_incline.value() == 1.0
     assert not nt.pause_field.isVisible() and nt.n_field.isVisible()
     from PySide6.QtWidgets import QLabel
     assert nt.warm_field.findChildren(QLabel)[-1].text() == "Ingår i testet."      # no word about a lactate sample

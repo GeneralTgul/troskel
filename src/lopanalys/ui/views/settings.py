@@ -10,7 +10,7 @@ from typing import Any
 
 from PySide6.QtCore import QSettings, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QIntValidator, QPixmap
-from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
+from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
                                QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea,
                                QVBoxLayout, QWidget)
 
@@ -20,6 +20,7 @@ from lopanalys.ui import services, theme
 from lopanalys.ui.context import AppContext
 from lopanalys.ui.lock import IDLE_CHOICES, MIN_PIN, hash_pin
 from lopanalys.ui.widgets.common import Card, PageHeader, button, field, label, page
+from lopanalys.ui.widgets.inputs import SpecialSpinBox
 
 log = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ class SettingsView(QWidget):
         self.mode.currentIndexChanged.connect(lambda _: ctx.set_setting("devices.treadmill_mode", self.mode.currentData()))
         d.body.addWidget(field(t("ui.set.default_treadmill"), self.mode))
         # The belt's real range: QZ cannot report it, and a ramp past it does not load the runner.
-        self.belt_speed = QDoubleSpinBox()
+        self.belt_speed = SpecialSpinBox()   # 0 shows "Som bandet anger" and still takes digits
         self.belt_speed.setRange(0, 30)
         self.belt_speed.setSingleStep(0.5)
         self.belt_speed.setDecimals(1)
@@ -219,7 +220,7 @@ class SettingsView(QWidget):
         self.belt_speed.setSpecialValueText(t("ui.set.belt_from_device"))
         self.belt_speed.setValue(float(ctx.setting("devices.max_speed_kmh") or 0))
         self.belt_speed.valueChanged.connect(lambda v: ctx.set_setting("devices.max_speed_kmh", float(v)))
-        self.belt_incline = QDoubleSpinBox()
+        self.belt_incline = SpecialSpinBox()
         self.belt_incline.setRange(0, 40)
         self.belt_incline.setSingleStep(0.5)
         self.belt_incline.setDecimals(1)

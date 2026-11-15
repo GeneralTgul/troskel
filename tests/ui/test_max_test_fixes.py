@@ -169,13 +169,15 @@ def test_guide_shows_the_ramp_plan_and_the_sprint_box(demo_window, qtbot):
     nt.lib.setCurrentIndex(names.index("Maxpuls, lutningstrappa"))
     assert not nt.sprint_box.isHidden() and not nt.p_sprint.isChecked()
     assert nt.protocol.final_sprint_s == 0
-    assert "högsta lutning (12 %) efter 11 min" in nt.ramp_note.text()
+    assert "1 % varje minut till bandets högsta lutning (12 %)" in nt.ramp_note.text()
     assert nt.p_table.item(1, 2).text() == "1,0 %"                 # step 1 has the start incline
     nt.p_sprint.setChecked(True)
     assert nt.protocol.final_sprint_auto and nt.protocol.final_sprint_s == 30
     nt.lib.setCurrentIndex(names.index("Maxpuls, fartrappa"))
     assert nt.p_sprint.isChecked() and nt.protocol.final_sprint_auto
-    assert "högsta farten (18,0 km/h) efter 8 min" in nt.ramp_note.text()
+    # what the ramp does, not the minutes to each limit (2026-11-15: "efter 21 min, efter 32 min" confused)
+    assert ("Trappan ökar 0,5 km/h var 30:e sekund till bandets högsta fart (18,0 km/h) och sedan 1 % "
+            "var 30:e sekund till högsta lutningen (12 %).") in nt.ramp_note.text()
 
 
 def test_ramp_advice_warns_and_suggests_a_start_speed():
@@ -188,6 +190,12 @@ def test_ramp_advice_warns_and_suggests_a_start_speed():
     ok = services.ramp_advice(services.rebuild_protocol(base, speed_kmh=adv["suggest_kmh"]), lim, fit)
     assert ok["warning"] == "" and "trappan tar troligen" in ok["text"]
     assert services.ramp_advice(library.lactate_step(10.0), lim) is None
+    zones = services.ramp_advice(library.hr_zones(8.0, limits=lim), lim)
+    assert zones["text"] == ("Trappan ökar 0,5 km/h varje minut till bandets högsta fart (18,0 km/h) och sedan "
+                             "1 % varje minut till högsta lutningen (12 %).")
+    assert services.ramp_advice(base, lim)["text"] == (
+        "Trappan ökar 1 % varje minut till bandets högsta lutning (12 %) och sedan 0,5 km/h varje minut "
+        "till högsta farten (18,0 km/h).")
 
 
 def test_start_speed_from_the_previous_max_test(qapp):

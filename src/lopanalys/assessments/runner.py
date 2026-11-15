@@ -20,7 +20,10 @@ Bus output:
 
 Phases: IDLE -> COUNTDOWN (controllable) or AWAIT_OPERATOR (manual) -> RUNNING <-> LACTATE_PAUSE /
 AWAIT_OPERATOR ... -> FINISHED. ``exhausted()`` -> RECOVERY (walking, recovery HR) -> FINISHED.
-``stop()`` -> ABORTED (belt stopped). In RECOVERY ``stop()`` just ends the recovery early.
+On a belt the program drives, the last stage also ends in RECOVERY: ``recovery_s`` at
+``cooldown_kmh`` with "Bandet stannar om N s" in the announcement, then the belt stops (after
+exhaustion too). ``stop()`` -> ABORTED (belt stopped). In RECOVERY ``stop()`` just ends the
+recovery early (and stops the belt).
 A gait stage stopped after ``PARTIAL_GAIT_MIN_S`` is kept as a partial record (the film and the
 live gait values of a technique test stopped half-way are not lost).
 
@@ -77,6 +80,13 @@ SELF_PACED_SETTLE_S = 15.0   # self-paced stage: the first seconds (getting up t
 TARGET_BAND = 0.05           # self-paced: a stage mean more than 5 % from the target is marked
 LOW_CADENCE_WARN_S = 10.0    # bike in ERG: this long below the trainer's cadence limit before the TV says so
 
+# What the belt did, not what was planned: a speed or incline set by hand on the panel is the stage's load.
+BELT_SPEED_TOL_KMH = 0.25    # a reading this close to the target is the target (belts report 9,9 for 10,0)
+BELT_INCLINE_TOL_PCT = 0.4
+BELT_SETTLE_S = 8.0          # the belt needs some seconds to reach a new target: not a hand change, not in the mean
+HAND_CHANGE_S = 5.0          # off the target this long while the stage runs: changed by hand
+BELT_END_S = 20.0            # the stage's end value: the median of its last 20 s
+
 HR_WINDOW_S = 30.0       # stage HR = mean of the last 30 s
 HR_STALE_S = 5.0         # a bus HR reading older than this is ignored
 LACTATE_MIN, LACTATE_MAX = 0.0, 30.0
@@ -88,6 +98,7 @@ SPRINT_AFTER_S = 720.0       # the ramp has run 12 min (the top of the 8-12 min 
 SPRINT_MIN_RAMP_S = 240.0    # ... or, after at least 4 min of ramp, the heart rate levelled off:
 SPRINT_PLATEAU_S = 60.0      #     it rose at most SPRINT_PLATEAU_BPM over the last 60 s
 SPRINT_PLATEAU_BPM = 2.0
+SPRINT_INCLINE_PCT = 2.0     # a sprint at the belt's highest speed raises the incline this much instead
 
 
 @dataclass
@@ -120,6 +131,12 @@ class SystemClock:
         time.sleep(dt / self.scale)
 
 
+def _median(v: list[float]) -> float:
+    v = sorted(v)
+    n = len(v)
+    return (v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2) if n else 0.0
+
+
 def stage_text(load: float, incline_pct: float, sport: Any = None) -> str:
     """The target as shown on the TV: '12,0 km/h · 1 %' for running, else the load with the sport's
     unit ('200 W'), and the pace where the sport has one ('200 W · 2:01 /500 m')."""
@@ -137,7 +154,7 @@ class TestRunner:
 
     def __init__(self, protocol: Protocol, treadmill: Any, heart_rate: Any, bus: Bus | None = None, *,
                  clock: Clock | None = None, threaded: bool = True, countdown_s: float = 10.0,
-                 resume_countdown_s: float = 5.0, announce_s: float = 15.0, recovery_s: float = 65.0,
+                 resume_countdown_s: float = 5.0, announce_s: float = 15.0, recovery_s: float = 60.0,
                  cooldown_kmh: float = 5.0, tick_s: float = 0.25, publish_hz: float = 4.0,
                  time_scale: float = 1.0, limits: TreadmillLimits | None = None) -> None:
         if not protocol.stages:
@@ -202,6 +219,12 @@ class TestRunner:
         self._sprint_ramp_s: float | None = None   # ramp time when the final sprint started
         self._sprint_reason = ""                   # "plateau", "time" or "manual"
         self._exhaustion_t: float | None = None
+        self._cooldown = False            # the test is over and the belt walks for recovery_s, then stops
+        self._shift = 0.0                 # shift_start: the stages after the warm-up moved by this much
+        self._belt: dict[int, dict[str, Any]] = {}   # per stage: target, measured mean and end, by hand
+        self._off_since: float | None = None         # the belt has been off the target since (test time)
+        self._hand_before: tuple[float, float] | None = None  # the stage just ended was set by hand to this
+        self._hand: tuple[float, float] | None = None  # the belt's reading when a hand change was seen in this stage
         self._belt_moved = False          # seen running since the program last stopped it on purpose
         self._still_since: float | None = None
         self._pending: list[int] = []
@@ -241,6 +264,14 @@ class TestRunner:
         self-paced stage stayed within the band around its target. Empty for a treadmill."""
         with self._lock:
             return [dict(v) for _, v in sorted(self._stats.items())]
+
+    @property
+    def belt_stats(self) -> list[dict[str, Any]]:
+        """Running: the stages whose belt readings differ from the plan (a speed or incline set by hand
+        on the panel): index, target, measured time-weighted mean, the value at the stage's end and
+        ``by_hand``. The stage's record has the measured mean. Empty when the belt did as planned."""
+        with self._lock:
+            return [dict(v) for _, v in sorted(self._belt.items())]
 
     @property
     def drag_factor(self) -> int | None:
@@ -378,7 +409,7 @@ class TestRunner:
                 self._prompt = self._pt("recovery")
             else:
                 self._prompt = t("assessments.prompt.recovery_manual", target=self._stage_text(self.cooldown_kmh, 0))
-            self._announcement = t("assessments.prompt.lactate") if self._pending else ""
+            self._announcement = self._recovery_note()
             self._cue("finish")
             self._publish(force=True)
 
@@ -398,10 +429,63 @@ class TestRunner:
             self._publish(force=True)
             return True
 
+    @property
+    def in_warmup(self) -> bool:
+        """The warm-up is running (or counting down): *Börja testet nu* and the start speed apply."""
+        with self._lock:
+            return (self._phase in (Phase.RUNNING, Phase.COUNTDOWN, Phase.AWAIT_OPERATOR) and not self.done
+                    and bool(self._stages) and self._cur.is_warmup)
+
+    @property
+    def start_shift(self) -> float:
+        """How much the stages after the warm-up were moved with ``shift_start`` (km/h, or watt)."""
+        return self._shift
+
+    def start_now(self) -> bool:
+        """*Börja testet nu*: the warm-up has been long enough. It is kept as it is (as long as it
+        ran) and the first stage starts at once (a baseline lactate sample still comes first)."""
+        with self._lock:
+            if not self.in_warmup or self._phase != Phase.RUNNING or self._paused:
+                return False
+            log.info("warm-up ended early after %.0f s", self._stage_elapsed)
+            self._complete_stage(partial=True)
+            self._after_stage(carry=0.0)
+            self._publish(force=True)
+            return True
+
+    def shift_start(self, delta: float) -> float:
+        """During the warm-up: move every stage after it by ``delta`` (km/h on the belt, watt in the
+        other sports), so the steps keep their distance. Returns the shift so far; a shift the belt's
+        range cannot take is not made."""
+        with self._lock:
+            if not self.in_warmup or not delta:
+                return self._shift
+            first = next((i for i in range(self._idx + 1, len(self._stages)) if not self._stages[i].is_warmup), None)
+            if first is None:
+                return self._shift
+            moved = [replace(s, speed_kmh=s.speed_kmh + delta) if not s.is_warmup else s
+                     for s in self._stages[first:]]
+            lo, hi = self._limits.min_speed_kmh, self._limits.max_speed_kmh
+            if any(not s.is_warmup and not (lo - 1e-6 <= s.speed_kmh) for s in moved):
+                return self._shift
+            if hi and moved[0].speed_kmh > hi + 1e-6:
+                return self._shift
+            self._stages[first:] = [self._clamp(s) for s in moved]
+            self._shift = round(self._shift + delta, 2)
+            log.info("start speed moved by %+.1f (in all %+.1f): the first stage is now %.1f",
+                     delta, self._shift, self._stages[first].speed_kmh)
+            self._publish(force=True)
+            return self._shift
+
     def _sprint_stage(self) -> Stage:
+        """The sprint: +final_sprint_kmh, or +SPRINT_INCLINE_PCT when the belt is already at its
+        highest speed (the zones test's ramp can reach it)."""
         p, cur = self.protocol, self._cur
-        return self._clamp(Stage(cur.speed_kmh + p.final_sprint_kmh, cur.incline_pct, p.final_sprint_s,
-                                 t("assessments.stage.sprint")))
+        s = self._clamp(Stage(cur.speed_kmh + p.final_sprint_kmh, cur.incline_pct, p.final_sprint_s,
+                              t("assessments.stage.sprint")))
+        if self._run and s.speed_kmh <= cur.speed_kmh + 1e-6:
+            s = self._clamp(replace(s, incline_pct=cur.incline_pct + SPRINT_INCLINE_PCT))
+        return s
 
     def _sprint_due(self) -> bool:
         """At the end of the current ramp step: should the automatic final sprint come next?"""
@@ -409,8 +493,9 @@ class TestRunner:
         if (not self._run or not p.final_sprint_auto or p.final_sprint_s <= 0 or p.final_sprint_kmh <= 0
                 or self._sprint_index is not None or self._cur.is_warmup or self._idx < self._ramp_start()):
             return False
-        if self._sprint_stage().speed_kmh <= self._cur.speed_kmh + 1e-6:
-            return False                  # at the highest speed: a sprint cannot go faster
+        sp = self._sprint_stage()
+        if sp.speed_kmh <= self._cur.speed_kmh + 1e-6 and sp.incline_pct <= self._cur.incline_pct + 1e-6:
+            return False                  # at the highest speed and incline: a sprint cannot be harder
         ramp_s = self._ramp_elapsed_s()
         if ramp_s >= SPRINT_AFTER_S - 1e-6:
             return True
@@ -566,6 +651,7 @@ class TestRunner:
                 self._next_stage(carry=0.0, after_pause=True)
         elif ph == Phase.RECOVERY:
             self._timer -= dt
+            self._announcement = self._recovery_note()
             if self._timer <= 0:
                 self._finish()
 
@@ -620,7 +706,7 @@ class TestRunner:
             self._prompt = self._pt("recovery_panel")
             if not self._run and self.cooldown_kmh > 0:      # ERG must not stay on the last watt
                 self._set_belt(self._limits.speed(self.cooldown_kmh), 0.0, force_start=True)
-            self._announcement = t("assessments.prompt.lactate") if self._pending else ""
+            self._announcement = self._recovery_note()
             self._cue("finish")
             self._publish(force=True)
         else:
@@ -676,7 +762,8 @@ class TestRunner:
     def _run_stage(self, carry: float = 0.0) -> None:
         """Start (or continue after a pause) the current stage's clock."""
         s = self._cur
-        if self._stage_elapsed == 0.0:
+        fresh = self._stage_elapsed == 0.0
+        if fresh:
             self._stage_start_t = self._now_s() - carry
             self._announced = False
         was_controllable = self._controllable
@@ -690,6 +777,9 @@ class TestRunner:
         self._stage_elapsed += carry
         self._ticked.clear()
         self._low_cadence_since = None
+        self._say_hand_overridden(s)
+        if fresh:
+            self._say_ramp_starts(s)
         if not self._flash_text:
             # self-paced: the target stays on the TV for the whole stage
             self._prompt = self._pt("hold", target=self._target_text(s)) if self._self_paced(s) else ""
@@ -705,13 +795,15 @@ class TestRunner:
         if not hrs_end:
             hr = self._current_hr()
             hrs_end = [hr] if hr else []
-        load = s.speed_kmh
+        load, incline = s.speed_kmh, s.incline_pct
         if not self._run:
             load = self._stage_stats(s, start_t, end_t)
+        else:
+            load, incline = self._belt_load(s, start_t, end_t)
         rec = StepRecord(
             index=self._idx,
             speed_kmh=load,
-            incline_pct=s.incline_pct,
+            incline_pct=incline,
             duration_s=round(min(self._stage_elapsed, s.duration_s) if not partial else self._stage_elapsed, 1),
             hr_end=round(sum(hrs_end) / len(hrs_end)) if hrs_end else None,
             hr_mean=round(sum(hrs_all) / len(hrs_all)) if hrs_all else None,
@@ -726,6 +818,117 @@ class TestRunner:
             self._pending.append(self._idx)
         if not s.is_warmup and self._idx >= self._n_protocol - 1 and self.protocol.open_ended:
             self._open_ended_s += rec.duration_s
+
+    def _readings_real(self) -> bool:
+        """The samples' speed is what the belt reports (FTMS, QZ), not the target of a manual belt."""
+        return bool(self.treadmill is not None and getattr(self.treadmill, "controllable", False))
+
+    def _belt_load(self, s: Stage, start_t: float, end_t: float) -> tuple[float, float]:
+        """The stage's speed and incline as the belt reported them: the target while the belt kept
+        to it, else the time-weighted mean of the readings (1 Hz, the first seconds after the change
+        and a standing belt left out). A stage whose end differs from its mean, or that was changed
+        by hand, is kept in ``belt_stats`` with the end value, so a change at the end is not lost.
+        Before 2026-11-15 the planned values were saved even when the speed was set by hand."""
+        hand = self._hand
+        self._hand, self._off_since = None, None
+        self._hand_before = hand
+        if not self._readings_real():
+            return s.speed_kmh, s.incline_pct
+        settle = min(BELT_SETTLE_S, (end_t - start_t) / 4)
+        win = [x for x in self._samples if start_t + settle <= x.t_s <= end_t
+               and x.speed_kmh is not None and x.speed_kmh >= PANEL_MOVING_KMH]
+        if not win:
+            return s.speed_kmh, s.incline_pct
+        v = sum(x.speed_kmh for x in win) / len(win)
+        incs = [x.incline_pct for x in win if x.incline_pct is not None]
+        inc = sum(incs) / len(incs) if incs else s.incline_pct
+        tail = [x for x in win if x.t_s >= end_t - BELT_END_S] or win[-1:]
+        end_v = _median([x.speed_kmh for x in tail])
+        end_i = _median([x.incline_pct for x in tail if x.incline_pct is not None]) if incs else inc
+        near = abs(v - s.speed_kmh) <= BELT_SPEED_TOL_KMH and abs(inc - s.incline_pct) <= BELT_INCLINE_TOL_PCT
+        end_near = (abs(end_v - s.speed_kmh) <= BELT_SPEED_TOL_KMH
+                    and abs(end_i - s.incline_pct) <= BELT_INCLINE_TOL_PCT)
+        if near and end_near and hand is None:
+            return s.speed_kmh, s.incline_pct
+        v, inc = round(v, 1), round(inc, 1)
+        stat = {"index": self._idx, "target_kmh": s.speed_kmh, "target_incline_pct": s.incline_pct,
+                "speed_kmh": v, "incline_pct": inc, "end_kmh": round(end_v, 1), "end_incline_pct": round(end_i, 1),
+                "by_hand": hand is not None}
+        self._belt[self._idx] = stat
+        log.info("stage %d: the belt ran %.1f km/h, %s %% (planned %.1f km/h, %s %%; at the end %.1f km/h, %s %%)%s",
+                 self._idx, v, fmt_pct(inc).replace(",", "."), s.speed_kmh, fmt_pct(s.incline_pct).replace(",", "."),
+                 end_v, fmt_pct(end_i).replace(",", "."), ", set by hand" if hand is not None else "")
+        return (v, inc) if not near or hand is not None else (s.speed_kmh, s.incline_pct)
+
+    def _ramp_after_steps(self) -> int | None:
+        """The index of the ramp's first step when an open ramp follows ordinary steps (the zones test,
+        lactate steps to max), else None."""
+        p = self.protocol
+        if not p.open_ended or p.builder == "max_hr_ramp":
+            return None
+        work = [i for i, x in enumerate(self._stages[:self._n_protocol]) if not x.is_warmup]
+        return self._n_protocol - 1 if len(work) > 1 else None
+
+    def _say_ramp_starts(self, s: Stage) -> None:
+        """The TV says how the ramp goes when it begins: "Trappan: +0,5 km/h varje minut"."""
+        if self._idx != self._ramp_after_steps() or not self._run:
+            return
+        p = self.protocol
+        per = (t("assessments.prompt.per_minute") if abs(s.duration_s - 60) < 1e-6
+               else t("assessments.prompt.per_s", s=int(round(s.duration_s))))
+        if p.increment_speed_kmh > 0:
+            text = t("assessments.prompt.ramp_starts_speed", step=fmt_kmh(p.increment_speed_kmh), per=per)
+        elif p.increment_incline_pct > 0:
+            text = t("assessments.prompt.ramp_starts_incline", step=fmt_pct(p.increment_incline_pct), per=per)
+        else:
+            return
+        log.info("stage %d: the ramp begins", self._idx)
+        self._flash(text)
+        self._cue("pre_announce", text)
+
+    def _flash(self, text: str, s: float = 20.0) -> None:
+        """Show ``text`` as the prompt for ``s`` seconds, after a flash still showing (the lactate sample)."""
+        if self._flash_text and self._now_s() < self._flash_until and text not in self._flash_text:
+            text = f"{self._flash_text} · {text}"
+        self._flash_text = text
+        self._flash_until = max(self._flash_until, self._now_s() + s)
+        self._prompt = text
+
+    def _say_hand_overridden(self, s: Stage) -> None:
+        """The stage before was set by hand and the program now sets the next stage's target: said on
+        the TV and in the log, so the change by hand is not overwritten without anyone noticing."""
+        hand, self._hand_before = self._hand_before, None
+        if hand is None or not self._controllable or s.is_warmup:
+            return
+        text = t("assessments.prompt.hand_overridden", was=self._stage_text(*hand),
+                 target=self._stage_text(s.speed_kmh, s.incline_pct))
+        log.info("stage %d: the target %.1f km/h replaces the speed set by hand (%.1f km/h)", self._idx,
+                 s.speed_kmh, hand[0])
+        self._flash(text)
+        self.bus.publish(TOPIC_LOG, text)
+
+    def _watch_hand(self, el: float, speed: float | None, inc: float | None) -> None:
+        """A belt the program drives that is off its target for HAND_CHANGE_S while a stage runs was
+        changed on the panel. Said once per stage (log and the log topic)."""
+        if (not self._run or not self._controllable or self._phase != Phase.RUNNING or speed is None
+                or self._prev_set is None or self._stage_elapsed < BELT_SETTLE_S or speed < PANEL_MOVING_KMH):
+            self._off_since = None
+            return
+        tv, ti = self._prev_set
+        off = abs(speed - tv) > BELT_SPEED_TOL_KMH or (inc is not None and abs(inc - ti) > BELT_INCLINE_TOL_PCT)
+        if not off:
+            self._off_since = None
+            return
+        if self._off_since is None:
+            self._off_since = el
+            return
+        if el - self._off_since >= HAND_CHANGE_S and self._hand is None:
+            self._hand = (speed, inc if inc is not None else ti)
+            text = t("assessments.prompt.hand_change", target=self._stage_text(*self._hand),
+                     planned=self._stage_text(tv, ti))
+            log.info("stage %d: the belt was set by hand to %.1f km/h, %s %% (planned %.1f km/h, %s %%)",
+                     self._idx, speed, fmt_pct(self._hand[1]).replace(",", "."), tv, fmt_pct(ti).replace(",", "."))
+            self.bus.publish(TOPIC_LOG, text)
 
     def _stage_stats(self, s: Stage, start_t: float, end_t: float) -> float:
         """Note what the ergometer measured in the stage, and return the stage's load: the target
@@ -870,18 +1073,44 @@ class TestRunner:
         if self.done:
             return
         if self._phase != Phase.RECOVERY and self._belt_running:
-            if self._run:
-                self._set_belt(self._limits.speed(self.cooldown_kmh), self._limits.incline(0.0))
-            else:
-                self._belt_stop()            # a trainer is released when the test is over
+            if self._run and self.recovery_s > 0:
+                self._start_cooldown()       # walk a minute, then the belt stops
+                return
+            self._belt_stop()                # a trainer is released when the test is over
+        elif self._phase == Phase.RECOVERY and self._run:
+            self._belt_stop()                # the recovery minute is over: the belt stops (a manual belt: nothing)
         self._phase = Phase.FINISHED
         self._paused = False
         self._prompt = t("assessments.prompt.finished")
         self._announcement = t("assessments.prompt.lactate") if self._pending else ""
-        if self._exhaustion_t is None:
+        if self._exhaustion_t is None and not self._cooldown:
             self._cue("finish")
         self._publish(force=True)
         self._end()
+
+    def _start_cooldown(self) -> None:
+        """The last stage of a test on a belt the program drives is done: the belt walks at
+        ``cooldown_kmh`` for ``recovery_s`` (the TV counts down to the stop, the recovery heart rate
+        is recorded), then stops. Before 2026-11-15 it was left at walking speed."""
+        self._cooldown = True
+        self._phase = Phase.RECOVERY
+        self._paused = False
+        self._timer = self.recovery_s
+        self._set_belt(self._limits.speed(self.cooldown_kmh), self._limits.incline(0.0))
+        self._prompt = self._pt("recovery")
+        self._announcement = self._recovery_note()
+        self._cue("finish")
+        self._publish(force=True)
+
+    def _recovery_note(self) -> str:
+        """The line under the recovery prompt: when the belt stops (when the program drives it), and
+        the lactate sample still to take."""
+        parts = []
+        if self._run and self._controllable and self._belt_running and self._phase == Phase.RECOVERY:
+            parts.append(t("assessments.prompt.belt_stops", s=max(0, math.ceil(self._timer - 1e-6))))
+        if self._pending:
+            parts.append(t("assessments.prompt.lactate"))
+        return " · ".join(parts)
 
     def _end(self) -> None:
         for u in self._unsubs:
@@ -1066,6 +1295,7 @@ class TestRunner:
             df = getattr(st, "drag_factor", None) if st is not None else None
             if isinstance(df, (int, float)) and df > 0:
                 self._drag.append((el, int(df)))
+        self._watch_hand(el, speed, inc)
         while self._next_sample <= el + 1e-9:
             self._samples.append(TimeSample(t_s=round(self._next_sample, 3), hr=hr, speed_kmh=speed,
                                             incline_pct=inc, cadence_spm=cad, cadence_source=cad_src))

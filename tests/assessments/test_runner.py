@@ -247,7 +247,7 @@ def test_threaded_with_real_clock():
     p = Protocol("t", "gait", [Stage(10, 1, 0.6), Stage(11, 1, 0.6)])
     tm = FakeTreadmill()
     bus = Bus()
-    r = TestRunner(p, tm, None, bus, clock=SystemClock(), countdown_s=0.2, tick_s=0.05)
+    r = TestRunner(p, tm, None, bus, clock=SystemClock(), countdown_s=0.2, tick_s=0.05, recovery_s=0)
     r.start()
     t0 = time.perf_counter()
     while not r.done and time.perf_counter() - t0 < 5:
@@ -260,7 +260,7 @@ def test_threaded_with_real_clock():
 
 def test_time_scale_runs_faster():
     p = Protocol("t", "gait", [Stage(10, 1, 4.0)])
-    r = TestRunner(p, FakeTreadmill(), None, Bus(), countdown_s=1.0, tick_s=0.02, time_scale=20)
+    r = TestRunner(p, FakeTreadmill(), None, Bus(), countdown_s=1.0, tick_s=0.02, time_scale=20, recovery_s=0)
     r.start()
     t0 = time.perf_counter()
     while not r.done and time.perf_counter() - t0 < 3:

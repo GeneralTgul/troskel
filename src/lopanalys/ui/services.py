@@ -405,6 +405,17 @@ def _zone_dict(z: zone_systems.Zone) -> dict[str, Any]:
                 speed_high_extrapolated=z.speed_high_extrapolated, raw=z)
 
 
+def own_peak_counts(session: Session | None) -> bool:
+    """False for a test that was stopped (or cut off) before its end and is not a max test: its highest
+    heart rate is not a max HR, and neither a max HR nor zones are computed from it. Before 2026-11-15 a
+    technique test stopped half-way got "max HR 89" and zones from it."""
+    if session is None:
+        return True
+    if session.status not in ("stopped", "interrupted"):
+        return True
+    return session.kind in MAX_KINDS or (session.result or {}).get("exhaustion_t_s") is not None
+
+
 def zones(lactate: LactateView | None, max_hr: int | None, resting_hr: int | None,
           system: str = zone_systems.DEFAULT_SYSTEM, sport: Any = None) -> list[dict[str, Any]]:
     """Training zones in one system, as dicts: name, code, hr_low, hr_high, speed_low, speed_high,
@@ -599,11 +610,32 @@ def previous_max_ramp(store: "Store", athlete_id: int | None) -> dict[str, Any] 
     return None
 
 
+def ramp_path(protocol: Protocol, limits: library.TreadmillLimits) -> str:
+    """What the ramp does at the belt's limits, in words: "Trappan ökar 0,5 km/h varje minut till bandets
+    högsta fart (18,0 km/h) och sedan 1 % varje minut till högsta lutningen (12 %)." (ramp.next_step).
+    Before 2026-11-15 the line gave the minutes to each limit, which was hard to read."""
+    fk, fp = library.fmt_kmh, library.fmt_pct
+    step_s = protocol.stages[-1].duration_s if protocol.stages else 60.0   # the steps the ramp adds are this long
+    per = t("ui.wiz.per_minute") if abs(step_s - 60) < 1e-6 else t("ui.wiz.per_s", s=int(round(step_s)))
+    p = protocol
+    if p.increment_speed_kmh > 0:
+        first = t("ui.wiz.ramp_up_speed", step=fk(p.increment_speed_kmh), per=per, kmh=fk(limits.max_speed_kmh))
+        then = (t("ui.wiz.ramp_then_incline", step=fp(p.overflow_incline_pct), per=per, pct=fp(limits.max_incline_pct))
+                if p.overflow_incline_pct > 0 and limits.max_incline_pct > 0 else "")
+    elif p.increment_incline_pct > 0:
+        first = t("ui.wiz.ramp_up_incline", step=fp(p.increment_incline_pct), per=per, pct=fp(limits.max_incline_pct))
+        then = (t("ui.wiz.ramp_then_speed", step=fk(p.overflow_speed_kmh), per=per, kmh=fk(limits.max_speed_kmh))
+                if p.overflow_speed_kmh > 0 else "")
+    else:
+        return ""
+    return t("ui.wiz.ramp_path", first=first, then=(" " + then) if then else "")
+
+
 def ramp_advice(protocol: Protocol, limits: library.TreadmillLimits, target_vo2: float | None = None,
                 build: Callable[[float], Protocol] | None = None,
                 previous: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    """The guide's line under an open-ended protocol: the time from step 1 of the ramp to the belt's
-    limits, a warning when the ramp will probably take over 12 or under 6 min, and a start speed.
+    """The guide's line under an open-ended protocol: what the ramp does at the belt's limits
+    (ramp_path), a warning when the ramp will probably take over 12 or under 6 min, and a start speed.
 
     The start speed comes from ``previous`` (previous_max_ramp) when there is one: a ramp that took more
     than 12 min or reached the belt's highest incline gives +1 km/h (and the speed ramp as the other
@@ -613,12 +645,7 @@ def ramp_advice(protocol: Protocol, limits: library.TreadmillLimits, target_vo2:
     if pl is None:
         return None
     fk, fp = library.fmt_kmh, library.fmt_pct
-    parts = []
-    if pl.to_incline_max_min is not None and limits.max_incline_pct > 0:
-        parts.append(t("ui.wiz.ramp_to_incline", pct=fp(limits.max_incline_pct), min=fp(pl.to_incline_max_min)))
-    if pl.to_speed_max_min is not None:
-        parts.append(t("ui.wiz.ramp_to_speed", kmh=fk(limits.max_speed_kmh), min=fp(pl.to_speed_max_min)))
-    text = t("ui.wiz.ramp_times", times=", ".join(parts)) if parts else ""
+    text = ramp_path(protocol, limits)
     if pl.expected_min is not None:
         text += " " + t("ui.wiz.ramp_expected", min=fp(round(pl.expected_min)))
     warning = {"long": t("ui.wiz.ramp_long"), "short": t("ui.wiz.ramp_short")}.get(pl.warning, "")

@@ -6,7 +6,7 @@
 ## Innehåll
 
 - [Det här behövs](#det-här-behövs)
-- [Varför stegen är fyra minuter](#varför-stegen-är-fyra-minuter)
+- [Varför stegen är tre minuter](#varför-stegen-är-tre-minuter)
 - [Protokollet](#protokollet)
 - [Kör testet](#kör-testet)
 - [Resultatet](#resultatet)
@@ -20,16 +20,16 @@
 
 - Löpbandet, styrt av programmet, och ett pulsband. Utan puls ger testet ingenting.
 - Ingen laktatmätare och inga blodprov.
-- Testet går till utmattning och tar ungefär 45 minuter med uppvärmningen.
+- Testet går till utmattning och tar ungefär 30 minuter med uppvärmningen.
 - En kamera bara om löptekniken ska filmas, se [Löptekniken](#löptekniken).
 
 Allt i resultatet är uppskattat ur puls. Testet hittar inte trösklarna, och ersätter inte en [laktattrappa](../laktattrappa/laktattrappa.md).
 
-## Varför stegen är fyra minuter
+## Varför stegen är tre minuter
 
 Pulsen ligger två till tre minuter efter farten. I ett maxpulstest med steg på en minut hinner den aldrig ikapp, och då går det inte att säga vilken fart som hör till en viss puls. Därför har testet två delar:
 
-1. **Stegen** på 4 minuter i jämn fart ger sambandet mellan puls och fart.
+1. **Stegen** på 3 minuter i jämn fart ger sambandet mellan puls och fart. Stegets puls är medelvärdet av den sista minuten.
 2. **Trappan** direkt efter sista steget, 0,5 km/h fortare varje minut, ger maxpulsen.
 
 Det finns inga pauser mellan stegen och inget stopp före trappan. Lutningen är 1 % hela testet, så att samma samband gäller i båda delarna.
@@ -48,10 +48,10 @@ Välj testtypen *Puls- och fartzoner* i [Nytt test](../nytt-test/nytt-test.md). 
 | *Puls- och fartzoner, vältränad* | 10,5–14,5 km/h |
 | *Puls- och fartzoner, elit* | 13,5–17,5 km/h |
 
-Förvalet är 10 minuters uppvärmning, 5 steg på 4 minuter med 1 km/h högre fart för varje steg, och sedan trappan. Det sista steget ligger en halv km/h under den uppskattade tröskelfarten. Över tröskeln hinner pulsen inte stabiliseras på fyra minuter.
+Förvalet är 6 minuters uppvärmning, 5 steg på 3 minuter med 1 km/h högre fart för varje steg, och sedan trappan. Det sista steget ligger en halv km/h under den uppskattade tröskelfarten. Över tröskeln hinner pulsen inte stabiliseras i ett steg.
 
 - **Justera** *Startfart*, *Ökning per steg* och *Antal steg* för idrottaren. Fyra eller fem steg räcker, och det lättaste ska kännas lätt.
-- **Steglängden** bör vara minst 3 minuter. Ett kortare steg räknas inte.
+- **Steglängden** bör vara minst 3 minuter. Ett kortare steg räknas inte. Välj 4 minuter (240 s) om pulsen brukar stiga länge i varje steg.
 - **Hjärtat** framför sista raden i tabellen är trappans första steg. Trappan fortsätter tills idrottaren inte orkar mer.
 
 ## Kör testet
@@ -60,7 +60,8 @@ Testet går av sig självt, och idrottaren kan köra det ensam.
 
 1. Gå igenom [Nytt test](../nytt-test/nytt-test.md) och tryck på *Starta livevyn* och *Starta testet*.
 2. Bandet kör uppvärmningen och byter sedan fart för varje steg. TV:n säger 15 sekunder i förväg vad som kommer.
-3. Efter sista steget fortsätter bandet direkt med trappan.
+3. Efter sista steget fortsätter bandet direkt med trappan, och TV:n säger *Trappan: +0,5 km/h varje minut*.
+   Sitter du vid datorn kan du trycka på *Slutspurt* när idrottaren har ungefär en minut kvar: 30 s med 2 km/h högre fart, eller 2 % högre lutning om bandet redan går på sin högsta fart. Efter spurten mäts återhämtningen.
 4. **När idrottaren inte orkar mer: stoppa bandet på bandets egen panel.** Programmet ser att bandet står still, avslutar testet som utmattad och mäter pulsen en minut till. Bandet får inga fler kommandon. Sitter du vid datorn går det lika bra att trycka på *Utmattad*.
 5. Resultatet öppnas av sig självt.
 

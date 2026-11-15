@@ -65,12 +65,14 @@ def test_protocol_steps_then_speed_ramp_on_constant_incline():
     assert p.kind == TestKind.HR_ZONES.value and p.builder == "hr_zones" and p.open_ended
     work = [s for s in p.stages if not s.is_warmup]
     assert [s.speed_kmh for s in work] == [8.0, 9.0, 10.0, 11.0, 12.0, 12.5]
-    assert [s.duration_s for s in work] == [240] * 5 + [60]
+    assert [s.duration_s for s in work] == [180] * 5 + [60]          # 3 min steps (4 min before 2026-11-15)
     assert not any(s.sample_lactate for s in p.stages) and p.lactate_pause_s == 0
     assert {s.incline_pct for s in p.stages} == {1.0}
     assert p.increment_speed_kmh == 0.5 and p.increment_incline_pct == 0.0
-    assert p.stages[0].is_warmup and p.stages[0].duration_s == 600
+    assert p.stages[0].is_warmup and p.stages[0].duration_s == 360   # 6 min warm-up
     assert hr_zones.step_indexes(p.to_dict()) == {1, 2, 3, 4, 5}
+    four = library.hr_zones(8.0, stage_s=240)                          # 4 min can still be chosen
+    assert [s.duration_s for s in four.stages if not s.is_warmup][:5] == [240] * 5
 
 
 def test_start_speed_from_level_or_an_earlier_threshold():

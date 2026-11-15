@@ -530,6 +530,10 @@ class LiveBoard(QWidget):
         st = gait_status("cadence_spm", cad)
         self.t_cadence.set_value(num(cad, 0), t(f"ui.status.{st}") if st else "",
                                  {"ok": None, "watch": "watch", "fix": "fix"}.get(st or "ok"))
+        log_tile = getattr(self.ctl, "log_cadence_tile", None)
+        if callable(log_tile):      # once a minute, to compare with the saved samples
+            log_tile("operator" if self.compact else "tv", cad,
+                     "strap" if strap is not None else ("camera" if cad is not None else None), title)
 
     def on_treadmill(self, s: Any) -> None:
         if self.power:

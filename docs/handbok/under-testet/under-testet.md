@@ -9,6 +9,7 @@
 - [Livevyn på TV:n](#livevyn-på-tvn)
   - [Två kameror](#två-kameror)
 - [Operatörssidan](#operatörssidan)
+- [Farten ändras för hand](#farten-ändras-för-hand)
 - [Manuellt band](#manuellt-band)
 - [När testet är klart](#när-testet-är-klart)
 - [Testet sparas hela tiden](#testet-sparas-hela-tiden)
@@ -69,11 +70,21 @@ Kortet *Styrning*:
 | *Starta testet* | Bandet startar efter en nedräkning. Knappen försvinner när testet är igång |
 | *Paus* | Fryser klockan. *Fortsätt* tar vid i samma steg efter en kort nedräkning |
 | *Stoppa* | Frågar först. Testet sparas med allt som hunnit mätas och märks *(stoppat i förtid)*. Ett påbörjat steg i ett löptekniktest sparas också om det pågått i minst 20 s. Före start avbryter knappen utan att spara något |
-| *Utmattad* | Idrottaren orkar inte mer. Testet räknas som fullföljt, bandet går ner till gångfart och pulsen mäts en minut till. Under återhämtningen heter *Stoppa* i stället *Avsluta* |
+| *Utmattad* | Idrottaren orkar inte mer. Testet räknas som fullföljt, bandet går ner till gångfart och pulsen mäts en minut till, sedan stannar bandet. Under återhämtningen heter *Stoppa* i stället *Avsluta* |
+| *Börja testet nu* | Finns under uppvärmningen. Uppvärmningen räcker: första steget börjar direkt. I en laktattrappa tas vilovärdet först |
+| *−0,5 km/h* och *+0,5 km/h* | Finns under uppvärmningen. Flyttar startfarten, och alla steg flyttas lika mycket. Raden mellan knapparna visar första stegets tempo och fart |
 
 Kortet *Laktat* finns när protokollet har laktatprov, se [Laktattrappa](../laktattrappa/laktattrappa.md#ta-provet-och-skriv-in-värdet).
 
 Kortet *Ansträngning (Borg 6–20)*: fråga *Hur ansträngande känns det just nu?* och tryck på siffran. Värdet sparas på samma steg som laktatvärdet: det äldsta steget som väntar på ett laktatvärde, annars det senast avslutade.
+
+## Farten ändras för hand
+
+Ändrar någon farten eller lutningen på bandets panel under ett steg, sparas steget som bandet faktiskt gick: medelvärdet av det bandet rapporterade under steget, inte det planerade. Puls mot fart, zonerna och VO2max räknas på det. Ett band som rapporterar en tiondel fel, till exempel 9,9 km/h i stället för 10,0, räknas som det planerade.
+
+- **Loggen** får raden *Bandet ställdes om för hand till 18,0 km/h · 2 % (planerat 17,5 km/h · 1 %)* efter 5 s.
+- **Vid nästa steg** sätter Tröskel stegets planerade fart igen, och TV:n säger *Bandet gick på 18,0 km/h · 2 %, inställt för hand. Nu: 17,5 km/h · 1 %*.
+- **Testet sparar** för varje sådant steg det planerade, medelvärdet och värdet i slutet av steget, så att en ändring som bara gällde slutet syns.
 
 ## Manuellt band
 
@@ -82,6 +93,8 @@ När bandet är valt som *Manuellt* ställer du själv farten. Inför varje steg
 Det manuella läget är *(inte provat på riktig hårdvara)*, se [PROV.md](../../PROV.md#testerna-och-databasen).
 
 ## När testet är klart
+
+När sista steget är klart, eller efter *Utmattad*, går bandet i 5 km/h en minut. TV:n och operatörssidan visar *Bandet stannar om 45 s*, och återhämtningspulsen mäts. Sedan stannar bandet helt. *Avsluta* stoppar bandet direkt. Ett manuellt band styr programmet aldrig: där sänker och stoppar du själv.
 
 TV:n visar *Bra jobbat! Testet är klart* en stund till, och programmet öppnar resultatet. Fortsätt på [Resultat](../resultat/resultat.md).
 

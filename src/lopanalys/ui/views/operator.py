@@ -13,12 +13,15 @@ from lopanalys.core import simulated
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import profile
 from lopanalys.ui.context import AppContext
-from lopanalys.ui.fmt import clock, load, num
+from lopanalys.ui.fmt import clock, load, num, pace
 from lopanalys.ui.live_controller import LiveController
 from lopanalys.ui.sound import Cues
 from lopanalys.ui.views.live_board import LiveBoard, LiveWindow
 from lopanalys.ui.widgets.common import Card, PageHeader, StatusPill, button, label
 from lopanalys.ui.widgets.inputs import NumberPad, RpePicker
+
+
+START_STEP_KMH = 0.5     # the start speed moves this much per press during the warm-up
 
 
 class OperatorView(QWidget):
@@ -79,6 +82,32 @@ class OperatorView(QWidget):
         ctrl.body.addWidget(self.ready_btn)
         ctrl.body.addLayout(row)
         ctrl.body.addWidget(self.exh_btn)
+        # The warm-up: end it when it is enough, and move the start speed (all stages move with it)
+        self.warm_box = QWidget()
+        wv = QVBoxLayout(self.warm_box)
+        wv.setContentsMargins(0, 0, 0, 0)
+        wv.setSpacing(8)
+        self.start_now_btn = button(t("ui.live.start_now"), "chevron-right", kind="primary", size="big",
+                                    tooltip=t("ui.live.start_now_tip"))
+        self.start_now_btn.clicked.connect(self.start_now)
+        wv.addWidget(self.start_now_btn)
+        srow = QHBoxLayout()
+        srow.setSpacing(8)
+        self.slower_btn = button(t("ui.live.start_slower"), tooltip=t("ui.live.start_speed_tip"))
+        self.slower_btn.clicked.connect(lambda: self.shift_start(-START_STEP_KMH))
+        self.start_speed = label("", "Hint", wrap=True)
+        self.start_speed.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.faster_btn = button(t("ui.live.start_faster"), tooltip=t("ui.live.start_speed_tip"))
+        self.faster_btn.clicked.connect(lambda: self.shift_start(START_STEP_KMH))
+        srow.addWidget(self.slower_btn)
+        srow.addWidget(self.start_speed, 1)
+        srow.addWidget(self.faster_btn)
+        self.speed_row = QWidget()
+        self.speed_row.setLayout(srow)
+        self.speed_row.setVisible(not self._power())
+        wv.addWidget(self.speed_row)
+        self.warm_box.hide()
+        ctrl.body.addWidget(self.warm_box)
         self.sprint_btn = button(t("ui.live.final_sprint"), "run", size="big")
         self.sprint_btn.setToolTip(t("ui.live.final_sprint_tip"))
         self.sprint_btn.clicked.connect(self.ctl_final_sprint)
@@ -183,6 +212,29 @@ class OperatorView(QWidget):
     def exhausted(self) -> None:
         self.ctl.exhausted()
 
+    def start_now(self) -> None:
+        """*Börja testet nu*: the warm-up is enough, the first stage starts."""
+        self.ctl.start_now()
+
+    def shift_start(self, delta: float) -> None:
+        self.ctl.shift_start(delta)
+        self._update_warmup()
+
+    def _first_stage(self) -> Any:
+        return next((s for s in self.ctl.stages() if not s.is_warmup), None)
+
+    def _update_warmup(self, st: RunnerState | None = None) -> None:
+        warm = self.started and self.ctl.in_warmup()
+        self.warm_box.setVisible(warm)
+        if not warm:
+            return
+        st = st or self.ctl.state
+        phase = st.phase if st is not None else getattr(self.ctl.runner, "phase", None)
+        self.start_now_btn.setEnabled(phase == Phase.RUNNING and not self.ctl.paused)
+        first = self._first_stage()
+        if first is not None and not self._power():
+            self.start_speed.setText(t("ui.live.start_speed", pace=pace(first.speed_kmh), speed=num(first.speed_kmh)))
+
     def ctl_final_sprint(self) -> None:
         if self.ctl.final_sprint():
             self._sprinted = True
@@ -222,6 +274,7 @@ class OperatorView(QWidget):
     # ------------------------------------------------------------------ state
     def on_state(self, st: RunnerState) -> None:
         self._update_buttons(st)
+        self._update_warmup(st)
         self._update_lac_for()
         self._update_sprint_note(st)
         pills = {Phase.COUNTDOWN: ("starting", "busy"), Phase.RUNNING: ("running", "ok"),

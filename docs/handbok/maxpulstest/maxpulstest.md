@@ -33,7 +33,7 @@ Uppvärmningen och steg 1 har samma lutning. Tabellen *Så blir testet* visar fa
 
 Testet har inget sista steg. Det fortsätter tills du trycker på *Utmattad* eller idrottaren stoppar bandet på panelen, och raden under tabellen säger *fortsätter tills idrottaren är utmattad*.
 
-Under tabellen står hur länge trappan går från steg 1 tills bandet når sin högsta lutning och sin högsta fart, till exempel *Från steg 1 når trappan bandets högsta lutning (12 %) efter 11 min, högsta farten (18,0 km/h) efter 23 min*.
+Under tabellen står vad trappan gör vid bandets gränser, till exempel *Trappan ökar 1 % varje minut till bandets högsta lutning (12 %) och sedan 0,5 km/h varje minut till högsta farten (18,0 km/h).* Bandets gränser: se [Bandets högsta fart och lutning](#bandets-högsta-fart-och-lutning).
 
 ## Välj startfart
 
@@ -69,7 +69,7 @@ Slutspurten startar av sig själv, eftersom idrottaren ofta är ensam på bandet
 - när pulsen har planat ut (steg högst 2 slag den sista minuten) efter minst 4 min i trappan, eller
 - efter 12 min i trappan.
 
-TV:n säger *Slutspurt nu!*. Efter spurten går bandet ner till gångfart och återhämtningspulsen mäts. Är farten redan på bandets max blir det ingen spurt. Knappen *Slutspurt* i livevyn finns kvar för den som vill starta den själv.
+TV:n säger *Slutspurt nu!*. Efter spurten går bandet ner till gångfart och återhämtningspulsen mäts. Är farten redan på bandets max ökar spurten lutningen 2 % i stället. Bara när både farten och lutningen är på max blir det ingen spurt. Knappen *Slutspurt* i livevyn finns kvar för den som vill starta den själv.
 
 Under knappen *Slutspurt* på operatörssidan står hur nära spurten är, med värdena just nu, till exempel *Slutspurten: pulsen +5 slag senaste minuten (startar vid högst 2, tidigast 4:00 in i trappan) · senast om 6:30*. Tiderna räknas från trappans första steg. Under uppvärmningen står bara villkoren, och när spurten har startat står det när och varför, till exempel *Slutspurten startade 9:12 in i trappan (pulsen planade ut)*. TV:n visar inte raden.
 

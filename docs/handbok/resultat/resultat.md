@@ -51,7 +51,7 @@ Skriv det viktigaste för idrottaren under *Kommentar till rapporten*. Texten ko
 
 Allt sparas av sig självt: testet medan det pågår, resultatet när sidan öppnas, och det du ändrar efteråt (rättade värden, metoderna, zonsystemet och kommentaren) en knapp sekund efter att du slutat skriva, och direkt när du lämnar sidan. Knappen *Spara* sparar på en gång och visar *Sparat*.
 
-Ett test som stoppades eller avbröts av en krasch har en rad överst som säger det, se [Under testet](../under-testet/under-testet.md#testet-sparas-hela-tiden).
+Ett test som stoppades eller avbröts av en krasch har en rad överst som säger det, se [Under testet](../under-testet/under-testet.md#testet-sparas-hela-tiden). Är det inte ett maxtest räknas varken maxpuls eller zoner ur det: testets högsta puls är ingen maxpuls. Zonerna bygger då på idrottarens sparade maxpuls, om det finns en.
 
 ## Träningszonerna
 
