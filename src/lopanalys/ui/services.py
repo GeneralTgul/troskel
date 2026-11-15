@@ -70,6 +70,10 @@ class Store:
     def save_athlete(self, a: Athlete) -> Athlete:
         return self.db.save_athlete(a)
 
+    def set_watch_brand(self, athlete_id: int, brand: str) -> None:
+        """Remember the athlete's watch brand (the box "Fyll i klockan" in the result)."""
+        self.db.set_watch_brand(athlete_id, brand)
+
     def delete_athlete(self, athlete_id: int) -> None:
         self.db.delete_athlete(athlete_id)
 
@@ -530,8 +534,18 @@ def garmin_card(setup: dict[str, Any] | None) -> dict[str, Any] | None:
     return zone_systems.garmin_card(setup)
 
 
+def watch_card(setup: dict[str, Any] | None, brand: str | None) -> dict[str, Any] | None:
+    """What to type into the athlete's watch of ``brand`` (zone_systems.watch_card)."""
+    return zone_systems.watch_card(setup, brand)
+
+
+def watch_brand_choices() -> list[tuple[str, str]]:
+    """(key, name) of the watch brands for the box "Fyll i klockan"."""
+    return zone_systems.watch_brand_choices()
+
+
 def garmin_card_title() -> str:
-    """The heading of the watch box ("Fyll i din klocka")."""
+    """The heading of the watch box ("Fyll i klockan")."""
     return t("assessments.garmin.title")
 
 
@@ -545,6 +559,11 @@ def zones_estimated_text() -> str:
     return t("assessments.zones.estimated")
 
 
+def max_only_text() -> str:
+    """One sentence for zones from max HR only: a zone called "Tröskel" is not a measured threshold."""
+    return t("assessments.zones.max_only")
+
+
 def tests_info(sport: Any = None) -> list[dict[str, Any]]:
     """The tests of a sport described for the athlete (assessments.catalog); running by default."""
     return catalog.tests_info(sport)
@@ -552,10 +571,11 @@ def tests_info(sport: Any = None) -> list[dict[str, Any]]:
 
 @dataclass
 class MaxHrView:
-    peak: int | None
+    peak: int | None         # the highest 5-s mean: the max HR that is used
     raw: Any = None          # assessments.max_hr.MaxHrResult
     likely_max: bool | None = None
     texts: list[str] = field(default_factory=list)
+    single: int | None = None    # the highest single reading, shown beside the peak
 
 
 # ---------------------------------------------------------------- the max test in the guide
@@ -705,7 +725,7 @@ def analyze_max_hr(samples: list[TimeSample], records: list[StepRecord] | None =
         log.exception("max hr analysis failed")
         return MaxHrView(None)
     texts = [c.text for c in r.criteria if c.text] + [w.get("text", "") for w in r.warnings]
-    return MaxHrView(r.peak_hr, r, r.likely_max, texts)
+    return MaxHrView(r.peak_hr, r, r.likely_max, texts, r.peak_single_hr)
 
 
 def analyze_power(session: Session | None, samples: list[TimeSample]) -> dict[str, Any] | None:

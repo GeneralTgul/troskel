@@ -52,6 +52,9 @@ class Athlete:
     # Max HR in the other sports, {Sport value: bpm}. It differs between running, cycling and
     # double poling, so it is never copied from one sport to another. Running's is ``max_hr``.
     sport_max_hr: dict[str, int] = field(default_factory=dict)
+    # Schema v10: the athlete's watch brand ("garmin", "huawei" ...), so the result says what to type
+    # into that watch. Empty: not chosen.
+    watch_brand: str = ""
 
     @property
     def name(self) -> str:

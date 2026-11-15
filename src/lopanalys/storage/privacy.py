@@ -143,7 +143,7 @@ def _summary_html(data: dict[str, Any], files: list[str], t: Any) -> str:
            f"<h2>{e(t('storage.extract.person'))}</h2><table>",
            rows([(t(f"storage.extract.{k}"), a.get(k)) for k in
                  ("first_name", "last_name", "email", "birth_date", "sex", "height_cm", "weight_kg", "max_hr", "resting_hr",
-                  "watch_vo2max", "watch_vo2max_date", "notes", "created")]), "</table>"]
+                  "watch_vo2max", "watch_vo2max_date", "watch_brand", "notes", "created")]), "</table>"]
     consent = a.get("consent") or {}
     if consent:
         out += [f"<h2>{e(t('storage.extract.consent'))}</h2><table>",

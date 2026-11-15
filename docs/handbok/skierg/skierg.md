@@ -98,7 +98,7 @@ Pulsbandet ansluts i programmet som vanligt. Monitorn kan samtidigt ha sin egen 
 - **Två steg på nästan samma effekt** (inom 2 %) räknas som ett, och det senare provet gäller. Resultatet säger när det har hänt.
 - **Zonerna** visas med puls, effekt och tempo per 500 m.
 - **Ramptestet** ger den högsta pulsen i stakning och bästa minuteffekten. FTP räknas inte för SkiErg.
-- **Rutan *Fyll i din klocka* och uppskattat VO2max** finns inte för SkiErg.
+- **Rutan *Fyll i klockan* och uppskattat VO2max** finns inte för SkiErg.
 - **FIT-filen** är en träningsmaskin med skidåkning inomhus, med effekt, takt och sträckan som monitorn räknar den. Se [Resultat → Spara FIT-fil](../resultat/resultat.md#spara-fit-fil).
 
 ## Puls och zoner gäller bara stakning

@@ -838,6 +838,8 @@ def _max_hr_ctx(data: ReportData) -> dict[str, Any]:
     likely = m.get("likely_true_max")
     return {
         "chart": Markup(chart), "cover_chart": Markup(cover_chart), "peak": fmt_num(peak, 0),
+        # the max HR is the highest 5-s mean; the highest single reading stands under it when it differs
+        "single": fmt_num(_f(m.get("single")), 0) if _f(m.get("single")) and peak and round(_f(m.get("single"))) != round(peak) else "",
         "time": f"{int(tt // 60)}:{int(tt % 60):02d}" if tt is not None else "–",
         "plateau": t("report.yes") if plateau else (t("report.no") if plateau is not None else "–"),
         "recovery": fmt_num(_f(m.get("recovery_1min")), 0),
@@ -1078,20 +1080,24 @@ def _summary_ctx(data: ReportData, sections: dict[str, Any]) -> dict[str, Any]:
     # Zones with speed from heart rate (no lactate): the easy zone and the hard one as tiles.
     zr = zones["rows"] if zones and zones.get("speed_from_hr") and not lac else []
     easy_row = (zr[1] if len(zr) >= 5 else zr[0]) if zr else None
+    # the pace first (min/km), km/h and the heart rate under it
     if easy_row and easy_row["speed"] != "–":
-        picked["easy"] = {"label": t("report.summary.easy", zone=easy_row["short"]), "value": easy_row["speed"],
-                          "unit": "km/h", "cls": "range", "sub": t("report.summary.easy_sub", pace=easy_row["pace"], hr=easy_row["hr"])}
+        picked["easy"] = {"label": t("report.summary.easy", zone=easy_row["short"]), "value": easy_row["pace"],
+                          "unit": "min/km", "cls": "range", "sub": t("report.summary.easy_sub", kmh=easy_row["speed"], hr=easy_row["hr"])}
     hard_row = zr[-2] if len(zr) >= 4 else None
     if hard_row and hard_row["speed"] != "–" and hard_row is not easy_row:
-        picked["hard"] = {"label": t("report.summary.hard", zone=hard_row["short"]), "value": hard_row["speed"],
-                          "unit": "km/h", "cls": "range", "sub": t("report.summary.easy_sub", pace=hard_row["pace"], hr=hard_row["hr"])}
+        picked["hard"] = {"label": t("report.summary.hard", zone=hard_row["short"]), "value": hard_row["pace"],
+                          "unit": "min/km", "cls": "range", "sub": t("report.summary.easy_sub", kmh=hard_row["speed"], hr=hard_row["hr"])}
     if lac:
         for key in ("lt1", "lt2"):
             x = lac[key]
             if x:
-                picked[key] = {"label": ts(f"report.summary.{key}"), "value": x["speed"],
-                               "unit": sport_profile(data.sport).load_unit,
-                               "sub": (ts("report.summary.lt_sub", pace=x["pace"], hr=x["hr"]) if x["pace"] != "–"
+                run_pace = sport_profile(data.sport).load_quantity == "speed" and x["pace"] != "–"
+                picked[key] = {"label": ts(f"report.summary.{key}"), "value": x["pace"] if run_pace else x["speed"],
+                               "unit": "min/km" if run_pace else sport_profile(data.sport).load_unit,
+                               # running: the pace is the value, km/h stands under it
+                               "sub": (t("report.summary.lt_sub_kmh", kmh=x["speed"], hr=x["hr"]) if run_pace
+                                       else ts("report.summary.lt_sub", pace=x["pace"], hr=x["hr"]) if x["pace"] != "–"
                                        else t("report.summary.lt_sub_hr", hr=x["hr"]))}
         if lac["peak_lactate"] != "–":
             picked["peak_lactate"] = {"label": t("report.summary.peak_lactate"), "value": lac["peak_lactate"],
@@ -1167,7 +1173,7 @@ def _summary_ctx(data: ReportData, sections: dict[str, Any]) -> dict[str, Any]:
     if easy_row and easy_row["speed"] != "–" and len(focus) < 3:
         focus.insert(0, {"title": t("report.focus.hrzones_title"),
                          "text": t("report.focus.hrzones_text", zone=easy_row["short"], hr=easy_row["hr"],
-                                   speed=easy_row["speed"])})
+                                   speed=easy_row["speed"], pace=easy_row["pace"])})
     elif zones and zones["rows"] and not lac and len(focus) < 3:
         # The easy zone: the second of five or more (I2, zone 2), the first in a 3- or 4-zone system.
         easy = zones["rows"][1] if len(zones["rows"]) >= 5 else zones["rows"][0]
@@ -1183,7 +1189,8 @@ def _cover_zones(zones: Mapping[str, Any] | None) -> dict[str, Any] | None:
     # "Zon 1 Lätt" under the code Z1 reads "Lätt": the code is printed already.
     with_speed = bool(zones.get("speed_from_hr"))
     rows = [{"short": z["short"], "name": re.sub(r"^(Zon|Zone)\s*\d+\s*", "", z["name"]), "hr": z["hr"],
-             "color": z["color"], "speed": z["speed"] if with_speed and z["speed"] != "–" else ""}
+             "color": z["color"], "speed": z["speed"] if with_speed and z["speed"] != "–" else "",
+             "pace": z.get("pace", "") if with_speed and z.get("pace") != "–" else ""}
             for z in zones["rows"]]
     system = (zones.get("system") or {}).get("name") or ""
     basis = zones.get("basis", "")
@@ -1347,6 +1354,7 @@ def normalize_max_hr(m: Any) -> dict[str, Any] | None:
             "plateau": m.get("plateau"), "recovery_1min": _first(m, "recovery_1min", "recovery_drop_60"),
             "likely_true_max": _first(m, "likely_true_max", "likely_max"),
             "stop_time": _first(m, "stop_time", "end_t_s"), "criteria": crit,
+            "single": _first(m, "single", "peak_single_hr"),
             "warnings": [w.get("text", "") if isinstance(w, Mapping) else str(w) for w in m.get("warnings") or []]}
 
 
@@ -1436,7 +1444,8 @@ def _render_sport(data: ReportData) -> str:
     kinds = data.kinds
     if "lactate" in kinds:
         sections["lactate"] = _lactate_ctx(data, accent)
-    garmin = zone_systems.garmin_card(data.garmin)
+    # what to type into the athlete's watch, for the watch brand chosen in the result
+    garmin = zone_systems.watch_card(data.garmin, getattr(a, "watch_brand", "") or None)
     vo2 = vo2max.card(data.vo2max, getattr(a, "watch_vo2max", None), getattr(a, "watch_vo2max_date", None))
     compare = _compare_ctx(data.zone_compare)
     if data.zones or garmin or vo2 or compare:
@@ -1509,6 +1518,8 @@ def _render_sport(data: ReportData) -> str:
         "lang": language(),
         "sport": data.sport.value, "load_unit": sport_profile(data.sport).load_unit,
         "has_incline": sport_profile(data.sport).has_incline,
+        # running: the pace (min/km) stands first everywhere and km/h after it
+        "pace_first": sport_profile(data.sport).load_quantity == "speed",
         "no_own_test": (t("report.zones.no_own_test", sport=t(f"report.sport.{data.sport.value}"))
                         if data.sport is not Sport.RUN and not a.max_hr_for(data.sport)
                         and not (sections.get("lactate") or {}).get("lt2") and "max_hr" not in sections else ""),

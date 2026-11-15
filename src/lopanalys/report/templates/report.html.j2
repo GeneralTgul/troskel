@@ -46,11 +46,15 @@
   {% if Z.speed_from_hr %}<p class="note"><b>{{ t("assessments.hrzones.speed_from_hr") }}.</b> {{ sections.hr_zones.limits if sections.hr_zones else t("assessments.hrzones.speed_from_hr_long") }}</p>
   {% elif Z.cols.pace %}<p class="note">{{ ts("report.zones.note") }}</p>{% endif %}
   {% if Z.system %}<p class="note"><b>{{ Z.system.name }}.</b> {{ Z.system.note }}{% if Z.estimated %} <b>{{ t("assessments.zones.estimated") }}.</b>{% endif %}</p>{% endif %}
+  {% if Z.estimated %}<p class="note"><b>{{ t("assessments.zones.max_only") }}</b></p>{% endif %}
   {% endif %}
 
-  {% if Z and Z.garmin %}{% set W = Z.garmin %}
+  {% if Z and Z.garmin %}{% set WC = Z.garmin %}{% set W = WC.details %}
   <div class="block garmin-box">
-    <h3>{{ W.title }}{% if W.estimated %}<span class="sub">{{ t("assessments.zones.estimated") }}</span>{% endif %}</h3>
+    <h3>{{ t("assessments.garmin.title") }} · {{ WC.brand_name }}{% if W.estimated %}<span class="sub">{{ t("assessments.zones.estimated") }}</span>{% endif %}</h3>
+    <p class="watch-decision"><b>{{ WC.decision }}</b></p>
+    {% if WC.where %}<p>{{ WC.where }}</p>{% endif %}
+    {% if WC.speed_note %}<p class="note">{{ WC.speed_note }}</p>{% endif %}
     <p>{{ W.intro }}</p>
     <div class="watch-grid">
       <dl>
@@ -110,13 +114,13 @@
   <h3>{{ t("report.lactate.methods") }}<span class="sub">{{ t("report.lactate.methods_sub") }}</span></h3>
   <table class="methods">
     <thead><tr>
-      <th class="first">{{ t("report.col.method") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
-      <th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ t("report.col.hr") }}</th>
+      <th class="first">{{ t("report.col.method") }}</th>{% if pace_first %}<th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ ts("report.col.speed") }}</th>{% else %}<th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th>{% endif %}<th class="n">{{ t("report.col.hr") }}</th>
       <th class="n">{{ t("report.col.lactate") }}</th><th class="n">{{ t("report.col.pct_max") }}</th>
     </tr></thead>
     <tbody>
     {% for m in methods %}
-      <tr{% if m.chosen %} class="hl"{% endif %}><td class="first">{{ m.method }}{% if m.chosen %} <span class="tag">{{ m.chosen }}</span>{% endif %}</td><td class="n">{{ m.speed }}</td><td class="n">{{ m.pace }}</td>
+      <tr{% if m.chosen %} class="hl"{% endif %}><td class="first">{{ m.method }}{% if m.chosen %} <span class="tag">{{ m.chosen }}</span>{% endif %}</td>{% if pace_first %}<td class="n">{{ m.pace }}</td><td class="n">{{ m.speed }}</td>{% else %}<td class="n">{{ m.speed }}</td><td class="n">{{ m.pace }}</td>{% endif %}
         <td class="n">{{ m.hr }}</td><td class="n">{{ m.lactate }}</td><td class="n">{{ m.pct_max_hr }}</td></tr>
     {% endfor %}
     </tbody>
@@ -198,7 +202,7 @@
       <div class="cz">
         <i style="background: {{ z.color }}"></i>
         <div class="cz-code">{{ z.short }}<span class="cz-hr num">{{ z.hr }}</span></div>
-        {% if CZ.speed_from_hr %}<div class="cz-speed num">{{ z.speed if z.speed else "–" }}{% if z.speed %} <small>km/h</small>{% endif %}</div>{% endif %}
+        {% if CZ.speed_from_hr %}<div class="cz-speed num">{% if z.pace and z.pace != "–" %}{{ z.pace }} <small>min/km</small><br><small>{{ z.speed }} km/h</small>{% else %}{{ z.speed if z.speed else "–" }}{% if z.speed %} <small>km/h</small>{% endif %}{% endif %}</div>{% endif %}
         {% if z.name %}<div class="cz-name">{{ z.name }}</div>{% endif %}
       </div>
       {% endfor %}
@@ -262,9 +266,15 @@
         <div class="name"><span>{{ x.label }}</span>{{ t("report.lactate." ~ key ~ "_name") }}</div>
         {% if x.method %}<div class="method">{{ x.method }}</div>{% endif %}
       </div>
+      {% if pace_first and x.pace != "–" %}
+      <div class="big num">{{ x.pace }}<small>min/km</small></div>
+      <dl>
+        <div><dt>{{ ts("report.col.speed") }}</dt><dd>{{ x.speed }}</dd></div>
+      {% else %}
       <div class="big num">{{ x.speed }}<small>{{ load_unit }}</small></div>
       <dl>
         <div><dt>{{ ts("report.col.pace") }}</dt><dd>{{ x.pace }}</dd></div>
+      {% endif %}
         <div><dt>{{ t("report.col.hr") }}</dt><dd>{{ x.hr }}</dd></div>
         <div><dt>{{ t("report.col.lactate") }}</dt><dd>{{ x.lactate }}</dd></div>
         <div><dt>{{ t("report.col.pct_max") }}</dt><dd>{{ x.pct_max_hr }}{% if x.pct_max_hr != "–" %} %{% endif %}</dd></div>
@@ -284,15 +294,15 @@
   <h3 class="keep">{{ t("report.lactate.stages") }}</h3>
   <table class="stages">
     <thead><tr>
-      <th class="first">{{ t("report.col.stage") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
-      <th class="n">{{ ts("report.col.pace") }}</th>{% if has_incline %}<th class="n">{{ t("report.col.incline") }}</th>{% endif %}
+      <th class="first">{{ t("report.col.stage") }}</th>{% if pace_first %}<th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ ts("report.col.speed") }}</th>{% else %}<th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th>{% endif %}{% if has_incline %}<th class="n">{{ t("report.col.incline") }}</th>{% endif %}
 
       <th class="n">{{ t("report.col.duration") }}</th><th class="n">{{ t("report.col.hr") }}</th>
       <th class="n">{{ t("report.col.lactate") }}</th><th class="n last">{{ t("report.col.rpe") }}</th>
     </tr></thead>
     <tbody>
     {% for s in L.stages %}
-      <tr><td class="first">{{ s.n }}</td><td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>
+      <tr><td class="first">{{ s.n }}</td>{% if pace_first %}<td class="n">{{ s.pace }}</td><td class="n">{{ s.speed }}</td>{% else %}<td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>{% endif %}
         {%+ if has_incline %}<td class="n">{{ s.incline }}</td>{% endif %}<td class="n">{{ s.duration }}</td><td class="n">{{ s.hr }}</td>
         <td class="n strong">{{ s.lactate }}</td><td class="n last">{{ s.rpe }}</td></tr>
     {% endfor %}
@@ -332,14 +342,14 @@
   <h3 class="keep">{{ t("report.hrzones.steps") }}</h3>
   <table class="stages">
     <thead><tr>
-      <th class="first">{{ t("report.col.stage") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
-      <th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ t("report.col.duration") }}</th>
+      <th class="first">{{ t("report.col.stage") }}</th>{% if pace_first %}<th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ ts("report.col.speed") }}</th>{% else %}<th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th>{% endif %}<th class="n">{{ t("report.col.duration") }}</th>
       <th class="n">{{ t("report.hrzones.col.hr") }}</th><th class="n">{{ t("report.hrzones.col.pct") }}</th>
       <th class="n">{{ t("report.hrzones.col.rise") }}</th><th class="n last">{{ t("report.hrzones.col.note") }}</th>
     </tr></thead>
     <tbody>
     {% for s in H.steps %}
-      <tr><td class="first">{{ s.n }}</td><td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>
+      <tr><td class="first">{{ s.n }}</td>{% if pace_first %}<td class="n">{{ s.pace }}</td><td class="n">{{ s.speed }}</td>{% else %}<td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>{% endif %}
         <td class="n">{{ s.duration }}</td><td class="n strong">{{ s.hr }}</td><td class="n">{{ s.pct }}</td>
         <td class="n">{{ s.rise }}</td><td class="n last{% if s.warn %} warn{% endif %}">{{ s.note }}</td></tr>
     {% endfor %}
@@ -399,7 +409,7 @@
   </div>
   {% if M.chart %}<figure class="chart">{{ M.chart }}</figure>{% endif %}
   <div class="kpis">
-    <div class="kpi"><div class="label">{{ M.peak_label }}</div><div class="value num">{{ M.peak }}<small>{{ t("report.unit.bpm") }}</small></div></div>
+    <div class="kpi"><div class="label">{{ M.peak_label }}</div><div class="value num">{{ M.peak }}<small>{{ t("report.unit.bpm") }}</small></div>{% if M.single %}<div class="label">{{ t("report.maxhr.single", v=M.single) }}</div>{% endif %}</div>
     <div class="kpi"><div class="label">{{ t("report.maxhr.time") }}</div><div class="value num">{{ M.time }}<small>min</small></div></div>
     <div class="kpi"><div class="label">{{ t("report.maxhr.plateau") }}</div><div class="value">{{ M.plateau }}</div></div>
     <div class="kpi"><div class="label">{{ t("report.maxhr.recovery") }}</div><div class="value num">{{ M.recovery }}<small>{{ t("report.unit.bpm") }}</small></div></div>

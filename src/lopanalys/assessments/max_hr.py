@@ -54,6 +54,9 @@ class MaxHrResult:
     likely_max: bool = False
     artefacts_removed: int = 0
     warnings: list[dict[str, str]] = field(default_factory=list)
+    # The highest single reading of the cleaned 1 Hz signal (spikes from a dry strap removed). The
+    # max HR is the 5-s mean (``peak_hr``); this one is shown beside it, it is not used.
+    peak_single_hr: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -156,6 +159,8 @@ def analyze(samples: Iterable[Any], *, end_t_s: float | None = None, records: It
     ip = int(np.argmax(cand))
     peak = float(sm[ip])
     res.peak_hr = int(round(peak))
+    single = np.where(limit & ~np.isnan(hr), hr, -1)
+    res.peak_single_hr = int(round(float(single.max()))) if single.max() > 0 else None
     res.peak_t_s = float(grid[ip] - (WINDOW_S - 1) / 2)
     res.end_t_s = end_t_s
 

@@ -90,11 +90,13 @@ Maxpulstrappan på ett riktigt band är *(inte provat på riktig hårdvara)*, se
 
 ## Resultatet
 
-![Resultatet efter ett maxpulstest i demoläget: rutan Maxpuls, zonerna märkta Uppskattade ur maxpuls och raden om vilken maxpuls de bygger på](images/resultat.png)
+![Resultatet efter ett maxpulstest i demoläget: rutan Fyll i klockan överst, rutan för pulsen, och zonerna märkta Uppskattade ur maxpuls med maxpulsen bredvid](images/resultat.png)
 
 Bilden är från demoläget med snabbspolad klocka. Därför är testtiden bara några sekunder och pulsen långt från max.
 
 - **Rutan för pulsen** heter *Maxpuls* när kriterierna för maxpuls är uppfyllda (*sannolikt verklig maxpuls*) och *Toppuls i testet* när de inte är det. Då står *Testet nådde troligen inte maxpuls* under siffran, och rapporten säger detsamma i stället för att kalla toppen maxpuls. Kriterierna är platå i pulsen, nära den åldersberäknade maxpulsen, Borg 19–20 och laktat minst 8 mmol/l; två ska stämma.
+- **Maxpulsen är det högsta medelvärdet över 5 sekunder**, så att ett enstaka slag från ett torrt pulsband inte blir maxpuls. Den högsta enskilda pulsen står under siffran när den är en annan, till exempel *högsta enskilda 200* under 199. Vill du använda en annan maxpuls skriver du den i rutan *Maxpuls* över zonerna, se [Resultatet](../resultat/resultat.md#träningszonerna).
+- **Rutan *Fyll i klockan*** ligger överst och säger vad idrottaren ska skriva in i sin klocka, se [Fyll i klockan](../resultat/resultat.md#fyll-i-klockan).
 - **Idrottarens maxpuls sänks aldrig av sig själv.** Den höjs när testets topp är högre än den sparade, eller sätts när den saknas, bara när testet slutade med *Utmattad*. Är toppen lägre frågar programmet en gång: *Testets toppuls 179 är lägre än din sparade maxpuls 185. Behåll 185?* *Ja* (förvalt) behåller den sparade. *Nej* byter till testets topp, till exempel när maxpulsen har sjunkit med åren.
 - **Zonerna** räknas ur maxpulsen när det inte finns några laktattrösklar, och märks då *Uppskattade ur maxpuls*. Under zonerna, i rapporten och på förstasidan står vilken maxpuls de bygger på, till exempel *Zonerna bygger på din sparade maxpuls 188 slag/min (inskriven 2026-03-02). Testets topp var 176 och nådde troligen inte max*, eller *Zonerna bygger på maxpulsen från det här testet, 192 slag/min*.
 - **Laktat visas inte** efter ett test utan laktatprov och utan inskrivna värden: ingen laktatkurva, ingen laktatkolumn, inga metodval och inga LT-rutor. Maxpulsen och pulszonerna kommer överst.

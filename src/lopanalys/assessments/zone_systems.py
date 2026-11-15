@@ -560,5 +560,90 @@ def garmin_card(setup: GarminSetup | dict[str, Any] | None) -> dict[str, Any] | 
             "why": t("assessments.garmin.why"), "estimated": bool(g.get("estimated"))}
 
 
-__all__ = ["Anchors", "COMPARE_SYSTEMS", "DEFAULT_SYSTEM", "GarminSetup", "SYSTEMS", "Zone", "ZoneSystem",
-           "compare", "convert", "curve_zones", "garmin_card", "garmin_setup", "get_system", "nominal_zones"]
+# ---------------------------------------------------------------------- the athlete's watch
+# The watch brands the result can say what to type into, and the zone methods each one offers:
+# "lthr" % of the lactate threshold heart rate, "hrr" % of the heart-rate reserve (max HR and resting
+# HR), "max" % of max HR. Only what is certain is written: Huawei Health's names and menu path
+# (Maxpulsprocent, HRR-procent and LTHR-procent under the workout heart rate settings), and Garmin
+# Connect's zones by % max HR, % HRR or % LTHR. For the other brands the text speaks of "the heart
+# rate zones in the watch's app", and of max HR only.
+WATCH_BRANDS: dict[str, tuple[str, ...]] = {
+    "garmin": ("lthr", "hrr", "max"),
+    "huawei": ("lthr", "hrr", "max"),
+    "polar": ("max",),
+    "coros": ("max",),
+    "suunto": ("max",),
+    "apple": ("max",),
+}
+DEFAULT_WATCH = "garmin"
+
+
+def watch_brand(brand: str | None) -> str:
+    """A known watch brand key; the default (Garmin) for an empty or unknown one."""
+    return brand if brand in WATCH_BRANDS else DEFAULT_WATCH
+
+
+def watch_method(setup: GarminSetup | dict[str, Any] | None, brand: str | None) -> str | None:
+    """What the athlete chooses on this watch: "lthr" when a threshold heart rate was measured and
+    the watch takes one, else "hrr" when the watch has it and the resting HR is known, else "max";
+    None when not even a max HR can be handed out."""
+    g = setup.to_dict() if isinstance(setup, GarminSetup) else setup
+    if not g:
+        return None
+    methods = WATCH_BRANDS[watch_brand(brand)]
+    if g.get("lthr") and "lthr" in methods:
+        return "lthr"
+    if not g.get("max_hr"):
+        return None
+    if g.get("resting_hr") and "hrr" in methods:
+        return "hrr"
+    return "max"
+
+
+def _method_name(brand: str, method: str) -> str:
+    own = f"assessments.watch.method.{brand}.{method}"
+    text = t(own)
+    return text if text != own else t(f"assessments.watch.method.{method}")
+
+
+def watch_card(setup: GarminSetup | dict[str, Any] | None, brand: str | None = None) -> dict[str, Any] | None:
+    """What the athlete types into the watch of ``brand``, the same for the screen and the report:
+    {"brand", "brand_name", "method", "decision", "where", "enter": [{"label", "value"}], "speed_note",
+    "estimated", "details": garmin_card(setup)}. The decision is one sentence ("Välj LTHR-procent och
+    skriv in 177."); the zone limits and the why are the details under it. None without zones."""
+    g = setup.to_dict() if isinstance(setup, GarminSetup) else setup
+    details = garmin_card(g)
+    if details is None:
+        return None
+    b = watch_brand(brand)
+    method = watch_method(g, b)
+    names = {"brand": b, "brand_name": t(f"assessments.watch.brand.{b}")}
+    if method is None:          # a submaximal test without thresholds: nothing certain to type in
+        return {**names, "method": None, "decision": t("assessments.watch.decision.none"), "where": "",
+                "enter": [], "speed_note": "", "estimated": bool(g.get("estimated")), "details": details}
+    bpm = {"lthr": g.get("lthr"), "max": g.get("max_hr"), "rest": g.get("resting_hr")}
+    decision = t(f"assessments.watch.decision.{method}", method=_method_name(b, method), **bpm)
+    enter = [{"label": t("assessments.garmin.lthr"), "value": t("assessments.garmin.bpm", v=bpm["lthr"])}] \
+        if method == "lthr" else []
+    if bpm["max"]:
+        enter.append({"label": t("assessments.garmin.max_hr"), "value": t("assessments.garmin.bpm", v=bpm["max"])})
+    if method == "hrr":
+        enter.append({"label": t("assessments.garmin.resting_hr"), "value": t("assessments.garmin.bpm", v=bpm["rest"])})
+    where_key = f"assessments.watch.where.{b}"
+    where = t(where_key)
+    run = sport_of(g.get("sport")).value == "run"
+    # The speeds of the zones hold on the treadmill; without a measured threshold they come from max HR.
+    speed_note = t("assessments.watch.speeds_from_max" if g.get("estimated") else "assessments.watch.speeds") if run else ""
+    return {**names, "method": method, "decision": decision,
+            "where": where if where != where_key else t("assessments.watch.where.any"),
+            "enter": enter, "speed_note": speed_note, "estimated": bool(g.get("estimated")), "details": details}
+
+
+def watch_brand_choices() -> list[tuple[str, str]]:
+    """(key, name) of the watch brands in display order."""
+    return [(k, t(f"assessments.watch.brand.{k}")) for k in WATCH_BRANDS]
+
+
+__all__ = ["Anchors", "COMPARE_SYSTEMS", "DEFAULT_SYSTEM", "DEFAULT_WATCH", "GarminSetup", "SYSTEMS", "WATCH_BRANDS",
+           "Zone", "ZoneSystem", "compare", "convert", "curve_zones", "garmin_card", "garmin_setup", "get_system",
+           "nominal_zones", "watch_brand", "watch_brand_choices", "watch_card", "watch_method"]

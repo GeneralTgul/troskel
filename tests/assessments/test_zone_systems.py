@@ -136,7 +136,7 @@ def test_garmin_from_a_real_lactate_test():
     assert z[2]["hr_high"] == round(r.lt1.hr) and z[4]["hr_high"] == round(r.lt2.hr) == g.lthr
     assert g.threshold_speed_kmh == r.lt2.speed_kmh
     card = zs.garmin_card(g)
-    assert card["title"] == "Fyll i din klocka" and len(card["zones"]) == 5 and len(card["fields"]) == 4
+    assert card["title"] == "Fyll i klockan" and len(card["zones"]) == 5 and len(card["fields"]) == 4
     assert f"{g.lthr} slag/min" in [f["value"] for f in card["fields"]]
     assert "LT1" in card["intro"] and "procent av maxpulsen" in card["why"]
 

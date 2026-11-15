@@ -62,5 +62,6 @@
  "storage.error.move_failed": "Flytten misslyckades: {err}. Inget är ändrat, den gamla mappen används.",
  "storage.extract.email": "E-post",
  "storage.extract.watch_vo2max": "VO2max enligt klockan",
+ "storage.extract.watch_brand": "Klockans märke",
  "storage.extract.watch_vo2max_date": "Datum för klockans VO2max"
 }

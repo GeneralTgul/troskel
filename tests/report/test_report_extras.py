@@ -62,7 +62,7 @@ def test_lactate_report_shows_system_comparison_watch_and_vo2max():
     assert "5 zoner · Garmin" in text and "Jämförelse mellan zonsystem" in text
     for head in ("3 zoner · Seiler", "5 zoner · Olympiatoppen I1–I5"):
         assert head in text
-    assert "Fyll i din klocka" in text and "Laktattröskelpuls (LTHR)" in text
+    assert "Fyll i klockan" in text and "Laktattröskelpuls (LTHR)" in text
     assert f"{g['lthr']} slag/min" in text and f"{g['threshold_pace']} min/km" in text
     z2 = next(z for z in g["zones"] if z["zone"] == 2)
     assert f"{z2['hr_low']}–{z2['hr_high']} slag/min" in text
@@ -75,7 +75,7 @@ def test_lactate_report_shows_system_comparison_watch_and_vo2max():
 def test_max_hr_only_report_marks_the_zones_as_estimated():
     text = _text(render_html(max_only_data()))
     assert "Uppskattade ur maxpuls" in text and "3 zoner · Seiler" in text
-    assert "Fyll i din klocka" in text and "50–60 % av maxpuls" in text
+    assert "Fyll i klockan" in text and "50–60 % av maxpuls" in text
     assert "inte mätt" in text                                     # no LTHR without a lactate test
     assert "Uppskattat VO2max" in text and "Uth–Sørensen" in text and t("assessments.vo2max.disclaimer") in text
     assert "Lägg de flesta passen i Z1" in text                    # the easy zone of a 3-zone system
@@ -99,7 +99,7 @@ def test_every_zone_system_renders():
 
 def test_report_without_the_new_data_is_unchanged(tmp_path):
     text = _text(render_html(sd.lactate_report(tmp_path)))
-    for s in ("Fyll i din klocka", "Uppskattat VO2max", "Jämförelse mellan zonsystem"):
+    for s in ("Fyll i klockan", "Uppskattat VO2max", "Jämförelse mellan zonsystem"):
         assert s not in text
 
 

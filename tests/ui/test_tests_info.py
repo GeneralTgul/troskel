@@ -89,8 +89,9 @@ def test_results_view_zone_system_watch_box_and_vo2max(qtbot, tmp_path):
     lt1, lt2 = round(v.lactate.raw.lt1.hr), round(v.lactate.raw.lt2.hr)
     # The watch box: zone 2 ends at LT1, zone 4 at LT2, with LTHR and threshold pace.
     assert v.garmin["lthr"] == lt2 and v.garmin["zones"][1]["hr_high"] == lt1 and v.garmin["zones"][3]["hr_high"] == lt2
+    v._toggle_watch_more()                 # "Läs mer": the zone limits and the why
     watch = _texts(v.watch_card)
-    assert "Fyll i din klocka" in watch and f"{lt2} slag/min" in watch and "Tröskeltempo" in watch
+    assert "Fyll i klockan" in watch and f"{lt2} slag/min" in watch and "Tröskeltempo" in watch
     assert f"{v.garmin['zones'][1]['hr_low']}–{lt1} slag/min" in watch and "Varför visar klockan andra zoner?" in watch
     # Estimated VO2max: the word, the interval and the disclaimer, never a lone number.
     vo2 = _texts(v.vo2_card)
@@ -111,7 +112,7 @@ def test_results_view_zone_system_watch_box_and_vo2max(qtbot, tmp_path):
     v.load_session(s.id)
     assert v.zone_system.currentData() == "friel"
     html = v.html()
-    assert "7 zoner · Friel" in html and "Fyll i din klocka" in html and DISCLAIMER in html
+    assert "7 zoner · Friel" in html and "Fyll i klockan" in html and DISCLAIMER in html
     ctx.shutdown()
 
 
@@ -125,6 +126,7 @@ def test_results_view_without_thresholds_says_estimated(qtbot, tmp_path):
     v.load_session(s.id)
     assert v.zone_est.text() == "Uppskattade ur maxpuls" and v.zones_table.rowCount() == 5
     assert v.garmin["method"] == "max" and v.garmin["lthr"] is None
+    v._toggle_watch_more()
     assert "uppskattade ur maxpuls" in _texts(v.watch_card).lower()
     assert v.vo2["best"]["method"] == "uth_sorensen" and DISCLAIMER in _texts(v.vo2_card)
     v.zone_system.setCurrentIndex(v.zone_system.findData("polar"))
@@ -144,6 +146,7 @@ def test_submaximal_test_without_a_known_max_does_not_invent_one(qtbot, tmp_path
     v.load_session(s.id)
     assert v.max_hr == 174 and v.vo2 is None
     assert v.garmin["max_hr"] is None and v.garmin["lthr"] and v.garmin["zones"][4]["hr_high"] is None
+    v._toggle_watch_more()
     assert "inte mätt" in _texts(v.watch_card) and "174 slag/min" not in _texts(v.watch_card)
     ctx.shutdown()
 

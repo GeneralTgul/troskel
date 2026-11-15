@@ -207,6 +207,11 @@ MIGRATIONS: list[list[str]] = [
             detail_json TEXT NOT NULL DEFAULT '{}')""",
         "CREATE INDEX ix_plan_events_plan ON plan_events(plan_id)",
     ],
+    # v9 -> v10: the athlete's watch brand ("garmin", "huawei" ...), chosen in the result's box
+    # "Fyll i klockan". Written only by set_watch_brand(), so the athlete form leaves it as it is.
+    [
+        "ALTER TABLE athletes ADD COLUMN watch_brand TEXT NOT NULL DEFAULT ''",
+    ],
 ]
 SAVED_FILE_KINDS = ("report", "extract", "backup", "export", "fit")
 PENDING_ERASED = "erased-pending.json"     # ids erased before a backup was restored, see restore_backup()
@@ -267,6 +272,7 @@ def _row_athlete(r: sqlite3.Row) -> Athlete:
                    resting_hr=r["resting_hr"], notes=r["notes"], created=_pdt(r["created"]),
                    consent=json.loads(r["consent_json"] or "{}") if "consent_json" in r.keys() else {},
                    email=(r["email"] or "") if "email" in r.keys() else "",
+                   watch_brand=(r["watch_brand"] or "") if "watch_brand" in r.keys() else "",
                    **({"max_hr_source": r["max_hr_source"] or "", "max_hr_date": _pdate(r["max_hr_date"]),
                        "watch_vo2max": r["watch_vo2max"], "watch_vo2max_date": _pdate(r["watch_vo2max_date"])}
                       if "watch_vo2max" in r.keys() else {}))
@@ -724,6 +730,11 @@ class Database:
             raise StorageError(t("storage.error.not_found"))
         a.set_max_hr(sport, max_hr)
         self.update_athlete(a)
+
+    def set_watch_brand(self, athlete_id: int, brand: str) -> None:
+        """Remember which watch the athlete has (zone_systems.WATCH_BRANDS key; "" forgets it)."""
+        with self.transaction() as c:
+            c.execute("UPDATE athletes SET watch_brand=?, updated=? WHERE id=?", (brand or "", _now(), athlete_id))
 
     def save_athlete(self, a: Athlete) -> Athlete:
         """Insert or update (by ``a.id``); returns the athlete with its id set."""

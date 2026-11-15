@@ -109,7 +109,8 @@ def test_max_test_without_lactate_shows_no_lactate(qapp):
     assert not rv.lactate_measured()
     assert rv.lactate_card.isHidden() and rv.t_lt1.isHidden() and rv.t_lt2.isHidden()
     assert rv.table.isColumnHidden(4)
-    assert rv._overview.indexOf(rv.zone_card) == 1            # right under the tiles
+    # a zones test: what to type into the watch comes first, the zones right under the tiles
+    assert rv._overview.indexOf(rv.watch_card) == 0 and rv._overview.indexOf(rv.zone_card) == 2
     data = services.report_data(a, ctx.store.session(s.id), rv.records, rv.lactate, rv.zone_list, rv.max_view,
                                 None, None, {}, rv.samples)
     assert data.kinds == ["max_hr"]
