@@ -6,12 +6,19 @@ sends from there. The connection to the server is always encrypted (STARTTLS or 
 there is no plain mode), but ordinary e-mail is not encrypted on its way to the reader, so it is only
 sent to a person who ticked the consent box "contact".
 
+Spam filters: a new account without history is easily filed as spam. What the program can do is
+done here: a subject that says who it is from, a plain text part next to the HTML, Reply-To to the
+coach's own address (from the contact details) and no links at all, so no link shorteners. The real
+fix is the coach's own domain with SPF and DKIM (docs: Inställningar → E-post).
+
 Privacy: nothing here logs an address, a subject or a password. Errors are turned into a message
 for the coach (``MailError``), and the log gets the kind of error only.
 """
 from __future__ import annotations
 
+import html
 import logging
+import re
 import smtplib
 import socket
 import ssl
@@ -48,6 +55,7 @@ class MailConfig:
     password: str = ""
     sender_name: str = ""
     sender_address: str = ""          # empty: the user name, when that is an address
+    reply_to: str = ""                # the coach's own address for answers, or empty
 
     @property
     def sender(self) -> str:
@@ -75,6 +83,24 @@ def _one_line(text: str) -> str:
     return " ".join(text.split())
 
 
+def first_address(text: str) -> str:
+    """The first plain e-mail address in free text (the contact details in the branding), or ""."""
+    for word in re.split(r"[\s,;<>()]+", text or ""):
+        word = word.strip(".:")
+        if valid_email(word):
+            return word
+    return ""
+
+
+def html_body(body: str) -> str:
+    """The plain text as a small HTML part: paragraphs at blank lines, line breaks kept, no links."""
+    paras = [p for p in re.split(r"\n\s*\n", body.strip()) if p.strip()]
+    inner = "\n".join("<p>" + "<br>\n".join(html.escape(ln) for ln in p.splitlines()) + "</p>" for p in paras)
+    return ("<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"></head>\n"
+            "<body style=\"font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.5; color: #222;\">\n"
+            f"{inner}\n</body></html>\n")
+
+
 def build_message(cfg: MailConfig, to: str, subject: str, body: str,
                   attachments: Iterable[Attachment] = ()) -> EmailMessage:
     """The message with its attachments. Raises MailError for an address that is not one plain address."""
@@ -89,7 +115,11 @@ def build_message(cfg: MailConfig, to: str, subject: str, body: str,
     msg["Subject"] = _one_line(subject)
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain=cfg.sender.rsplit("@", 1)[1])   # not the PC's own name
-    msg.set_content(body)
+    reply = cfg.reply_to.strip()
+    if reply and valid_email(reply) and reply.lower() != cfg.sender.lower():
+        msg["Reply-To"] = reply
+    msg.set_content(body)                          # the plain text part, and the same text as HTML
+    msg.add_alternative(html_body(body), subtype="html")
     size = 0
     for a in attachments:
         size += len(a.data)
@@ -151,7 +181,8 @@ def send(cfg: MailConfig, msg: EmailMessage, *, context: ssl.SSLContext | None =
 def greeting(first_name: str, day: str, coach: str = "", business: str = "", *, fit: bool = False,
              tests: int = 1) -> tuple[str, str]:
     """(subject, body) from the template: a short greeting signed with the coach's name and business."""
-    subject = t("share.mail.subject", date=day) + (f" · {business.strip()}" if business.strip() else "")
+    who = business.strip() or coach.strip()
+    subject = t("share.mail.subject_from", who=who, date=day) if who else t("share.mail.subject", date=day)
     lines = [t("share.mail.hello", name=first_name.strip()) if first_name.strip() else t("share.mail.hello_plain"), "",
              t("share.mail.body_many", date=day, n=tests) if tests > 1 else t("share.mail.body", date=day)]
     if fit:

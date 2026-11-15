@@ -1293,7 +1293,8 @@ def mail_config(store: Any) -> Any:
     return mail.MailConfig(host=str(get("host") or ""), port=port, security=str(get("security") or ""),
                            user=str(get("user") or ""), password=secret.reveal(get("password")) or "",
                            sender_name=str(get("sender_name") or store.setting("branding.coach") or ""),
-                           sender_address=str(get("sender_address") or ""))
+                           sender_address=str(get("sender_address") or ""),
+                           reply_to=mail.first_address(str(store.setting("branding.contact") or "")))
 
 
 def set_mail_password(store: Any, password: str) -> None:

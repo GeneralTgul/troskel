@@ -170,7 +170,7 @@ Importen i Strava och i Garmin Connect, och hur tjänsterna visar en cykel- och 
 
 ![Rutan Skicka till idrottaren: adressen, bilagorna, ämnet, meddelandet och varningen om att e-post inte är krypterad](images/skicka.png)
 
-1. Tryck på *Skicka till idrottaren*. Rutan visar adressen, bilagorna, ämnet och ett meddelande med en kort hälsning, undertecknad med ditt namn och företag från *Inställningar*.
+1. Tryck på *Skicka till idrottaren*. Rutan visar adressen, bilagorna, ämnet och ett meddelande med en kort hälsning, undertecknad med ditt namn och företag från *Inställningar*. Ämnet är till exempel *Din testrapport från Tröskel Test AB, 2026-11-14*.
 2. Kontrollera adressen. Ändra ämnet och meddelandet om du vill.
 3. Tryck på *Skicka*. *Avbryt* skickar inget.
 
@@ -187,6 +187,8 @@ Knappen är grå, med skälet utskrivet bredvid, när något av det här saknas:
 **Vanlig e-post är inte krypterad** på vägen till mottagaren, och rapporten är inte lösenordsskyddad. Mejla därför bara den som har bett om det, och kontrollera adressen: ett skickat mejl går inte att ta tillbaka, och raderingen i programmet når det inte.
 
 En idrottare som inte har samtyckt till att resultaten sparas får frågan om radering när mejlet är skickat, precis som efter en utskrift.
+
+Hamnar mejlet i skräpposten hos mottagaren, se [E-post](../kom-igang/kom-igang.md#e-post).
 
 Från *Samlad rapport* skickas den samlade rapporten och en FIT-fil för varje test som har en.
 

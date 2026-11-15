@@ -93,7 +93,8 @@ def test_only_one_plain_address_is_accepted():
 
 def test_greeting_from_the_template():
     subject, body = mail.greeting("Anna", "2026-11-14", "Kim Coach", "Tröskel Test AB", fit=True)
-    assert subject == "Din testrapport 2026-11-14 · Tröskel Test AB"
+    assert subject == "Din testrapport från Tröskel Test AB, 2026-11-14"     # who it is from: less like spam
+    assert mail.greeting("Anna", "2026-11-14", "Kim Coach")[0] == "Din testrapport från Kim Coach, 2026-11-14"
     assert body.startswith("Hej Anna!\n\nHär kommer rapporten från ditt test 2026-11-14.\n")
     assert "Strava" in body and body.rstrip().endswith("Hälsningar\nKim Coach\nTröskel Test AB")
     subject, body = mail.greeting("", "2026-11-14", fit=False, tests=3)
@@ -106,3 +107,25 @@ def test_gmail_app_password_is_used_without_the_spaces_google_shows():
     from lopanalys.share.mail import login_password
     assert login_password("smtp.gmail.com", "abcd efgh ijkl mnop") == "abcdefghijklmnop"
     assert login_password("smtp.example.se", "with space") == "with space"
+
+
+def test_what_keeps_the_mail_out_of_the_spam_folder():
+    """A new account's reports landed in the spam folder: a plain text part next to the HTML,
+    Reply-To to the coach's own address, and no links (so no link shorteners)."""
+    cfg = mail.MailConfig(user="troskel@example.test", password="x", sender_name="Kim Coach",
+                          reply_to=mail.first_address("Kim Coach\n070-000 00 00 · kim@example.se, www.example.se"))
+    msg = mail.build_message(cfg, TO, "Din testrapport från Kim Coach, 2026-11-14",
+                             "Hej Anna!\n\nHär kommer <rapporten>.\n\nHälsningar\nKim Coach\n",
+                             [mail.Attachment("r.pdf", b"%PDF", "application/pdf")])
+    assert msg["Reply-To"] == "kim@example.se"
+    plain = msg.get_body(preferencelist=("plain",))
+    rich = msg.get_body(preferencelist=("html",))
+    assert plain is not None and rich is not None and plain is not rich
+    assert plain.get_content().startswith("Hej Anna!")
+    h = rich.get_content()
+    assert "<p>Hej Anna!</p>" in h and "&lt;rapporten&gt;" in h and "Hälsningar<br>" in h
+    assert "<a " not in h and "http" not in h and "bit.ly" not in plain.get_content()
+    assert [p.get_filename() for p in msg.iter_attachments()] == ["r.pdf"]
+    same = mail.MailConfig(user="kim@example.se", password="x", reply_to="kim@example.se")
+    assert mail.build_message(same, TO, "x", "y")["Reply-To"] is None          # not the sender again
+    assert mail.first_address("Telefon 070-000 00 00") == ""

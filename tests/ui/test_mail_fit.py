@@ -186,8 +186,8 @@ def test_send_report_and_fit_file_from_the_result_page(demo_window, smtp, no_pdf
     qtbot.waitUntil(lambda: res._mailing is None, timeout=10000)
     (msg,) = smtp.messages
     assert smtp.envelopes == [(smtp.user, [ADDRESS])] and msg["To"] == ADDRESS
-    assert msg["From"] == f"Kim Coach <{smtp.user}>" and msg["Subject"] == f"Din testrapport {day} · Tröskel Test"
-    body = msg.get_body().get_content().replace("\r\n", "\n")
+    assert msg["From"] == f"Kim Coach <{smtp.user}>" and msg["Subject"] == f"Din testrapport från Tröskel Test, {day}"
+    body = msg.get_body(preferencelist=("plain",)).get_content().replace("\r\n", "\n")
     assert body.startswith("Hej Erik!") and "Kim Coach\nTröskel Test" in body and "Strava" in body
     files = {p.get_filename(): p.get_content() for p in msg.iter_attachments()}
     assert set(files) == {f"testrapport-{day}.pdf", f"test-{sid}-{day}.fit"}
@@ -230,7 +230,7 @@ def test_cancel_sends_nothing_and_the_message_can_be_edited(demo_window, smtp, n
     win.results.send_to_athlete()
     qtbot.waitUntil(lambda: win.results._mailing is None, timeout=10000)
     assert smtp.messages[0]["Subject"] == "Rapporten"
-    assert smtp.messages[0].get_body().get_content().replace("\r\n", "\n") == "Hej Erik, vi ses i vår.\n"
+    assert smtp.messages[0].get_body(preferencelist=("plain",)).get_content().replace("\r\n", "\n") == "Hej Erik, vi ses i vår.\n"
 
 
 def test_a_failed_mail_says_why_and_notes_nothing(demo_window, smtp, no_pdf, monkeypatch, qtbot):

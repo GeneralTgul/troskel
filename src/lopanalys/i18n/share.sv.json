@@ -1,5 +1,6 @@
 {
  "share.mail.subject": "Din testrapport {date}",
+ "share.mail.subject_from": "Din testrapport från {who}, {date}",
  "share.mail.hello": "Hej {name}!",
  "share.mail.hello_plain": "Hej!",
  "share.mail.body": "Här kommer rapporten från ditt test {date}.",
