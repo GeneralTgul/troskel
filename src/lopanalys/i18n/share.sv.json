@@ -1,0 +1,21 @@
+{
+ "share.mail.subject": "Din testrapport {date}",
+ "share.mail.hello": "Hej {name}!",
+ "share.mail.hello_plain": "Hej!",
+ "share.mail.body": "Här kommer rapporten från ditt test {date}.",
+ "share.mail.body_many": "Här kommer den samlade rapporten från dina {n} tester {date}.",
+ "share.mail.body_fit": "FIT-filen är testet som ett träningspass, sekund för sekund. Den går att ladda upp i Strava, Garmin Connect och liknande tjänster.",
+ "share.mail.questions": "Hör av dig om du undrar över något.",
+ "share.mail.regards": "Hälsningar",
+ "share.mail.test_subject": "Provmejl från Tröskel",
+ "share.mail.test_body": "Det här är ett provmejl från programmet Tröskel. E-posten är rätt inställd.",
+ "share.mail.err.not_set_up": "E-posten är inte inställd. Fyll i server, användare och applösenord under Inställningar → E-post.",
+ "share.mail.err.sender": "Avsändarens adress saknas eller går inte att läsa. Fyll i den under Inställningar → E-post.",
+ "share.mail.err.address": "E-postadressen går inte att läsa.",
+ "share.mail.err.too_big": "Bilagorna är för stora för e-post ({mb} MB). Spara rapporten som PDF och lämna den på annat sätt.",
+ "share.mail.err.auth": "Servern godkände inte inloggningen. Kontrollera användaren och applösenordet. Gmail kräver ett applösenord, inte det vanliga lösenordet.",
+ "share.mail.err.recipient": "Servern tog inte emot mottagarens adress. Kontrollera adressen på idrottaren.",
+ "share.mail.err.tls": "Det gick inte att få en krypterad anslutning till {host}:{port}. Kontrollera porten och valet av kryptering (587 med STARTTLS, 465 med TLS).",
+ "share.mail.err.smtp": "Servern tog inte emot mejlet ({code}).",
+ "share.mail.err.connect": "Det gick inte att nå {host}:{port}. Kontrollera servern, porten och internetanslutningen."
+}

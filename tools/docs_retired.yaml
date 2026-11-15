@@ -1,0 +1,11 @@
+# Retired words: names and paths that the documentation used and that no longer apply.
+# tools/docs_check.py warns when one of them stands in README.md or under docs/ on a line
+# without "tidigare", "hette", "förut" or "ersatt". Add the old word here when a button, a page,
+# a file or a setting gets a new name, so that text with the old name is found.
+#   "old word": what applies now
+# Example:
+#   "Starta livevyn": knappen heter Starta testet
+Pensionerade ord:
+  "Löpanalys är redan igång": programmet heter Tröskel
+  "Starta *Löpanalys*": programmet heter Tröskel
+  "Byt mapp": knappen heter Flytta mapp och flyttar på riktigt

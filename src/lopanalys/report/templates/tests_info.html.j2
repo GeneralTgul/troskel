@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ title }} · {{ business }}</title>
+<style>
+{% include "report.css" %}
+</style>
+</head>
+<body class="kind-tests-info">
+<header class="brand">
+  <div class="logo">
+    {% if logo %}<img src="{{ logo }}" alt="{{ business }}">{% else %}<div class="mono">{{ initials }}</div>{% endif %}
+  </div>
+  <div class="who">
+    <div class="biz">{{ business }}</div>
+    {% set who = [branding.coach_name if branding.business_name else "", branding.contact] | select | join(" · ") %}
+    {% if who %}<div class="contact">{{ who }}</div>{% endif %}
+  </div>
+  <div class="doc"><b>{{ t("report.tests_info.doc") }}</b></div>
+</header>
+
+<section class="sheet-head">
+  <div class="kicker">{{ t("report.tests_info.kicker") }} · {{ sport }}</div>
+  <h1>{{ title }}</h1>
+  <p>{{ t("report.tests_info.lead") }}</p>
+</section>
+
+{# Short facts (time, equipment) go on the title line; the long fields fill two columns. #}
+{% for test in tests %}
+{% set F = {} %}
+{% for f in test.fields %}{% set _ = F.update({f.key: f}) %}{% endfor %}
+<section class="tinfo">
+  <h2>{{ test.title }}<span class="meta-line">{{ F["time"].label }}: {{ F["time"].text }} {{ F["equipment"].label }}: {{ F["equipment"].text }}</span></h2>
+  <div class="cols">
+    <div>
+      {% for k in ("measures", "how", "get") %}<p><b>{{ F[k].label }}.</b> {{ F[k].text }}</p>{% endfor %}
+    </div>
+    <div>
+      {% for k in ("standard", "limits") %}<p><b>{{ F[k].label }}.</b> {{ F[k].text }}</p>{% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+</body>
+</html>

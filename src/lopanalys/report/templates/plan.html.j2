@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ title }} · {{ athlete_name }}</title>
+<style>
+{% include "report.css" %}
+{% include "plan.css" %}
+</style>
+</head>
+<body class="kind-plan">
+{# ============================== page 1: the overview ============================== #}
+<div class="cover plan-cover">
+<header class="brand cover-brand">
+  <div class="logo">
+    {% if logo %}<img src="{{ logo }}" alt="{{ business }}">{% else %}<div class="mono">{{ initials }}</div>{% endif %}
+  </div>
+  <div class="who">
+    <div class="biz">{{ business }}</div>
+    {% set who = [branding.coach_name if branding.business_name else "", branding.contact] | select | join(" · ") %}
+    {% if who %}<div class="contact">{{ who }}</div>{% endif %}
+  </div>
+  <div class="doc"><b>{{ t("plan.pdf.doc") }}</b>{{ created }}</div>
+</header>
+
+<section class="hero">
+  <div class="kicker">{{ kicker }}</div>
+  <h1>{{ headline }}</h1>
+  <div class="athlete">{{ title }} · {{ athlete_name }}</div>
+  <dl class="facts">
+    {% for f in facts %}<div{% if f.wide %} class="wide"{% endif %}>{% if f.k %}<dt>{{ f.k }}</dt><dd>{{ f.v }}</dd>{% endif %}</div>
+    {% endfor %}
+  </dl>
+</section>
+
+<section class="summary">
+  <h2 class="cover-h">{{ t("plan.pdf.summary") }}</h2>
+  <div class="tiles n{{ tiles | length }}">
+    {% for tile in tiles %}
+    <div class="tile">
+      <div class="label">{{ tile.label }}</div>
+      <div class="value num">{{ tile.value }}<span class="unit">{{ tile.unit }}</span></div>
+      <div class="sub">{{ tile.sub }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<figure class="plan-overview">
+  <h2 class="cover-h">{{ t("plan.pdf.overview.title") }}</h2>
+  <div class="plan-legend">
+    <span>{{ t("plan.pdf.overview.legend") }}</span>
+    {% for z in zones %}<span><i style="background: {{ z.color }}"></i>{{ z.code }} {{ z.name }}</span>{% endfor %}
+    {% if has_unzoned %}<span><i style="background: {{ unzoned }}"></i>{{ t("plan.pdf.overview.test") }}</span>{% endif %}
+  </div>
+  {{ overview }}
+</figure>
+
+<div class="cover-zones">
+  <div class="cz-head"><b>{{ t("plan.pdf.zones.title") }}</b><span>{{ t("plan.pdf.zones.estimated" if zones_estimated else ("plan.pdf.zones.sub" if has_targets else "plan.pdf.zones.none")) }}</span></div>
+  <div class="cz-bar" style="grid-template-columns: repeat({{ zones | length }}, 1fr)">
+    {% for z in zones %}
+    <div class="cz">
+      <i style="background: {{ z.color }}"></i>
+      <div class="cz-code">{{ z.code }}{% if z.hr %}<span class="cz-hr num">{{ z.hr }}</span>{% endif %}</div>
+      <div class="cz-name">{{ z.name }}</div>
+      {% if z.pace %}<div class="cz-pace num">{{ z.pace }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="plan-promise"><b>{{ t("plan.pdf.promise.title") }}</b> {{ t("plan.pdf.promise.text") }}</div>
+{% if notes %}<div class="plan-notes">{% for n in notes %}<p>{{ n }}</p>{% endfor %}</div>{% endif %}
+</div>
+
+{# ============================== page 2: how to read the plan ============================== #}
+<section class="section">
+  <div class="section-head">
+    <div class="kicker">{{ t("plan.pdf.read.kicker") }}</div>
+    <h2>{{ t("plan.pdf.read.title") }}</h2>
+    <p class="lead">{{ t("plan.pdf.read.lead") }}</p>
+  </div>
+
+  <h3 class="keep">{{ t("plan.pdf.blocks.title") }}</h3>
+  <table class="plan-blocks">
+    <tbody>
+    {% for b in blocks %}
+      <tr><td class="first b"><span class="swatch" style="background: {{ b.color }}"></span>{{ b.name }}</td>
+          <td class="w">{{ b.weeks }}<div class="muted">{{ b.dates }}</div></td><td class="r last">{{ b.reason }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="block">
+  <h3 class="keep">{{ t("plan.pdf.zones.title") }}<span class="sub">{{ t("plan.pdf.zones.estimated" if zones_estimated else ("plan.pdf.zones.sub" if has_targets else "plan.pdf.zones.none")) }}</span></h3>
+  <table class="zones-table">
+    <thead><tr><th class="first">{{ t("report.col.zone") }}</th>{% if has_targets %}<th class="n">{{ t("report.col.hr") }}</th><th class="n last">{{ t("report.col.pace") }}</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for z in zones %}
+      <tr><td class="first"><span class="swatch" style="background: {{ z.color }}"></span><span class="zone-name">{{ z.code }} · {{ z.name }}</span>
+            <div class="zone-purpose">{{ z.purpose }}</div></td>
+          {% if has_targets %}<td class="n strong">{{ z.hr_text or "–" }}</td><td class="n last">{{ z.pace or "–" }}</td>{% endif %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">{{ t("plan.pdf.zones.note") }}</p>
+  </div>
+
+  <h3 class="keep">{{ t("plan.pdf.guide.title") }}</h3>
+  <div class="guide">
+    {% for g in guide %}
+    <div class="g"><b><span class="swatch" style="background: {{ g.color }}"></span>{{ g.title }}</b>
+      <p>{{ g.purpose }}</p><p class="how">{{ g.how }}</p></div>
+    {% endfor %}
+  </div>
+
+  <div class="block">
+  <h3 class="keep">{{ t("plan.pdf.rules.title") }}</h3>
+  <ul class="rules">{% for r in rules %}<li>{{ r }}</li>{% endfor %}</ul>
+  </div>
+  <p class="disclaimer">{{ t("plan.pdf.disclaimer") }}</p>
+</section>
+
+{# ============================== one page per week ============================== #}
+{% for w in weeks %}
+<section class="week">
+  <div class="week-head">
+    <div>
+      <div class="kicker">{{ [w.block, w.kind] | select | join(" · ") }}</div>
+      <h2>{{ t("plan.pdf.week", n=w.index) }}</h2>
+      <div class="dates">{{ w.dates }}</div>
+    </div>
+    <div class="sum"><b class="num">{{ w.total }} {{ t("plan.pdf.unit.hours") }}</b>{{ t("plan.pdf.week_sum", n=w.sessions, pct=w.easy_pct) }}</div>
+  </div>
+  <div class="week-focus">{% for n in w.notes %}<p>{{ n }}</p>{% endfor %}</div>
+  <table class="days">
+    <colgroup><col class="c-day"><col class="c-what"><col><col class="c-done"></colgroup>
+    <thead><tr><th class="first">{{ t("plan.pdf.col.day") }}</th><th>{{ t("plan.pdf.col.workout") }}</th>
+      <th>{{ t("plan.pdf.col.parts") }}</th><th class="last">{{ t("plan.pdf.col.done") }}</th></tr></thead>
+    <tbody>
+    {% for d in w.days %}
+      {% if d.workouts %}
+      {% for x in d.workouts %}
+      <tr{% if x.race %} class="race"{% endif %}>
+        <td class="first day">{% if loop.first %}<b>{{ d.weekday }}</b><span>{{ d.date }}</span>{% endif %}</td>
+        <td><div class="w-title"><i style="background: {{ x.color }}"></i><span>{{ x.title }}</span></div>
+          {% if x.duration or x.start %}<div class="w-meta">{{ x.duration }}{% if x.start %} <span>· {{ x.start }}</span>{% endif %}</div>{% endif %}
+          <div class="w-purpose">{{ x.purpose }}</div></td>
+        <td>
+          {% if x.race %}<div class="line"><span class="k">{{ t("plan.part.race") }}</span><span class="v">{{ t("plan.workout.race.how") }}</span></div>{% endif %}
+          {% for l in x.lines %}
+          <div class="line"><span class="k">{{ l.kind }}</span>
+            <span class="v"><b>{{ l.what }}</b>{% if l.zone %}<span class="zc"><i style="background: {{ l.color }}"></i>{{ l.zone }}</span>{% endif %}
+              {% if l.target %}<span class="tg">{{ l.target }}</span>{% elif l.zone %}<span class="tg">{{ l.zone_name }} · {{ l.rpe }}</span>{% else %}<span class="tg">{{ l.rpe }}</span>{% endif %}
+              {% if l.rest %}<span class="tg"> · {{ l.rest }}</span>{% endif %}</span></div>
+          {% endfor %}
+        </td>
+        <td class="last done"><div class="tick"><span class="box"></span><span class="write"><i></i><i></i></span></div></td>
+      </tr>
+      {% endfor %}
+      {% else %}
+      <tr><td class="first day"><b>{{ d.weekday }}</b><span>{{ d.date }}</span></td><td class="rest" colspan="3">{{ t("plan.pdf.rest_day") }}</td></tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if w.zone_bar %}
+  <div class="week-foot">
+    <h2>{{ t("plan.pdf.week_zones") }}</h2>
+    <div class="zb">{% for z in w.zone_bar %}<i style="background: {{ z.color }}; flex: {{ "%.2f" | format(z.pct) }} 0 0"></i>{% endfor %}</div>
+    <div class="zl">{% for z in w.zone_bar %}<span><i style="background: {{ z.color }}"></i>{{ z.code }} {{ t("plan.fmt.minutes", m=z.minutes) }}</span>{% endfor %}</div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+</body>
+</html>

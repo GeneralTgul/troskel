@@ -1,0 +1,70 @@
+/* Training plan, on top of report.css: the same identity, A4, content box 178 x 261 mm. */
+.plan-chart { display: block; width: 100%; height: auto; }
+.plan-chart text { font-family: var(--font); font-variant-numeric: tabular-nums; }
+.plan-cover .hero h1 { font-size: 30pt; }
+.plan-cover .facts { grid-template-columns: 1fr 1fr 1fr; margin-top: 5mm; }
+.plan-cover .summary { margin-top: 6mm; }
+.plan-cover .tile .value { font-size: 24pt; }
+.plan-overview { margin: 6mm 0 0; break-inside: avoid; }
+.plan-legend { display: flex; flex-wrap: wrap; gap: 1mm 4.5mm; font-size: 7.5pt; color: var(--ink-2); margin: 0 0 2.5mm; }
+.plan-legend span { display: inline-flex; align-items: center; gap: 1.3mm; }
+.plan-legend i { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 0.6mm; }
+.plan-cover .cover-zones { margin-top: 5mm; }
+.plan-cover .cz-name { line-height: 1.3; }
+.plan-cover .cz-pace { font-size: 7.5pt; color: var(--ink-2); line-height: 1.3; }
+.plan-promise { margin-top: 5mm; padding: 3mm 4.5mm; background: var(--wash); border-left: 0.8mm solid var(--accent); font-size: 9pt; color: var(--ink-2); break-inside: avoid; }
+.plan-promise b { color: var(--ink); font-weight: 600; }
+.plan-notes { margin-top: 3mm; font-size: 8.5pt; color: var(--ink-2); padding: 2.5mm 4.5mm; border-left: 0.8mm solid var(--watch); background: #FDF7EC; }
+.plan-notes p { margin: 0 0 1mm; } .plan-notes p:last-child { margin: 0; }
+
+/* ---------- page 2: how to read the plan ---------- */
+.plan-blocks td.b { white-space: nowrap; font-weight: 600; }
+.plan-blocks td.w { white-space: nowrap; }
+.plan-blocks td.r { color: var(--ink-2); }
+.guide { display: grid; grid-template-columns: 1fr 1fr; gap: 0 7mm; }
+.guide .g { break-inside: avoid; padding: 2.2mm 0; border-top: 0.2mm solid var(--rule); font-size: 8.5pt; line-height: 1.35; }
+.guide .g b { font-size: 9.5pt; font-weight: 600; }
+.guide .g p { margin: 0.4mm 0 0; color: var(--ink-2); }
+.guide .g p.how { color: var(--muted); }
+.rules { margin: 0; padding-left: 4.5mm; color: var(--ink-2); font-size: 9pt; }
+.rules li { margin-bottom: 0.8mm; }
+
+/* ---------- one page per week ---------- */
+.week { break-before: page; }
+.week-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 6mm; padding-bottom: 3mm; border-bottom: 0.4mm solid var(--ink); }
+.week-head h2 { font-size: 22pt; line-height: 1.05; margin-top: 2mm; letter-spacing: -0.015em; }
+.week-head .dates { color: var(--ink-2); font-size: 10pt; margin-top: 1mm; }
+.week-head .sum { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.35; white-space: nowrap; }
+.week-head .sum b { display: block; font-size: 17pt; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; line-height: 1.1; }
+.week-focus { margin: 3.5mm 0 4mm; color: var(--ink-2); font-size: 9.5pt; }
+.week-focus p { margin: 0 0 0.8mm; }
+.days { table-layout: fixed; }
+.days col.c-day { width: 16mm; } .days col.c-what { width: 48mm; } .days col.c-done { width: 35mm; }
+.days tbody td { vertical-align: top; padding-top: 2.6mm; padding-bottom: 2.6mm; border-bottom: 0.2mm solid var(--rule); }
+.days td.day b { display: block; font-size: 10pt; font-weight: 600; }
+.days td.day span { color: var(--muted); font-size: 8pt; }
+.days .w-title { font-weight: 600; font-size: 10.5pt; line-height: 1.25; display: flex; align-items: baseline; gap: 1.8mm; }
+.days .w-title i { flex: none; display: inline-block; width: 1.1mm; height: 3.6mm; border-radius: 0.5mm; transform: translateY(0.5mm); }
+.days .w-meta { font-size: 8.5pt; color: var(--ink); font-weight: 600; margin: 0.3mm 0 0 2.9mm; font-variant-numeric: tabular-nums; }
+.days .w-meta span { color: var(--muted); font-weight: 400; }
+.days .w-purpose { font-size: 8pt; color: var(--muted); line-height: 1.3; margin: 0.6mm 0 0 2.9mm; }
+.days .line { display: grid; grid-template-columns: 20mm 1fr; gap: 0 2mm; font-size: 8.5pt; line-height: 1.35; padding: 0.35mm 0; }
+.days .line .k { color: var(--muted); }
+.days .line .v b { font-weight: 600; }
+.days .line .zc { font-weight: 600; margin: 0 0.8mm 0 1mm; white-space: nowrap; }
+.days .line .zc i { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; margin-right: 1mm; vertical-align: -0.25mm; }
+.days .line .tg { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.days td.rest { color: var(--muted); font-size: 9pt; }
+.days tr.race td { background: var(--wash); }
+.days td.done { padding-right: 0; }
+.days .tick { display: flex; align-items: flex-start; gap: 2mm; }
+.days .box { flex: none; width: 4.2mm; height: 4.2mm; border: 0.3mm solid var(--ink-2); border-radius: 0.7mm; }
+.days .write { flex: 1; }
+.days .write i { display: block; height: 4.6mm; border-bottom: 0.2mm solid var(--rule); }
+.week-foot { margin-top: 5mm; break-inside: avoid; }
+.week-foot .zb { display: flex; height: 3.2mm; gap: 0.5mm; }
+.week-foot .zb i { display: block; border-radius: 0.5mm; min-width: 0.6mm; }
+.week-foot .zl { display: flex; flex-wrap: wrap; gap: 0.8mm 5mm; font-size: 8pt; color: var(--ink-2); margin-top: 1.5mm; }
+.week-foot .zl span { display: inline-flex; align-items: center; gap: 1.2mm; font-variant-numeric: tabular-nums; }
+.week-foot .zl i { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; }
+.week-foot h2 { font-size: 7.5pt; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; margin: 0 0 2mm; }

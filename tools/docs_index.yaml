@@ -1,0 +1,22 @@
+# The index in docs/index.md. tools/docs_index.py writes the lists from this file.
+# One heading per group (in this order), and under it one row per page:
+#   path under docs/: one sentence about what the page holds (at most 100 characters)
+# The title is the page's H1, and the pages are sorted by title within the group.
+# Sub-pages (docs/<page>/<sub>/<sub>.md) are listed under their page by themselves.
+# A page without a row here stops the commit (tools/docs_check.py).
+Handbok:
+  handbok/handbok.md: För den som kör testerna, från start av programmet till utskriven rapport.
+Programmet:
+  ARKITEKTUR.md: Vad programmet gör, tekniken, modulerna och reglerna i koden.
+  PROV.md: Proven som kräver riktig hårdvara, och vilka som är gjorda.
+Underlag:
+  DATASKYDD.md: Hur kundernas data skyddas i programmet, vad lagen kräver och vad som återstår.
+  TRANINGSPLAN.md: Träningsschemat ur testerna: datamodellen, planmotorn, säkerheten och utskriften.
+Fler sporter:
+  sporter/bikefit-och-stakteknik.md: Vad kameran ska mäta för bikefit och stakteknik, med riktvärden.
+  sporter/enheter.md: Hur cykeltrainern och Concept2 PM5 pratar över Bluetooth.
+  sporter/ombyggnad.md: Var löpningen är hårdkodad och hur programmet byggs om för fler sporter.
+  sporter/tester-och-zoner.md: Vedertagna testprotokoll och zoner för cykel och SkiErg.
+Rutiner:
+  dokumentationsrutin.md: Hur dokumentationen skrivs, struktureras och kontrolleras.
+  granskning/granskning.md: Vad som söktes innan koden blev offentlig, och varför träffarna som är kvar är ok.

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ title }} · {{ athlete.name }} · {{ date }}</title>
+<style>
+{% include "report.css" %}
+</style>
+</head>
+<body class="kind-{{ kind }}">
+{% macro zones_section() %}
+{% set Z = sections.zones %}{% set methods = sections.lactate.methods if sections.lactate else [] %}
+{% if Z or methods %}
+<section class="section zones">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.section.zones") }}</div>
+    <h2>{{ t("report.zones.title") }}</h2>
+    <p class="lead">{{ ts("report.zones.lead_hr_speed" if Z and Z.speed_from_hr else ("report.zones.lead_lactate" if Z and Z.from_lactate else "report.zones.lead_hr")) }}</p>
+    {% if no_own_test %}<p class="note"><b>{{ no_own_test }}</b></p>{% endif %}
+  </div>
+  {% if Z and Z.rows %}
+  <table class="zones-table">
+    <thead><tr>
+      <th class="first">{{ t("report.col.zone") }}</th>
+      {% if Z.cols.hr %}<th class="n">{{ t("report.col.hr") }}</th>{% endif %}
+      {% if Z.cols.pct and not Z.cols.pace %}<th class="n">{{ t("report.col.pct_max") }}</th>{% endif %}
+      {% if Z.cols.pace %}<th class="n">{{ ts("report.col.pace") }}</th>{% endif %}
+      {% if Z.cols.speed %}<th class="n">{{ ts("report.col.speed") }}</th>{% endif %}
+      {% if Z.cols.lactate %}<th class="n">{{ t("report.col.lactate") }}</th>{% endif %}
+    </tr></thead>
+    <tbody>
+    {% for z in Z.rows %}
+      <tr>
+        <td class="first"><span class="swatch" style="background: {{ z.color }}"></span><span class="zone-name">{{ z.short }} · {{ z.name }}</span>
+          {% if z.purpose %}<div class="zone-purpose">{{ z.purpose }}</div>{% endif %}</td>
+        {% if Z.cols.hr %}<td class="n strong">{{ z.hr }}</td>{% endif %}
+        {% if Z.cols.pct and not Z.cols.pace %}<td class="n">{{ z.pct }}</td>{% endif %}
+        {% if Z.cols.pace %}<td class="n">{{ z.pace }}</td>{% endif %}
+        {% if Z.cols.speed %}<td class="n">{{ z.speed }}</td>{% endif %}
+        {% if Z.cols.lactate %}<td class="n">{{ z.lactate }}</td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if Z.basis %}<p class="note basis"><b>{{ Z.basis }}</b></p>{% endif %}
+  {% if Z.speed_from_hr %}<p class="note"><b>{{ t("assessments.hrzones.speed_from_hr") }}.</b> {{ sections.hr_zones.limits if sections.hr_zones else t("assessments.hrzones.speed_from_hr_long") }}</p>
+  {% elif Z.cols.pace %}<p class="note">{{ ts("report.zones.note") }}</p>{% endif %}
+  {% if Z.system %}<p class="note"><b>{{ Z.system.name }}.</b> {{ Z.system.note }}{% if Z.estimated %} <b>{{ t("assessments.zones.estimated") }}.</b>{% endif %}</p>{% endif %}
+  {% endif %}
+
+  {% if Z and Z.garmin %}{% set W = Z.garmin %}
+  <div class="block garmin-box">
+    <h3>{{ W.title }}{% if W.estimated %}<span class="sub">{{ t("assessments.zones.estimated") }}</span>{% endif %}</h3>
+    <p>{{ W.intro }}</p>
+    <div class="watch-grid">
+      <dl>
+        {% for f in W.fields %}<div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>{% endfor %}
+      </dl>
+      <table>
+        <tbody>
+        {% for z in W.zones %}<tr><td class="first"><span class="swatch" style="background: {{ zone_color(loop.index0, W.zones | length) }}"></span>{{ z.label }}</td><td class="n strong">{{ z.bpm }}</td><td class="n muted last">{{ z.pct }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><b>{{ W.why_title }}</b> {{ W.why }}</p>
+  </div>
+  {% endif %}
+
+  {% if Z and Z.compare %}
+  <div class="block">
+  <h3>{{ t("report.zones.compare") }}<span class="sub">{{ t("report.zones.compare_sub") }}</span></h3>
+  <table class="zcompare">
+    <thead><tr>{% for h in Z.compare.heads %}<th{% if loop.first %} class="first"{% endif %}>{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for row in Z.compare.rows %}
+      <tr>{% for c in row %}<td{% if loop.first %} class="first"{% endif %}>{% if c %}<span class="zc">{{ c.short }}</span>{{ c.hr }}{% endif %}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if Z and Z.vo2max %}{% set V = Z.vo2max %}
+  <div class="block vo2">
+    <h3>{{ V.title }}</h3>
+    {% if V.none %}
+    <p class="strong">{{ V.text }}</p>
+    {% for r in V.reasons %}<p class="muted">{{ r }}</p>{% endfor %}
+    {% if V.watch %}<p>{{ V.watch.text }}</p>{% endif %}
+    {% else %}
+    <div class="vo2-row">
+      <div class="big num">{{ V.value }}<small>{{ V.unit }}</small></div>
+      <div><div class="strong">{{ V.range }}</div><div class="muted">{{ V.method }}</div></div>
+    </div>
+    {% if V.others %}
+    <table class="vo2-others">
+      <tbody>
+      {% for o in V.others %}<tr><td class="first">{{ o.method }}</td><td class="n">{{ o.value }}</td><td class="n muted last">{{ o.range }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if V.watch %}<p>{{ V.watch.text }}</p>{% if V.watch.warn %}<p class="warn">{{ V.watch.warn }}</p>{% endif %}{% endif %}
+    <p class="note">{{ V.disclaimer }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if methods %}
+  <div class="block">
+  <h3>{{ t("report.lactate.methods") }}<span class="sub">{{ t("report.lactate.methods_sub") }}</span></h3>
+  <table class="methods">
+    <thead><tr>
+      <th class="first">{{ t("report.col.method") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ t("report.col.hr") }}</th>
+      <th class="n">{{ t("report.col.lactate") }}</th><th class="n">{{ t("report.col.pct_max") }}</th>
+    </tr></thead>
+    <tbody>
+    {% for m in methods %}
+      <tr{% if m.chosen %} class="hl"{% endif %}><td class="first">{{ m.method }}{% if m.chosen %} <span class="tag">{{ m.chosen }}</span>{% endif %}</td><td class="n">{{ m.speed }}</td><td class="n">{{ m.pace }}</td>
+        <td class="n">{{ m.hr }}</td><td class="n">{{ m.lactate }}</td><td class="n">{{ m.pct_max_hr }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ============================== first page ============================== #}
+<div class="cover">
+<header class="brand cover-brand">
+  <div class="logo">
+    {% if logo %}<img src="{{ logo }}" alt="{{ business }}">{% else %}<div class="mono">{{ initials }}</div>{% endif %}
+  </div>
+  <div class="who">
+    <div class="biz">{{ business }}</div>
+    {% set who = [branding.coach_name if branding.business_name else "", branding.contact] | select | join(" · ") %}
+    {% if who %}<div class="contact">{{ who }}</div>{% endif %}
+  </div>
+  <div class="doc"><b>{{ t("report.cover.doc") }}</b>{{ date }}</div>
+</header>
+
+<section class="hero">
+  <div class="kicker">{{ kicker }}</div>
+  <h1>{{ title }}</h1>
+  <div class="athlete">{{ athlete.name }}</div>
+  <dl class="facts">
+    <div><dt>{{ t("report.cover.date") }}</dt><dd>{{ date }}</dd></div>
+    {% if collected %}
+    {# Several tests: the kicker names them, the protocols get a wide field. #}
+    <div class="wide"><dt>{{ t("report.cover.tests") }}</dt><dd>{{ protocol }}</dd></div>
+    {% else %}
+    <div><dt>{{ t("report.cover.test") }}</dt><dd>{{ test_names | join(" · ") }}</dd></div>
+    <div><dt>{{ t("report.cover.protocol") }}</dt><dd>{{ protocol }}</dd></div>
+    {% endif %}
+    <div><dt>{{ ts("report.cover.athlete") }}</dt><dd>{{ athlete_facts | join(" · ") if athlete_facts else "–" }}</dd></div>
+    <div><dt>{{ t("report.cover.conditions") }}</dt><dd>{{ conditions | join(" · ") if conditions else "–" }}</dd></div>
+    {% if branding.coach_name %}<div><dt>{{ t("report.cover.coach") }}</dt><dd>{{ branding.coach_name }}</dd></div>{% endif %}
+  </dl>
+</section>
+
+<section class="summary{% if not CC %} gap{% endif %}">
+  {% if empty_notice %}
+  <div class="warnings empty"><b>{{ t("report.empty.title") }}</b><p>{{ empty_notice }}</p></div>
+  {% else %}
+  <h2 class="cover-h">{{ t("report.summary.title") }}</h2>
+  {% endif %}
+  {% if summary.tiles %}
+  <div class="tiles n{{ summary.tiles | length }}">
+    {% for tile in summary.tiles %}
+    <div class="tile{% if tile.cls %} {{ tile.cls }}{% endif %}">
+      <div class="label">{{ tile.label }}</div>
+      <div class="value num">{{ tile.value }}<span class="unit">{{ tile.unit }}</span></div>
+      {% if tile.sub %}<div class="sub">{{ tile.sub }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# The test's own chart, small: the lactate curve, else the heart rate curve of the max HR test. #}
+  {% set CC = sections.lactate.cover_chart if sections.lactate and sections.lactate.cover_chart
+              else (sections.hr_zones.cover_chart if sections.hr_zones
+                    else (sections.max_hr.cover_chart if sections.max_hr
+                          else (sections.power.cover_chart if sections.power else ""))) %}
+  {% if CC %}
+  <figure class="cover-chart">
+    <h2 class="cover-h">{{ ts("report.chart.lactate_title" if sections.lactate and sections.lactate.cover_chart else ("report.chart.hrspeed_title" if sections.hr_zones else "report.chart.hr_title")) }}</h2>
+    {{ CC }}
+  </figure>
+  {% endif %}
+
+  {% if cover_zones %}{% set CZ = cover_zones %}
+  <div class="cover-zones">
+    <div class="cz-head"><b>{{ t("report.cover.zones") }}</b><span>{{ [CZ.system, t("assessments.zones.estimated") | lower if CZ.estimated else "", t("report.unit.bpm"), t("assessments.hrzones.speed_from_hr") | lower if CZ.speed_from_hr else ""] | select | join(" · ") }}</span>{% if CZ.basis and CZ.basis_inline %}<span class="cz-basis-inline">{{ CZ.basis }}</span>{% endif %}</div>
+    <div class="cz-bar" style="grid-template-columns: repeat({{ CZ.rows | length }}, 1fr)">
+      {% for z in CZ.rows %}
+      <div class="cz">
+        <i style="background: {{ z.color }}"></i>
+        <div class="cz-code">{{ z.short }}<span class="cz-hr num">{{ z.hr }}</span></div>
+        {% if CZ.speed_from_hr %}<div class="cz-speed num">{{ z.speed if z.speed else "–" }}{% if z.speed %} <small>km/h</small>{% endif %}</div>{% endif %}
+        {% if z.name %}<div class="cz-name">{{ z.name }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if CZ.basis and not CZ.basis_inline %}<div class="cz-basis">{{ CZ.basis }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  {# With a chart or the coach's comment two points are enough, so the cover stays one page; with both the
+     comment takes their place (the points are on the later pages). Points the coach wrote are always shown. #}
+  {# Zones with a speed line are taller, and so are zones with the max HR sentence on a line of its own under
+     the lactate chart (the tallest cover): then one point, so the cover still is one page. #}
+  {% set tall_zones = cover_zones and (cover_zones.speed_from_hr
+                      or (cover_zones.basis and not cover_zones.basis_inline and sections.lactate)) %}
+  {% set focus = summary.focus[:(0 if coach_comment and CC else (1 if tall_zones else 2))] if (coach_comment or CC) and not summary.custom_focus
+                 else summary.focus %}
+  {% if focus %}
+  <div class="focus">
+    <h2 class="cover-h">{{ t("report.summary.focus") }}</h2>
+    <ol>
+      {% for f in focus %}
+      <li><div class="no">{{ loop.index }}</div><div><div class="t">{{ f.title }}</div><div class="x">{{ f.text }}</div></div></li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+
+  {% if coach_comment %}
+  <div class="comment"><div class="k">{{ t("report.summary.comment") }}</div><p>{{ coach_comment }}</p></div>
+  {% endif %}
+</section>
+
+{# The chart comes before the contents line: with a chart the cover has no room for both. #}
+{% if contents and not empty_notice and not CC %}
+<div class="contents">
+  <b>{{ t("report.summary.contents") }}</b>
+  {% for c in contents %}<span>{{ c }}</span>{% endfor %}
+</div>
+{% endif %}
+</div>
+
+{# ============================== lactate ============================== #}
+{% if sections.lactate %}{% set L = sections.lactate %}
+<section class="section lactate">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.lactate") }}</div>
+    <h2>{{ t("report.lactate.title") }}</h2>
+    <p class="lead">{{ ts("report.lactate.lead") }}</p>
+  </div>
+  {% if L.chart %}
+  <figure class="chart">{{ L.chart }}
+    <figcaption>{{ ts("report.lactate.caption") }}{% if L.previous_note %} {{ L.previous_note }}{% endif %}</figcaption>
+  </figure>
+  {% endif %}
+
+  {% if L.lt1 or L.lt2 %}
+  <div class="thresholds">
+    {% for x, key in [(L.lt1, "lt1"), (L.lt2, "lt2")] if x %}
+    <div class="th-card">
+      <div class="head">
+        <div class="name"><span>{{ x.label }}</span>{{ t("report.lactate." ~ key ~ "_name") }}</div>
+        {% if x.method %}<div class="method">{{ x.method }}</div>{% endif %}
+      </div>
+      <div class="big num">{{ x.speed }}<small>{{ load_unit }}</small></div>
+      <dl>
+        <div><dt>{{ ts("report.col.pace") }}</dt><dd>{{ x.pace }}</dd></div>
+        <div><dt>{{ t("report.col.hr") }}</dt><dd>{{ x.hr }}</dd></div>
+        <div><dt>{{ t("report.col.lactate") }}</dt><dd>{{ x.lactate }}</dd></div>
+        <div><dt>{{ t("report.col.pct_max") }}</dt><dd>{{ x.pct_max_hr }}{% if x.pct_max_hr != "–" %} %{% endif %}</dd></div>
+      </dl>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if L.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in L.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if L.note %}<p class="note">{{ L.note }}</p>{% endif %}
+
+  {% if L.stages %}
+  <h3 class="keep">{{ t("report.lactate.stages") }}</h3>
+  <table class="stages">
+    <thead><tr>
+      <th class="first">{{ t("report.col.stage") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th>{% if has_incline %}<th class="n">{{ t("report.col.incline") }}</th>{% endif %}
+
+      <th class="n">{{ t("report.col.duration") }}</th><th class="n">{{ t("report.col.hr") }}</th>
+      <th class="n">{{ t("report.col.lactate") }}</th><th class="n last">{{ t("report.col.rpe") }}</th>
+    </tr></thead>
+    <tbody>
+    {% for s in L.stages %}
+      <tr><td class="first">{{ s.n }}</td><td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>
+        {%+ if has_incline %}<td class="n">{{ s.incline }}</td>{% endif %}<td class="n">{{ s.duration }}</td><td class="n">{{ s.hr }}</td>
+        <td class="n strong">{{ s.lactate }}</td><td class="n last">{{ s.rpe }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+{% endif %}
+{% if sections.lactate %}{{ zones_section() }}{% endif %}
+
+{# ============================== heart rate and speed (no lactate) ============================== #}
+{% if sections.hr_zones %}{% set H = sections.hr_zones %}
+<section class="section hrzones">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.hr_zones") }}</div>
+    <h2>{{ t("report.hrzones.title") }}</h2>
+    <p class="lead">{{ H.lead }}</p>
+  </div>
+  {% if H.chart %}
+  <figure class="chart">{{ H.chart }}
+    <figcaption>{{ t("report.hrzones.caption") }}</figcaption>
+  </figure>
+  {% endif %}
+  <div class="kpis">
+    <div class="kpi"><div class="label">{{ t("report.hrzones.kpi.slope") }}</div><div class="value num">{{ H.slope }}<small>{{ t("report.hrzones.kpi.slope_unit") }}</small></div></div>
+    <div class="kpi"><div class="label">{{ t("report.hrzones.kpi.r2") }}</div><div class="value num">{{ H.r2 }}</div></div>
+    <div class="kpi"><div class="label">{{ t("report.hrzones.kpi.see") }}</div><div class="value num">{{ H.see }}<small>{{ t("report.unit.bpm") }}</small></div></div>
+    <div class="kpi"><div class="label">{{ t("report.hrzones.kpi.range") }}</div><div class="value num">{{ H.range }}<small>km/h</small></div></div>
+  </div>
+  {% if H.quality %}<div class="verdict">{{ H.quality }}</div>{% endif %}
+  <p class="note"><b>{{ t("report.hrzones.limits_title") }}.</b> {{ H.limits }}</p>
+  {% if H.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in H.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  <h3 class="keep">{{ t("report.hrzones.steps") }}</h3>
+  <table class="stages">
+    <thead><tr>
+      <th class="first">{{ t("report.col.stage") }}</th><th class="n">{{ ts("report.col.speed") }}</th>
+      <th class="n">{{ ts("report.col.pace") }}</th><th class="n">{{ t("report.col.duration") }}</th>
+      <th class="n">{{ t("report.hrzones.col.hr") }}</th><th class="n">{{ t("report.hrzones.col.pct") }}</th>
+      <th class="n">{{ t("report.hrzones.col.rise") }}</th><th class="n last">{{ t("report.hrzones.col.note") }}</th>
+    </tr></thead>
+    <tbody>
+    {% for s in H.steps %}
+      <tr><td class="first">{{ s.n }}</td><td class="n">{{ s.speed }}</td><td class="n">{{ s.pace }}</td>
+        <td class="n">{{ s.duration }}</td><td class="n strong">{{ s.hr }}</td><td class="n">{{ s.pct }}</td>
+        <td class="n">{{ s.rise }}</td><td class="n last{% if s.warn %} warn{% endif %}">{{ s.note }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% if sections.hr_zones and not sections.lactate %}{{ zones_section() }}{% endif %}
+
+{# ============================== power: FTP and the best minute (cycling, SkiErg) ============================== #}
+{% if sections.power %}{% set P = sections.power %}
+<section class="section power">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.section.power") }}</div>
+    <h2>{{ P.title }}</h2>
+    <p class="lead">{{ P.lead }}</p>
+  </div>
+  {% if P.chart and not sections.max_hr %}<figure class="chart">{{ P.chart }}</figure>{% endif %}
+  <div class="kpis">
+    {% if P.ftp != "–" %}<div class="kpi"><div class="label">FTP</div><div class="value num">{{ P.ftp }}<small>W</small></div></div>{% endif %}
+    {% if P.ftp_wkg %}<div class="kpi"><div class="label">FTP</div><div class="value num">{{ P.ftp_wkg }}<small>W/kg</small></div></div>{% endif %}
+    {% if P.mean20 != "–" %}<div class="kpi"><div class="label">{{ t("report.power.mean20") }}</div><div class="value num">{{ P.mean20 }}<small>W</small></div></div>{% endif %}
+    {% if P.map != "–" %}<div class="kpi"><div class="label">{{ t("report.power.map") }}</div><div class="value num">{{ P.map }}<small>W</small></div></div>{% endif %}
+    {% if P.hr20 != "–" %}<div class="kpi"><div class="label">{{ t("report.power.hr20") }}</div><div class="value num">{{ P.hr20 }}<small>{{ t("report.unit.bpm") }}</small></div></div>{% endif %}
+  </div>
+  {% if P.method %}<div class="verdict">{{ t("report.power.method", method=P.method) }}{% if P.weight %} {{ t("report.power.weight", kg=P.weight) }}{% endif %}</div>{% endif %}
+  {% if P.drag %}<p class="note">{{ P.drag }}</p>{% endif %}
+  {% if P.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in P.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if P.zones %}
+  <div class="block">
+  <h3>{{ t("report.power.zones") }}<span class="sub">{{ t("report.power.zones_sub") }}</span></h3>
+  <table class="zones-table">
+    <thead><tr><th class="first">{{ t("report.col.zone") }}</th><th class="n">{{ t("report.power.col_w") }}</th>
+      {% if P.has_wkg %}<th class="n last">W/kg</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for z in P.zones %}
+      <tr><td class="first"><i class="dot" style="background: {{ z.color }}"></i><b>{{ z.short }}</b> {{ z.name }}</td>
+        <td class="n">{{ z.power }}</td>{% if P.has_wkg %}<td class="n last">{{ z.wkg }}</td>{% endif %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">{{ t("report.power.note") }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{# ============================== max HR ============================== #}
+{% if sections.max_hr %}{% set M = sections.max_hr %}
+<section class="section maxhr">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.max_hr") }}</div>
+    <h2>{{ t("report.maxhr.title") }}</h2>
+    <p class="lead">{{ M.lead }}</p>
+  </div>
+  {% if M.chart %}<figure class="chart">{{ M.chart }}</figure>{% endif %}
+  <div class="kpis">
+    <div class="kpi"><div class="label">{{ M.peak_label }}</div><div class="value num">{{ M.peak }}<small>{{ t("report.unit.bpm") }}</small></div></div>
+    <div class="kpi"><div class="label">{{ t("report.maxhr.time") }}</div><div class="value num">{{ M.time }}<small>min</small></div></div>
+    <div class="kpi"><div class="label">{{ t("report.maxhr.plateau") }}</div><div class="value">{{ M.plateau }}</div></div>
+    <div class="kpi"><div class="label">{{ t("report.maxhr.recovery") }}</div><div class="value num">{{ M.recovery }}<small>{{ t("report.unit.bpm") }}</small></div></div>
+  </div>
+  {% if M.verdict %}<div class="verdict">{{ M.verdict }}</div>{% endif %}
+  {% if M.criteria %}
+  <div class="block">
+  <h3>{{ t("report.maxhr.criteria") }}</h3>
+  <ul class="criteria">
+    {% for c in M.criteria %}<li><span class="dot {{ 'ok' if c.met else ('none' if c.met is none else 'watch') }}"></span>{{ c.text }}</li>{% endfor %}
+  </ul>
+  </div>
+  {% endif %}
+  {% if M.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in M.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+</section>
+{% endif %}
+{% if not sections.lactate and not sections.hr_zones %}{{ zones_section() }}{% endif %}
+
+{# ============================== gait ============================== #}
+{% if sections.gait %}
+{% macro frame_fig(f, cls) %}
+    <figure class="frame {{ cls }}">
+      {% if f.src %}<img src="{{ f.src }}" alt="{{ f.label }}">{% else %}<div class="missing">{{ t("report.gait.image_missing") }}</div>{% endif %}
+      <figcaption>{% if cls != "strip" or not f.caption %}<b>{{ f.label }}</b>{% if f.time %}<span class="time">{{ f.time }}</span>{% endif %}{% endif %}
+
+        {% for x in f.findings %}<span class="chip"><span class="dot {{ x.severity }}"></span>{{ x.title }}</span>{% endfor %}
+        {% if f.caption %}<span class="cap">{{ f.caption }}</span>{% endif %}
+      </figcaption>
+    </figure>
+{% endmacro %}
+{# Two camera views: the same three sections once per view, each under its own name. #}
+{% for G in [sections.gait] + ([sections.gait.second] if sections.gait.second else []) %}
+{% set F = G.frames %}
+{% if F.cards or F.strips %}
+<section class="section gait-frames">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.gait") }}{% if G.view_label %} · {{ G.view_label }}{% endif %}</div>
+    <h2>{{ t("report.gait.frames_title") }}</h2>
+    <p class="lead">{{ t("report.gait.frames_lead") }}</p>
+  </div>
+  {% if F.cards %}
+  <div class="frames {{ F.layout }}">
+    {% for f in F.cards %}{{ frame_fig(f, "card") }}{% endfor %}
+  </div>
+  {% endif %}
+  {% for f in F.strips %}{{ frame_fig(f, "strip") }}{% endfor %}
+</section>
+{% endif %}
+
+<section class="section gait-metrics{% if F.strip_overflows %} follows{% endif %}">
+  <div class="keep-together">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.gait") }}{% if G.view_label %} · {{ G.view_label }}{% endif %}</div>
+    <h2>{{ t("report.gait.metrics_title") }}</h2>
+    <p class="lead">{{ t("report.gait.metrics_lead") }}{% if G.foot_strike %} {{ t("report.gait.foot_strike", v=G.foot_strike) }}{% endif %}</p>
+    {% if G.window_note %}<p class="note">{{ G.window_note }}</p>{% endif %}
+    {% if G.sync_note %}<p class="note">{{ G.sync_note }}</p>{% endif %}
+  </div>
+  {% if G.metrics %}
+  <table class="metrics">
+    <thead><tr><th class="first">{{ t("report.col.metric") }}</th><th class="n">{{ t("report.col.value") }}</th>
+      <th class="n">{{ t("report.col.target") }}</th><th class="last">{{ t("report.col.range") }}</th></tr></thead>
+    <tbody>
+    {% for m in G.metrics %}
+      <tr{% if m.uncertain %} class="uncertain"{% endif %}><td class="name">{{ m.name }}<span class="hint">{{ m.hint }}</span></td>
+        <td class="n value">{{ m.value }}<small{% if m.tight %} class="tight"{% endif %}>{{ m.unit }}</small>{% if m.uncertain %}<span class="unsure">{{ t("report.gait.uncertain") }}</span>{% endif %}</td>
+        <td class="n muted">{{ m.target }}</td>
+        <td class="bar last">{% if m.bar %}{{ m.bar }}{% else %}<span class="noref">{{ t("report.gait.no_ref") }}</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="legend">
+    <span><i style="background:var(--good)"></i>{{ t("report.severity.ok") }}</span>
+    <span><i style="background:var(--watch)"></i>{{ t("report.severity.watch") }}</span>
+    <span><i style="background:var(--fix)"></i>{{ t("report.severity.fix") }}</span>
+    <span>{{ t("report.gait.legend_ref") }}</span>
+  </div>
+  {% if G.uncertain_note %}<p class="note">{{ G.uncertain_note }}</p>{% endif %}
+  {% endif %}
+  </div>
+
+  {% if G.per_speed %}
+  <div class="block">
+  <h3>{{ t("report.gait.per_speed") }}</h3>
+  <table class="per-speed">
+    <thead><tr><th class="first">{{ t("report.col.metric") }}</th>
+      {% for s in G.speeds %}<th class="n{% if loop.last %} last{% endif %}">{{ s }} {{ load_unit }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for row in G.per_speed %}
+      <tr><td class="first">{{ row.name }} <span class="muted">{{ row.unit }}</span></td>
+        {% for v in row["values"] %}<td class="v{% if loop.last %} last{% endif %}">{{ v.v }}<span class="dot {{ v.status }}"></span></td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+
+  {% if G.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in G.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if G.asymmetry %}
+  <p class="note">{{ t("report.gait.asymmetry") }} {% for a in G.asymmetry %}{{ a.name }} {{ a.value }} %{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  {% endif %}
+</section>
+
+{% if G.findings %}
+<section class="section gait-findings{% if F.strip_overflows %} follows{% endif %}">
+  {% for f in G.findings %}
+  {% if loop.first %}
+  <div class="keep-together">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.kind.gait") }}{% if G.view_label %} · {{ G.view_label }}{% endif %}</div>
+    <h2>{{ t("report.gait.findings_title") }}</h2>
+    <p class="lead">{{ t("report.gait.findings_lead") }}</p>
+  </div>
+  {% endif %}
+  <article class="finding">
+    <div class="stripe {{ f.severity }}"></div>
+    <div>
+      <div class="head">
+        <div><div class="sev">{{ f.severity_label }}</div><h4>{{ f.title }}</h4></div>
+        {% if f.value_str %}<div class="val">{{ t("report.gait.measured") }} <b>{{ f.value_str }}</b>{% if f.reference %} · {{ t("report.gait.target") }} {{ f.reference }}{% endif %}{% if f.uncertain %} · <span class="unsure-f">{{ t("report.gait.uncertain") }}</span>{% endif %}</div>{% endif %}
+      </div>
+      {% if f.explanation %}<p class="explain">{{ f.explanation }}</p>{% endif %}
+      {% if f.cue or f.drill %}
+      <div class="todo">
+        {% if f.cue %}<div><span class="k">{{ t("report.gait.cue") }}</span>{{ f.cue }}</div>{% endif %}
+        {% if f.drill %}<div><span class="k">{{ t("report.gait.drill") }}</span>{{ f.drill }}</div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% if loop.first %}</div>{% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# ============================== bike fit and SkiErg technique ============================== #}
+{% if sections.technique %}{% include "technique.html.j2" %}{% endif %}
+
+{# ============================== trend ============================== #}
+{% if trend %}
+<section class="section trend-sec">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.section.trend") }}</div>
+    <h2>{{ t("report.trend.title") }}</h2>
+    <p class="lead">{{ ts("report.trend.lead", date=trend.date) }}</p>
+  </div>
+  <table class="trend">
+    <thead><tr><th class="first">{{ t("report.col.metric") }}</th><th class="n">{{ t("report.trend.before") }}</th>
+      <th class="n">{{ t("report.trend.now") }}</th><th class="n last">{{ t("report.trend.change") }}</th></tr></thead>
+    <tbody>
+    {% for r in trend.rows %}
+      <tr class="{{ r.dir }}"><td class="first">{{ r.name }} <span class="muted">{{ r.unit }}</span></td>
+        <td class="n">{{ r.old }}</td><td class="n strong">{{ r.new }}</td>
+        <td class="n delta last">{{ r.delta }}<span class="arrow">{{ r.arrow }}</span></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="legend"><span><i style="background:var(--good)"></i>{{ t("report.trend.better") }}</span><span><i style="background:var(--fix)"></i>{{ t("report.trend.worse") }}</span><span><i style="background:#9AA5B1"></i>{{ t("report.trend.neutral") }}</span></div>
+</section>
+{% endif %}
+
+<p class="disclaimer">{{ t("report.disclaimer.long") }}</p>
+</body>
+</html>

@@ -1,0 +1,330 @@
+/* Lopanalys report, print identity. A4, content box 178 x 261 mm (margins set by pdf.py). */
+@font-face { font-family: "Source Sans Pro"; font-weight: 400; src: url("{{ font_dir }}/SourceSansPro-Regular.ttf"); }
+@font-face { font-family: "Source Sans Pro"; font-weight: 400; font-style: italic; src: url("{{ font_dir }}/SourceSansPro-It.ttf"); }
+@font-face { font-family: "Source Sans Pro"; font-weight: 600; src: url("{{ font_dir }}/SourceSansPro-Semibold.ttf"); }
+@font-face { font-family: "Source Sans Pro"; font-weight: 700; src: url("{{ font_dir }}/SourceSansPro-Bold.ttf"); }
+
+:root {
+  --paper: #FFFFFF;
+  --ink: #17202A;
+  --ink-2: #3A4653;
+  --muted: #5F6B78;
+  --rule: #D7DEE5;
+  --hair: #E8EDF1;
+  --wash: #F4F7F9;
+  --accent: {{ accent }};
+  --accent-2: #3C82F6;
+  --good: #3FB950;
+  --watch: #F2A93B;
+  --fix: #E5484D;
+  --font: "Source Sans Pro", "Segoe UI Variable Text", "Segoe UI", Inter, Arial, sans-serif;
+}
+
+@page {
+  size: A4;
+  @bottom-left {
+    content: {{ footer_left_css }};
+    white-space: pre-wrap; font-family: var(--font); font-size: 7.5pt; line-height: 1.35;
+    color: #5F6B78; vertical-align: top; padding-top: 3mm; width: 128mm;
+  }
+  @bottom-right {
+    content: {{ footer_page_css }};
+    white-space: pre-wrap; font-family: var(--font); font-size: 7.5pt; line-height: 1.35;
+    color: #5F6B78; vertical-align: top; text-align: right; padding-top: 3mm; width: 48mm;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--font); font-size: 9.5pt; line-height: 1.45;
+  font-kerning: normal; text-rendering: geometricPrecision;
+}
+p { margin: 0 0 2.2mm; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+.num, td.n, th.n { font-variant-numeric: tabular-nums; }
+svg text { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+/* ---------- brand header (first page) ---------- */
+.brand { display: flex; align-items: center; gap: 4mm; padding-bottom: 5mm; border-bottom: 0.3mm solid var(--ink); }
+.brand .logo img { display: block; max-height: 14mm; max-width: 48mm; object-fit: contain; }
+.brand .mono {
+  width: 12mm; height: 12mm; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13pt; letter-spacing: 0.02em;
+}
+.brand .who { flex: 1; line-height: 1.25; }
+.brand .biz { font-weight: 600; font-size: 11pt; }
+.brand .contact { color: var(--muted); font-size: 8.5pt; }
+.brand .doc { text-align: right; color: var(--muted); font-size: 8.5pt; line-height: 1.3; }
+.brand .doc b { display: block; color: var(--ink); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; font-size: 7.5pt; }
+
+/* ---------- hero ---------- */
+.hero { padding: 12mm 0 8mm; }
+.kicker { display: flex; align-items: center; gap: 2.5mm; font-size: 8pt; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.kicker::before { content: ""; width: 8mm; height: 0.8mm; background: var(--accent); border-radius: 0.4mm; }
+.hero h1 { font-size: 34pt; line-height: 1.05; margin: 3mm 0 2mm; font-weight: 600; letter-spacing: -0.02em; }
+.hero .athlete { font-size: 17pt; color: var(--ink-2); font-weight: 400; }
+.meta { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr 1.2fr; gap: 0 6mm; margin-top: 9mm; padding-top: 3.5mm; border-top: 0.2mm solid var(--rule); }
+.meta .k { font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 0.8mm; }
+.meta .v { font-size: 9.5pt; line-height: 1.35; }
+
+/* ---------- section heads ---------- */
+.section { break-before: page; }
+.section-head { margin-bottom: 6mm; }
+.section-head h2 { font-size: 22pt; line-height: 1.1; margin-top: 2.5mm; letter-spacing: -0.015em; }
+.section-head .lead { color: var(--ink-2); font-size: 10pt; max-width: 150mm; margin-top: 2.5mm; }
+h3 { font-size: 11.5pt; margin: 7mm 0 2.5mm; }
+h3 .sub { font-weight: 400; color: var(--muted); font-size: 9pt; margin-left: 2mm; }
+.block { break-inside: avoid; }
+h3.keep { break-after: avoid; }
+
+/* ---------- summary ---------- */
+.summary h2 { font-size: 15pt; margin-bottom: 4mm; display: flex; align-items: baseline; gap: 3mm; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+.tile { border-top: 0.6mm solid var(--accent); padding-top: 3mm; break-inside: avoid; }
+.tile .label { font-size: 8.5pt; color: var(--muted); font-weight: 600; }
+.tile .value { font-size: 30pt; font-weight: 600; line-height: 1.05; margin-top: 1.5mm; letter-spacing: -0.02em; }
+.tile .value .unit { font-size: 11pt; font-weight: 400; color: var(--ink-2); letter-spacing: 0; margin-left: 1mm; }
+.tile .sub { font-size: 8.5pt; color: var(--ink-2); margin-top: 1.2mm; }
+.focus { margin-top: 10mm; }
+.focus ol { list-style: none; margin: 0; padding: 0; }
+.focus li { display: grid; grid-template-columns: 9mm 1fr; padding: 3.2mm 0; border-top: 0.2mm solid var(--rule); break-inside: avoid; }
+.focus li:last-child { border-bottom: 0.2mm solid var(--rule); }
+.focus .no { width: 6mm; height: 6mm; border-radius: 50%; border: 0.35mm solid var(--accent); color: var(--ink); font-weight: 600; font-size: 8.5pt; display: flex; align-items: center; justify-content: center; margin-top: 0.3mm; }
+.focus .t { font-weight: 600; font-size: 10.5pt; }
+.focus .x { color: var(--ink-2); }
+.comment { margin-top: 9mm; padding: 4mm 5mm; background: var(--wash); border-left: 0.8mm solid var(--accent); break-inside: avoid; }
+.comment .k { font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 1mm; }
+.comment p { white-space: pre-line; margin: 0; }
+.contents { margin-top: 10mm; display: flex; gap: 6mm; font-size: 8.5pt; color: var(--muted); }
+.contents b { color: var(--ink); font-weight: 600; }
+
+/* ---------- cover (first page): a lab report's front page ----------
+   Grey-scale safe: every colour carries a label or sits beside text, nothing is read from colour alone. */
+.cover { display: flex; flex-direction: column; min-height: 250mm; }
+.cover-brand { padding-bottom: 3.5mm; border-bottom: 0.4mm solid var(--ink); }
+.cover-brand .logo img { height: 15mm; width: auto; max-height: 15mm; max-width: 62mm; }
+.cover-brand .mono { width: 14mm; height: 14mm; font-size: 14pt; }
+.cover-brand .biz { font-size: 12.5pt; letter-spacing: -0.005em; }
+.cover .hero { padding: 7mm 0 0; }
+.cover .hero h1 { font-size: 32pt; margin: 2.5mm 0 0.5mm; }
+.cover .hero .athlete { font-size: 17pt; }
+.facts { display: grid; grid-template-columns: 0.75fr 1.45fr 1fr; gap: 2.5mm 7mm; margin: 6mm 0 0; padding: 3mm 0 0; border-top: 0.25mm solid var(--rule); }
+.facts .wide { grid-column: span 2; }
+.facts dt { font-size: 7pt; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 0.6mm; }
+.facts dd { margin: 0; font-size: 9.5pt; line-height: 1.3; }
+.cover .summary { margin-top: 7mm; }
+.cover .summary.gap { padding-bottom: 4mm; }
+.cover h2.cover-h { font-size: 8pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); font-weight: 700; margin: 0 0 3.5mm; display: flex; align-items: center; gap: 3mm; }
+.cover h2.cover-h::after { content: ""; flex: 1; height: 0.25mm; background: var(--rule); }
+.cover .tiles { gap: 0; }
+.cover .tiles.n4 { grid-template-columns: repeat(4, 1fr); }
+.cover .tiles.n2 { grid-template-columns: repeat(2, 1fr); }
+.cover .tiles.n1 { grid-template-columns: 1fr; }
+.cover .tile { border-top: 0; border-left: 0.25mm solid var(--rule); padding: 1mm 4mm 1.5mm; }
+.cover .tile:first-child { border-left: 0.9mm solid var(--accent); }
+.cover .tile .label { font-size: 8pt; line-height: 1.25; min-height: 5mm; color: var(--ink-2); }
+.cover .tile .value { font-size: 27pt; margin-top: 1mm; white-space: nowrap; }
+.cover .tile .value .unit { font-size: 9.5pt; }
+.cover .tile .sub { font-size: 8pt; line-height: 1.3; color: var(--ink-2); }
+.cover-chart { margin: 5.5mm 0 0; break-inside: avoid; }
+.cover-chart svg.chart { display: block; width: 100%; height: auto; }
+.cover-zones { margin-top: 5mm; break-inside: avoid; }
+.cz-head { display: flex; align-items: baseline; gap: 3mm; font-size: 8pt; margin-bottom: 1.8mm; }
+.cz-head b { font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.cz-head span { color: var(--muted); }
+.cz-basis { margin-top: 1.8mm; font-size: 8pt; color: var(--ink-2); }
+.cz-head .cz-basis-inline { margin-left: auto; color: var(--ink-2); white-space: nowrap; }
+.cz-bar { display: grid; gap: 0 0.8mm; }
+.cz i { display: block; height: 3.2mm; border-radius: 0.5mm; }
+.cz-code { font-weight: 700; font-size: 9pt; margin-top: 1.2mm; display: flex; gap: 2mm; align-items: baseline; }
+.cz-code .cz-hr { font-weight: 600; }
+.cz-hr { font-size: 9pt; font-weight: 600; color: var(--ink); }
+.cz-name { font-size: 7.5pt; color: var(--muted); line-height: 1.2; }
+.cz-speed { font-size: 9pt; font-weight: 600; color: var(--ink); margin-top: 0.4mm; }
+.cz-speed small { font-size: 7pt; font-weight: 400; color: var(--muted); }
+.cover .tile.range .value { font-size: 19pt; line-height: 1.6; }
+.cover .tile.range .value .unit { font-size: 9pt; }
+.stages td.warn { color: #9A6100; font-weight: 600; }
+.cover .focus { margin-top: 6mm; }
+.cover .focus li { padding: 2.4mm 0; }
+.cover .comment { margin-top: 5mm; padding: 3mm 4.5mm; }
+.cover .contents { margin-top: auto; padding-top: 3mm; border-top: 0.25mm solid var(--ink); gap: 5mm; font-size: 8pt; }
+.cover .contents b { letter-spacing: 0.14em; text-transform: uppercase; font-size: 7.5pt; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+thead th { font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; text-align: left; padding: 0 2mm 1.8mm; border-bottom: 0.3mm solid var(--ink); white-space: nowrap; }
+tbody td { padding: 1.7mm 2mm; border-bottom: 0.2mm solid var(--hair); vertical-align: middle; }
+tbody tr { break-inside: avoid; }
+/* No widows or orphans: a table never leaves fewer than three rows on a page (the first three and the
+   last three rows stay together), and a short table (up to 12 rows) moves whole to the next page. */
+table { break-inside: avoid; }
+table:has(> tbody > tr:nth-child(13)) { break-inside: auto; }
+tbody tr:nth-child(-n+2) { break-after: avoid; }
+tbody tr:nth-last-child(-n+2) { break-before: avoid; }
+th.n, td.n { text-align: right; }
+td.strong { font-weight: 600; }
+td.first, th.first { padding-left: 0; }
+td.last, th.last { padding-right: 0; }
+tr.hl td { background: var(--wash); font-weight: 600; }
+.tag { display: inline-block; padding: 0 1.4mm; margin-left: 1.5mm; border-radius: 0.8mm; background: var(--ink); color: #fff; font-size: 7pt; font-weight: 600; letter-spacing: 0.04em; vertical-align: 0.2mm; }
+
+/* ---------- lactate ---------- */
+figure.chart { margin: 0; break-inside: avoid; }
+figure.chart svg.chart { display: block; width: 100%; height: auto; }
+figure.chart figcaption { font-size: 8pt; color: var(--muted); margin-top: 1mm; }
+.thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 5mm; }
+.th-card { border: 0.25mm solid var(--rule); border-radius: 1.5mm; padding: 3.5mm 4.5mm; break-inside: avoid; }
+.th-card .head { display: flex; justify-content: space-between; align-items: baseline; }
+.th-card .name { font-weight: 600; font-size: 10.5pt; }
+.th-card .name span { display: inline-block; min-width: 8mm; padding: 0.2mm 1.5mm; margin-right: 1.5mm; border-radius: 0.8mm; background: var(--ink); color: #fff; font-size: 8pt; text-align: center; letter-spacing: 0.04em; }
+.th-card .method { font-size: 8pt; color: var(--muted); }
+.th-card .big { font-size: 24pt; font-weight: 600; margin: 1.5mm 0 1mm; letter-spacing: -0.02em; }
+.th-card .big small { font-size: 10pt; font-weight: 400; color: var(--ink-2); margin-left: 1mm; letter-spacing: 0; }
+.th-card dl { display: grid; grid-template-columns: repeat(4, auto); gap: 0 4mm; margin: 0; }
+.th-card dt { font-size: 7.5pt; color: var(--muted); }
+.th-card dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; width: 3.2mm; height: 3.2mm; border-radius: 0.7mm; vertical-align: -0.4mm; margin-right: 2mm; }
+.zone-name { font-weight: 600; }
+.zones-table td.n { white-space: nowrap; }
+.zone-purpose { color: var(--muted); font-size: 8.5pt; margin-left: 5.2mm; }
+.note { font-size: 8.5pt; color: var(--muted); margin-top: 3mm; }
+
+/* ---------- max HR ---------- */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; margin-top: 6mm; }
+.kpi { border-top: 0.25mm solid var(--rule); padding-top: 2.5mm; }
+.kpi .label { font-size: 8pt; color: var(--muted); font-weight: 600; }
+.kpi .value { font-size: 20pt; font-weight: 600; margin-top: 0.8mm; letter-spacing: -0.01em; }
+.kpi .value small { font-size: 9pt; font-weight: 400; color: var(--ink-2); margin-left: 0.8mm; }
+.verdict { margin-top: 6mm; padding: 3.5mm 4.5mm; background: var(--wash); border-left: 0.8mm solid var(--accent-2); }
+.vo2 .warn { border-left: 0.8mm solid var(--watch); padding-left: 3mm; }
+
+/* ---------- gait ---------- */
+/* Key frames are never letterboxed: the image sets the height of its card. */
+.frames { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
+.frames.three { grid-template-columns: repeat(3, 1fr); }
+.frames.two-portrait { grid-template-columns: repeat(2, 63mm); justify-content: center; gap: 4mm 14mm; }
+.frame { margin: 0; break-inside: avoid; }
+.frame img { display: block; width: 100%; height: auto; border-radius: 1.5mm; }
+.frame .missing { aspect-ratio: 4 / 3; background: #0E1318; border-radius: 1.5mm; color: #8B98A6; font-size: 8.5pt; display: flex; align-items: center; justify-content: center; }
+.frame.strip { margin-top: 6mm; }
+.frame.strip figcaption .cap { flex-basis: auto; }
+.frame figcaption { margin-top: 1.8mm; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6mm 2.5mm; }
+.frame figcaption b { font-weight: 600; font-size: 9.5pt; }
+.frame figcaption .time { color: var(--muted); font-size: 8pt; }
+.section.follows { break-before: auto; margin-top: 8mm; }
+.section.follows .section-head { margin-bottom: 4mm; }
+.section.follows .metrics tbody td { padding-top: 1.2mm; padding-bottom: 1.2mm; }
+.section.follows .warnings { margin-top: 4mm; }
+.keep-together { break-inside: avoid; }
+.metrics .noref { font-size: 8pt; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 1.2mm; font-size: 8pt; color: var(--ink-2); }
+.dot { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--good); } .dot.watch { background: var(--watch); } .dot.fix { background: var(--fix); } .dot.none { background: var(--rule); }
+.metrics td.name { padding-left: 0; }
+.unsure-f { color: var(--watch); }
+.metrics .unsure { display: block; font-size: 7pt; font-weight: 400; color: var(--watch); }
+.metrics tr.uncertain .bar { opacity: .45; }
+.metrics .hint { display: block; font-size: 7.5pt; color: var(--muted); line-height: 1.25; }
+.metrics td.bar { width: 42mm; padding-right: 0; }
+.metrics td.bar svg { display: block; width: 40mm; height: auto; }
+.metrics td.value { font-weight: 600; font-size: 10pt; white-space: nowrap; }
+.metrics td.value small { font-weight: 400; color: var(--muted); font-size: 8pt; margin-left: 0.6mm; }
+.metrics td.value small.tight { margin-left: 0; }
+.legend { display: flex; gap: 5mm; font-size: 8pt; color: var(--muted); margin-top: 2.5mm; }
+.legend span { display: inline-flex; align-items: center; gap: 1.2mm; }
+.legend i { display: inline-block; width: 5mm; height: 1.6mm; border-radius: 0.5mm; }   /* full colour like the bars: pale tints vanish on paper */
+.finding { display: grid; grid-template-columns: 1.2mm 1fr; gap: 0 4.5mm; padding: 4mm 0; border-top: 0.2mm solid var(--rule); break-inside: avoid; }
+.finding .stripe { border-radius: 0.6mm; }
+.finding .stripe.fix { background: var(--fix); } .finding .stripe.watch { background: var(--watch); } .finding .stripe.ok { background: var(--good); }
+.finding .head { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+.finding h4 { margin: 0; font-size: 11pt; font-weight: 600; }
+.finding .sev { font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.finding .val { font-size: 9pt; color: var(--ink-2); white-space: nowrap; }
+.finding .val b { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.finding .explain { margin: 1.5mm 0 2.5mm; color: var(--ink-2); }
+.finding .todo { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.finding .todo div { background: var(--wash); border-radius: 1mm; padding: 2.5mm 3.5mm; }
+.finding .todo .k { font-size: 7.5pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 0.6mm; }
+.per-speed td.v { text-align: right; white-space: nowrap; }
+.per-speed td.v .dot { margin-left: 1.5mm; vertical-align: 0.1mm; }
+
+.frame figcaption .cap { flex-basis: 100%; font-size: 8.5pt; color: var(--ink-2); }
+.criteria { list-style: none; margin: 0; padding: 0; }
+.criteria li { display: flex; gap: 2.5mm; align-items: baseline; padding: 1.4mm 0; border-bottom: 0.2mm solid var(--hair); }
+.warnings { margin-top: 5mm; font-size: 8.5pt; color: var(--ink-2); padding: 3mm 4.5mm; border-left: 0.8mm solid var(--watch); background: #FDF7EC; }
+.warnings b { font-weight: 600; color: var(--ink); }
+.warnings ul { margin: 1mm 0 0; padding-left: 4.5mm; }
+
+/* ---------- trend ---------- */
+.trend td.delta { font-weight: 600; white-space: nowrap; }
+.arrow { display: inline-block; width: 4.2mm; text-align: center; font-weight: 700; }
+.better .arrow { color: #238636; } .worse .arrow { color: #C93C40; } .same .arrow, .neutral .arrow { color: var(--muted); }
+.trend tr.better td.delta { color: #1F6F2C; } .trend tr.worse td.delta { color: #A8332F; }
+
+/* ---------- end ---------- */
+.disclaimer { margin-top: 10mm; padding-top: 3mm; border-top: 0.2mm solid var(--rule); font-size: 8pt; color: var(--muted); break-inside: avoid; }
+
+.warnings.empty { font-size: 10.5pt; padding: 5mm 6mm; margin-top: 2mm; }
+.warnings.empty p { margin: 1.5mm 0 0; }
+
+/* ---------- zone systems, watch box (.garmin-box: not .watch, that is a severity), estimated VO2max ---------- */
+.garmin-box { margin-top: 6mm; padding: 4mm 5mm 3mm; border: 0.25mm solid var(--rule); border-left: 0.8mm solid var(--accent); border-radius: 1.5mm; }
+.garmin-box h3, .vo2 h3 { margin-top: 0; }
+.garmin-box p { color: var(--ink-2); }
+.watch-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 0 8mm; align-items: start; margin: 2.5mm 0 1mm; }
+.garmin-box dl { margin: 0; }
+.garmin-box dl div { display: flex; justify-content: space-between; gap: 4mm; padding: 1.4mm 0; border-bottom: 0.2mm solid var(--hair); }
+.garmin-box dt { color: var(--muted); }
+.garmin-box dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.garmin-box table td { padding-top: 1.4mm; padding-bottom: 1.4mm; white-space: nowrap; }
+.zcompare { table-layout: fixed; }
+.zcompare td { font-variant-numeric: tabular-nums; }
+.zc { display: inline-block; min-width: 9mm; font-weight: 600; }
+.vo2 { margin-top: 6mm; padding: 4mm 5mm 3mm; background: var(--wash); border-radius: 1.5mm; }
+.vo2-row { display: flex; align-items: center; gap: 7mm; }
+.vo2 .big { font-size: 24pt; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+.vo2 .big small { font-size: 10pt; font-weight: 400; color: var(--ink-2); margin-left: 1mm; letter-spacing: 0; }
+.vo2 .strong { font-weight: 600; }
+.vo2-others { margin-top: 2.5mm; font-size: 8.5pt; }
+
+/* ---------- the sheet "Om testerna" (one page) ---------- */
+.kind-tests-info .brand { padding-bottom: 3.5mm; }
+.sheet-head { padding: 3mm 0 2mm; }
+.sheet-head h1 { font-size: 18pt; line-height: 1.1; margin-top: 1.5mm; letter-spacing: -0.015em; }
+.sheet-head p { color: var(--ink-2); margin: 1.2mm 0 0; font-size: 8.4pt; }
+/* six tests on one A4: the text is as small as it can be read in print */
+.tinfo { break-inside: avoid; padding: 1.6mm 0 0.5mm; border-top: 0.25mm solid var(--rule); font-size: 7pt; line-height: 1.25; }
+.tinfo h2 { font-size: 10.5pt; display: flex; align-items: baseline; gap: 3mm; }
+.tinfo h2 .meta-line { font-size: 7pt; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.tinfo .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6mm; margin-top: 1mm; }
+.tinfo p { margin: 0 0 0.9mm; color: var(--ink-2); }
+.tinfo p b { color: var(--ink); font-weight: 600; }
+
+/* --- bike fit and SkiErg technique (templates/technique.html.j2) --- */
+.metrics.tech td.basis { font-size: 8pt; color: var(--ink-2); padding-right: 0; }
+.metrics.tech td.value .dot { margin-right: 1mm; vertical-align: 0.1mm; }
+.metrics.tech th.last, .metrics.tech td.last { text-align: left; padding-left: 4mm; }
+.warnings.quality.poor { border-left-color: var(--fix); background: #FCEEEE; }
+.warnings.quality p { margin: 1mm 0 0; }
+.warnings.notes { border-left-color: var(--accent); background: var(--wash); }
+.advice { padding: 3.5mm 0; border-top: 0.2mm solid var(--rule); break-inside: avoid; }
+.advice .head { display: flex; align-items: baseline; gap: 3mm; }
+.advice h4 { margin: 0; font-size: 11pt; font-weight: 600; }
+.advice p { margin: 1.2mm 0 0; color: var(--ink-2); }
+.badge { font-size: 7.5pt; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--accent);
+         border: 0.2mm solid var(--accent); border-radius: 1mm; padding: 0.3mm 1.6mm; }
+.badge.rec { color: var(--muted); border-color: var(--rule); }
+.badge.warn { color: #9A5B00; border-color: var(--watch); }
+.check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 8mm; }
+.check-sec { break-inside: avoid; }
+.check-sec h3 { margin: 3mm 0 1mm; }
+table.check { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+table.check td { padding: 0.9mm 0; border-bottom: 0.15mm solid var(--rule); vertical-align: top; }
+table.check td.k { color: var(--ink-2); padding-right: 3mm; }
+table.check td.v { font-weight: 600; text-align: right; }
+.trend.better { color: var(--good); font-weight: 600; } .trend.worse { color: var(--fix); font-weight: 600; }
+.trend.same, .trend.none { color: var(--muted); }

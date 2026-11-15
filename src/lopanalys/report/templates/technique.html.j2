@@ -1,0 +1,168 @@
+{# Bike fit and SkiErg technique (pose.technique). Included from report.html.j2 when sections.technique exists. #}
+{% set T = sections.technique %}
+{% macro tfig(f, cls) %}
+    <figure class="frame {{ cls }}">
+      {% if f.src %}<img src="{{ f.src }}" alt="{{ f.label }}">{% else %}<div class="missing">{{ t("report.gait.image_missing") }}</div>{% endif %}
+      <figcaption>{% if cls != "strip" or not f.caption %}<b>{{ f.label }}</b>{% endif %}
+        {% for x in f.findings %}<span class="chip"><span class="dot {{ x.severity }}"></span>{{ x.title }}</span>{% endfor %}
+        {% if f.caption %}<span class="cap">{{ f.caption }}</span>{% endif %}
+      </figcaption>
+    </figure>
+{% endmacro %}
+{% for V in T.views %}
+{% set F = V.frames %}
+{% set kicker = T.name ~ (" · " ~ V.view_label if V.view_label else "") %}
+{% if F.cards or F.strips %}
+<section class="section gait-frames tech-frames">
+  <div class="section-head">
+    <div class="kicker">{{ kicker }}</div>
+    <h2>{{ t("technique.report.frames_title") }}</h2>
+    <p class="lead">{{ T.frames_lead }}</p>
+  </div>
+  {% if F.cards %}<div class="frames {{ F.layout }}">{% for f in F.cards %}{{ tfig(f, "card") }}{% endfor %}</div>{% endif %}
+  {% for f in F.strips %}{{ tfig(f, "strip") }}{% endfor %}
+</section>
+{% endif %}
+
+<section class="section gait-metrics tech-metrics">
+  <div class="section-head">
+    <div class="kicker">{{ kicker }}</div>
+    <h2>{{ t("technique.report.metrics_title") }}</h2>
+    <p class="lead">{{ V.metrics_lead }}</p>
+  </div>
+  {% if V.quality.level != "good" %}
+  <div class="warnings quality {{ V.quality.level }}"><b>{{ V.quality.label }}</b>
+    {% if V.quality.level == "poor" %}<p>{{ t("technique.report.poor_note") }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if V.metrics %}
+  <table class="metrics tech">
+    <thead><tr><th class="first">{{ t("technique.report.col.metric") }}</th><th class="n">{{ t("technique.report.col.value") }}</th>
+      <th class="n">{{ t("technique.report.col.error") }}</th><th class="n">{{ t("technique.report.col.range") }}</th>
+      <th class="last">{{ t("technique.report.col.basis") }}</th></tr></thead>
+    <tbody>
+    {% for m in V.metrics %}
+      <tr><td class="name">{{ m.name }}<span class="hint">{{ m.hint }}</span></td>
+        <td class="n value"><span class="dot {{ m.status }}"></span> {{ m.value }}<small{% if m.tight %} class="tight"{% endif %}>{{ m.unit }}</small></td>
+        <td class="n muted">{{ m.error }}</td>
+        <td class="n muted">{{ m.target if m.target else "–" }}</td>
+        <td class="last basis">{{ m.basis }}{% if m.within_error %}<span class="hint">{{ t("technique.report.within_error") }}</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="legend">
+    <span><i style="background:var(--good)"></i>{{ t("report.severity.ok") }}</span>
+    <span><i style="background:var(--watch)"></i>{{ t("report.severity.watch") }}</span>
+    <span><i style="background:var(--fix)"></i>{{ t("report.severity.fix") }}</span>
+    <span><i style="background:var(--rule)"></i>{{ t("technique.basis.none") }}</span>
+  </div>
+  {% endif %}
+  <p class="note">{{ t("technique.report.disclaimer") }}{% if V.sources %} {{ t("technique.report.sources", list=V.sources) }}{% endif %}</p>
+  {% if V.warnings %}
+  <div class="warnings block"><b>{{ t("report.warnings.title") }}</b>
+    <ul>{% for w in V.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+</section>
+
+{% if V.findings %}
+<section class="section gait-findings tech-findings">
+  {% for f in V.findings %}
+  {% if loop.first %}
+  <div class="keep-together">
+  <div class="section-head">
+    <div class="kicker">{{ kicker }}</div>
+    <h2>{{ t("technique.report.findings_title") }}</h2>
+    <p class="lead">{{ t("technique.report.findings_lead") }}</p>
+  </div>
+  {% endif %}
+  <article class="finding">
+    <div class="stripe {{ f.severity }}"></div>
+    <div>
+      <div class="head">
+        <div><div class="sev">{{ f.severity_label }}</div><h4>{{ f.title }}</h4></div>
+        {% if f.value_str %}<div class="val">{{ t("report.gait.measured") }} <b>{{ f.value_str }}</b>{% if f.reference %} · {{ t("report.gait.target") }} {{ f.reference }}{% endif %}</div>{% endif %}
+      </div>
+      {% if f.explanation %}<p class="explain">{{ f.explanation }}</p>{% endif %}
+      {% if f.cue or f.drill %}
+      <div class="todo">
+        {% if f.cue %}<div><span class="k">{{ t("report.gait.cue") }}</span>{{ f.cue }}</div>{% endif %}
+        {% if f.drill %}<div><span class="k">{{ t("report.gait.drill") }}</span>{{ f.drill }}</div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% if loop.first %}</div>{% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+{% endfor %}
+
+{% if T.advice %}
+<section class="section tech-advice">
+  <div class="section-head">
+    <div class="kicker">{{ T.name }}</div>
+    <h2>{{ t("technique.report.advice_title") }}</h2>
+    <p class="lead">{{ t("technique.report.advice_lead") }}</p>
+  </div>
+  {% for a in T.advice %}
+  <article class="advice{% if a.uncertain %} uncertain{% endif %}">
+    <div class="head"><h4>{{ a.title }}</h4>
+      <span class="badge{% if not a.on_site %} rec{% endif %}">{{ a.badge }}</span>
+      {% if a.uncertain %}<span class="badge warn">{{ t("technique.report.badge.uncertain") }}</span>{% endif %}</div>
+    <p>{{ a.text }}</p>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if T.checklist %}{% set C = T.checklist %}
+<section class="section tech-checklist">
+  <div class="section-head">
+    <div class="kicker">{{ T.name }}</div>
+    <h2>{{ t("technique.report.checklist_title") }}</h2>
+    <p class="lead">{{ t("technique.report.checklist_lead") }} {{ t("technique.report.checklist_progress", done=C.done, total=C.total) }}.</p>
+  </div>
+  {% if not C.sections %}<p class="note">{{ t("technique.report.checklist_empty") }}</p>{% endif %}
+  <div class="check-grid">
+  {% for s in C.sections %}
+  <div class="check-sec">
+    <h3>{{ s.title }}</h3>
+    <table class="check"><tbody>
+      {% for r in s.rows %}<tr><td class="k">{{ r.label }}</td><td class="v">{{ r.value }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  {% endfor %}
+  </div>
+  {% if C.notes %}
+  <div class="warnings block notes"><b>{{ t("technique.report.notes_title") }}</b>
+    <ul>{% for n in C.notes %}<li>{{ n }}</li>{% endfor %}</ul></div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if T.compare and T.compare.views %}
+<section class="section tech-compare">
+  <div class="section-head">
+    <div class="kicker">{{ T.name }}</div>
+    <h2>{{ t("technique.report.compare_title") }}</h2>
+    <p class="lead">{{ t("technique.report.compare_lead", date=T.compare.date) }}</p>
+  </div>
+  {% for V in T.compare.views %}
+  {% if T.compare.views | length > 1 %}<h3>{{ V.view_label }}</h3>{% endif %}
+  <table class="metrics tech compare">
+    <thead><tr><th class="first">{{ t("technique.report.col.metric") }}</th><th class="n">{{ t("technique.report.col.before") }}</th>
+      <th class="n">{{ t("technique.report.col.now") }}</th><th class="n">{{ t("technique.report.col.change") }}</th>
+      <th class="last">{{ t("technique.report.col.trend") }}</th></tr></thead>
+    <tbody>
+    {% for c in V.compare %}
+      <tr><td class="name">{{ c.name }}</td><td class="n muted">{{ c.before }}</td>
+        <td class="n value">{{ c.now }}<small>{{ c.unit }}</small></td><td class="n">{{ c.delta }}</td>
+        <td class="last basis"><span class="trend {{ c.trend }}">{{ c.trend_label }}</span></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+</section>
+{% elif T.first_test %}
+<p class="note tech-first">{{ t("technique.report.compare_first") }}</p>
+{% endif %}

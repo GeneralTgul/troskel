@@ -1,0 +1,38 @@
+#!/bin/sh
+# Documentation checks at commit. Install once per clone:  git config core.hooksPath tools/hooks
+# Rules: docs/dokumentationsrutin.md. Skip in an emergency with: git commit --no-verify
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+if [ -x .venv/bin/python ]; then PY=.venv/bin/python
+elif [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe
+elif command -v python3 >/dev/null 2>&1; then PY=python3
+else PY=python; fi
+
+staged=$(git -c core.quotepath=off diff --cached --name-only --diff-filter=ACMRD)
+
+# The screenshots are not taken here (that needs the whole program), so only a reminder.
+if echo "$staged" | grep -Eq '^src/lopanalys/(ui/|i18n/.*\.sv\.json)'; then
+  echo "pre-commit: the interface changed. Update the screenshots: python tools/docs_shots.py" >&2
+fi
+
+echo "$staged" | grep -Eq '^(docs/|(README(\.sv)?|CONTRIBUTING)\.md$|tools/docs_)' || exit 0
+
+# Tables of contents: only in the staged pages, so that another person's unfinished page
+# is never pulled into this commit. Other pages that became out of date stop the commit below.
+pages=$(git -c core.quotepath=off diff --cached --name-only --diff-filter=ACMR -- 'docs/*.md')
+if [ -n "$pages" ]; then
+  # shellcheck disable=SC2086
+  for f in $("$PY" tools/docs_toc.py $pages | tr -d '\r'); do git add -- "$f"; done
+fi
+
+# The index is written by the script alone, so it is updated and staged here.
+if [ -f docs/index.md ]; then
+  "$PY" tools/docs_index.py >/dev/null
+  git diff --quiet -- docs/index.md || git add -- docs/index.md
+fi
+
+if ! "$PY" tools/docs_check.py >&2; then
+  echo "pre-commit: STOPPED, the documentation has errors (see above and docs/dokumentationsrutin.md)." >&2
+  exit 1
+fi

@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+# Recordings, athlete data and generated reports never go into the repo (health data).
+data/
+recordings/
+*.mp4
+*.mov
+*.MP4
+*.sqlite
+*.db
+reports_out/
+# Model files are downloaded at build time.
+models/*.task
+.syslibs/

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lopanalys"
+version = "0.1.0"
+description = "Running gait analysis and physiological testing for coaches: camera, treadmill, heart rate, lactate and printed reports."
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+classifiers = ["License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)"]
+dependencies = [
+    "PySide6>=6.7",          # LGPL-3.0: UI, multimedia, PDF and printing (dynamic linking only)
+    "mediapipe>=0.10",       # Apache-2.0: pose estimation
+    "opencv-python-headless>=4.9",  # Apache-2.0: capture, drawing, recording
+    "numpy>=1.26",
+    "scipy>=1.11",           # curve fitting for lactate thresholds, signal processing
+    "bleak>=0.22",           # MIT: Bluetooth LE (FTMS treadmill, heart rate)
+    "websockets>=12",        # BSD: QZ bridge
+    "jinja2>=3.1",           # BSD: report templates
+    "matplotlib>=3.8",       # PSF-like: report charts
+    "Pillow>=10",            # HPND: key frames in reports
+    "ifaddr>=0.2",           # MIT: network adapters, finds GoPros on USB
+    "cryptography>=42",      # Apache-2.0/BSD: the encrypted backup (AES-256-GCM, scrypt)
+    "pygrabber>=0.2; sys_platform == 'win32'",  # MIT: DirectShow camera names
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-qt>=4.4", "pytest-timeout>=2.3",   # MIT: a hanging test fails with its stack (CI 2026-11-15)
+       "fitdecode>=0.10"]   # MIT: an independent reader that checks the FIT files in tests/share (not in the program)
+
+[project.gui-scripts]
+lopanalys = "lopanalys.ui.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lopanalys = ["report/templates/*", "report/assets/*", "ui/assets/*", "i18n/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

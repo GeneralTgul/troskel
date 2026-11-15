@@ -1,0 +1,81 @@
+name: Windows-bygge
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      alla_prov:
+        description: "Kör hela testsviten (annars bara proven som skiljer sig på Windows)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60   # a hanging step stopped two builds for 1.5 h (2026-11-15)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Beroenden
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev] pyinstaller
+
+      - name: Tester
+        env:
+          QT_QPA_PLATFORM: offscreen
+        shell: pwsh
+        run: |
+          # Hela sviten körs grönt på Linux före varje push. Här körs bara det som skiljer sig på Windows:
+          # kameran (tider, drivrutiner), dataskyddet (DPAPI), lagringen (sökvägar, låsta filer), Bluetooth,
+          # rapporten (typsnitt, PDF) och de UI-prov som hängt sig bara på Windows. Windows-minuter räknas
+          # dubbelt i ett privat repo, och hela sviten tog 10 av 16 min (2026-11-15).
+          $prov = if ("${{ inputs.alla_prov }}" -eq "true") { @("tests") } else { @("tests/core", "tests/camera", "tests/share", "tests/storage", "tests/devices", "tests/report", "tests/ui/test_window_cleanup.py", "tests/ui/test_forms.py") }
+          pytest @prov -q --maxfail=25 --tb=line -rf --timeout=300 --timeout-method=thread 2>&1
+          exit $LASTEXITCODE
+
+      - name: Pose-modellen
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force models | Out-Null
+          $u = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task"
+          Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile models/pose_landmarker_full.task
+          (Get-FileHash models/pose_landmarker_full.task -Algorithm SHA256).Hash | Out-File models/pose_landmarker_full.task.sha256
+
+      - name: PyInstaller
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm packaging/lopanalys.spec 2>&1
+          exit $LASTEXITCODE
+
+      - name: Egenkontroll av exe-filen
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist/Lopanalys/Lopanalys.exe -ArgumentList "--selfcheck","$PWD\selfcheck.txt" -Wait -PassThru
+          if (Test-Path selfcheck.txt) { Get-Content selfcheck.txt } else { "exe-filen skrev ingen egenkontroll" }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path selfcheck.txt)) { exit 1 }
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "dev-$($env:GITHUB_SHA.Substring(0,7))" }
+          Compress-Archive -Path dist/Lopanalys/* -DestinationPath "Lopanalys-$v-windows.zip"
+          "ZIP=Lopanalys-$v-windows.zip" | Out-File -Append $env:GITHUB_ENV
+          "VER=$v" | Out-File -Append $env:GITHUB_ENV
+
+      - name: Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = (Get-FileHash $env:ZIP -Algorithm SHA256).Hash
+          gh release create $env:VER $env:ZIP --title $env:VER --notes "sha256 $sha`ncommit $env:GITHUB_SHA" $(if ($env:GITHUB_REF_TYPE -ne "tag") { "--prerelease" })

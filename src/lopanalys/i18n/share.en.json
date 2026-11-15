@@ -1,0 +1,21 @@
+{
+ "share.mail.subject": "Your test report {date}",
+ "share.mail.hello": "Hi {name}!",
+ "share.mail.hello_plain": "Hi!",
+ "share.mail.body": "Here is the report from your test on {date}.",
+ "share.mail.body_many": "Here is the collected report from your {n} tests on {date}.",
+ "share.mail.body_fit": "The FIT file is the test as a workout, second by second. It can be uploaded to Strava, Garmin Connect and similar services.",
+ "share.mail.questions": "Get in touch if you have any questions.",
+ "share.mail.regards": "Best regards",
+ "share.mail.test_subject": "Test mail from Tröskel",
+ "share.mail.test_body": "This is a test mail from the program Tröskel. The e-mail settings work.",
+ "share.mail.err.not_set_up": "E-mail is not set up. Fill in the server, the user and the app password under Settings → E-mail.",
+ "share.mail.err.sender": "The sender's address is missing or cannot be read. Fill it in under Settings → E-mail.",
+ "share.mail.err.address": "The e-mail address cannot be read.",
+ "share.mail.err.too_big": "The attachments are too large for e-mail ({mb} MB). Save the report as a PDF and hand it over another way.",
+ "share.mail.err.auth": "The server did not accept the login. Check the user and the app password. Gmail needs an app password, not the ordinary password.",
+ "share.mail.err.recipient": "The server did not accept the recipient's address. Check the athlete's address.",
+ "share.mail.err.tls": "No encrypted connection to {host}:{port}. Check the port and the kind of encryption (587 with STARTTLS, 465 with TLS).",
+ "share.mail.err.smtp": "The server did not accept the mail ({code}).",
+ "share.mail.err.connect": "Could not reach {host}:{port}. Check the server, the port and the internet connection."
+}
