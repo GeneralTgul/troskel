@@ -407,3 +407,36 @@ def test_reminder_on_the_athlete_page(demo_window):
     assert win.ctx.store.athlete(old.id) is not None                          # nothing is erased by itself
     assert win.athletes.erase(old.id)
     assert not win.athletes.remind.isVisibleTo(win.athletes) and win.nav_buttons["athletes"].text() == "Idrottare"
+
+
+def test_consent_saved_while_the_wizard_is_open_counts(demo_window):
+    """The coach chose the athlete, then registered the film consent in Idrottare, then started:
+    the wizard had kept the athlete from before the consent, and no film was saved."""
+    win = demo_window
+    nt = win.new_test
+    lisa = win.ctx.store.save_athlete(Athlete(None, "Lisa", "Löpare", max_hr=185, consent=dict(CONSENT, film=False)))
+    win.ctx.athletes_changed.emit()
+    win.go("new_test")
+    nt.go(0)
+    row = next(i for i in range(nt.a_list.count()) if nt.a_list.item(i).data(0x0100).id == lisa.id)
+    nt.a_list.setCurrentRow(row)
+    assert not nt.athlete.consents("film")
+    # the consent is saved while the wizard stands open (without the list being refilled)
+    win.ctx.store.save_athlete(Athlete(lisa.id, "Lisa", "Löpare", max_hr=185, consent=dict(CONSENT)))
+    assert nt.plan().athlete.consents("film")
+    # and when the check step was built before the consent: the controller gets the saved athlete
+    stale = Athlete(lisa.id, "Lisa", "Löpare", max_hr=185, consent=dict(CONSENT, film=False))
+    nt.athlete = stale
+    nt.ctl = LiveController(win.ctx, Plan(stale, "gait", library.gait_check([10.0], stage_s=60), None,
+                                          treadmill_mode="sim"))
+    launched = []
+    nt.launch.disconnect()
+    nt.launch.connect(launched.append)
+    nt.stack.setCurrentIndex(nt.stack.count() - 1)
+    nt._next()
+    assert launched and launched[0].plan.athlete.consents("film")
+    launched[0].abort()
+    # a refill of the list (the form's save signal) also picks up the saved row
+    nt.athlete = stale
+    nt._fill_athletes()
+    assert nt.athlete.consents("film")

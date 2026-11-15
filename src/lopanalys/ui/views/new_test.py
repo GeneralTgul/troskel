@@ -276,6 +276,7 @@ class NewTestView(QWidget):
             self.a_list.addItem(it)
             self.a_list.setItemWidget(it, AthleteRow(a))
             if self.athlete and a.id == self.athlete.id:
+                self.athlete = a        # the saved row: a consent saved while the wizard is open counts
                 self.a_list.setCurrentItem(it)
         self.a_list.blockSignals(False)
         self._update_nav()
@@ -1567,7 +1568,20 @@ class NewTestView(QWidget):
         run_async(services.ensure_model, on_done=done, on_error=fail,
                   on_progress=lambda v: dlg.setValue(int(max(0.0, min(1.0, v)) * 100)))
 
+    def _fresh_athlete(self) -> Athlete | None:
+        """The chosen athlete as saved now. The consent decides whether a film is saved, and it may
+        have been changed in Idrottare after the athlete was chosen here."""
+        if self.athlete is not None and self.athlete.id is not None:
+            try:
+                a = self.ctx.store.athlete(self.athlete.id)
+            except Exception:
+                a = None
+            if a is not None:
+                self.athlete = a
+        return self.athlete
+
     def plan(self) -> TestPlan:
+        self._fresh_athlete()
         assert self.athlete is not None and self.protocol is not None
         return TestPlan(self.athlete, self.kind, self.protocol, self.camera, self.view, self.mode,
                         self.tm_device, self.hr_device if self.hr_connected else None,
@@ -1631,6 +1645,9 @@ class NewTestView(QWidget):
             ctl, self.ctl = self.ctl, None
             self.check_view.detach()
             if ctl is not None:
+                a = self._fresh_athlete()     # the consent as saved now, not when the check step opened
+                if a is not None and a.id == ctl.plan.athlete.id:
+                    ctl.plan.athlete = a
                 self.launch.emit(ctl)
             return
         self.go(i + 1)
