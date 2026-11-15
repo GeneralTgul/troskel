@@ -1,0 +1,2 @@
+# The calendar fixtures keep their CRLF line ends (RFC 5545), byte for byte as Python writes them.
+*.ics -text

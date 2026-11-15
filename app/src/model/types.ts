@@ -1,0 +1,158 @@
+/**
+ * The stored plan as it travels from Tröskel to the app: the payload of `lopanalys.plan.link.stored_plan`.
+ * `request` and `plan` are `codec.request_to_dict` and `codec.plan_to_dict` field by field (see codec.py and
+ * models.py). Dates are ISO strings ("2026-11-16"), clock times "18:00:00", weekdays 0 = Monday.
+ */
+
+export type ZoneCode = "Z1" | "Z2" | "Z3" | "Z4" | "Z5";
+export type Sport = string; // core.sport.Sport values: "run", "bike", "skierg"; plans are built for "run"
+export type IsoDate = string;
+export type IsoTime = string;
+
+export interface StoredNote {
+  key: string; // i18n key, e.g. "plan.reason.base"
+  args: [string, string | number | null][];
+}
+
+export interface StoredAnchors {
+  max_hr: number | null;
+  resting_hr: number | null;
+  lt1_hr: number | null;
+  lt2_hr: number | null;
+  lt1_speed_kmh: number | null;
+  lt2_speed_kmh: number | null;
+  sport?: Sport;
+  [k: string]: unknown;
+}
+
+export interface StoredSpeedLine {
+  slope: number;
+  intercept: number;
+  speed_min: number;
+  speed_max: number;
+  ramp_top_kmh: number | null;
+  extrapolate_kmh: number;
+}
+
+export interface StoredCapacity {
+  sport: Sport;
+  anchors: StoredAnchors | null;
+  tested: IsoDate | null;
+  source: string;
+  speed_line?: StoredSpeedLine;
+}
+
+export interface StoredSlot {
+  weekday: number; // 0 = Monday
+  max_minutes: number;
+  sports: Sport[];
+  start: IsoTime | null; // null: any time that day
+  role: "core" | "extra" | string;
+}
+
+export interface StoredGoal {
+  name: string;
+  date: IsoDate;
+  sport: Sport;
+  distance_km: number | null;
+  priority: "A" | "B" | "C" | string;
+  target: string;
+}
+
+export interface StoredRequest {
+  format: number;
+  start: IsoDate;
+  sports: Sport[];
+  availability: StoredSlot[];
+  capacity: StoredCapacity[];
+  goals: StoredGoal[];
+  duration_weeks: number | null;
+  level: "beginner" | "recreational" | "trained" | string;
+  recent_weekly_minutes: number | null;
+}
+
+export type PartKind = "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | string;
+
+export interface StoredPart {
+  kind: PartKind;
+  duration_s: number;
+  zone: ZoneCode | null;
+  rpe: number;
+  repeat: number;
+  rest_s: number;
+  rest_zone: ZoneCode;
+}
+
+export interface StoredWorkout {
+  key: string; // "<plan>-<yy><ww>-<day>", stable
+  date: IsoDate;
+  sport: Sport;
+  template_id: string;
+  family: string;
+  quality: boolean;
+  start: IsoTime | null;
+  status: "planned" | "done" | "moved" | "missed" | "skipped" | string;
+  goal: StoredGoal | null;
+  parts: StoredPart[];
+}
+
+export interface StoredWeek {
+  index: number; // 1-based
+  monday: IsoDate;
+  block: "base" | "build" | "peak" | "taper" | string;
+  kind: "load" | "easy" | "test" | "taper" | "race" | string;
+  target_minutes: number;
+  notes: StoredNote[];
+  workouts: StoredWorkout[];
+}
+
+export interface StoredBlock {
+  kind: string;
+  first_week: number;
+  weeks: number;
+  start: IsoDate;
+  reason: StoredNote;
+}
+
+export interface StoredPlanBody {
+  format: number;
+  id: string;
+  created: string; // ISO datetime with offset
+  engine_version: string;
+  zone_system: string;
+  status: string;
+  based_on: Record<Sport, IsoDate | null>;
+  notes: StoredNote[];
+  capacity_log: [IsoDate, StoredCapacity][];
+  blocks: StoredBlock[];
+  weeks: StoredWeek[];
+}
+
+/** One zone's targets, resolved by Tröskel from the athlete's test (resolve.Target without the name). */
+export interface ZoneTarget {
+  hr_low: number | null;
+  hr_high: number | null;
+  speed_low_kmh: number | null; // the slower end
+  speed_high_kmh: number | null;
+  estimated: boolean;
+  speed_low_approx: boolean;
+  speed_high_approx: boolean;
+  speed_from_hr: boolean;
+}
+
+export type ZoneTargets = Partial<Record<ZoneCode, ZoneTarget>>;
+
+export interface StoredPlan {
+  kind: "troskel.plan";
+  format: number;
+  athlete: string;
+  request: StoredRequest;
+  plan: StoredPlanBody;
+  targets: Record<Sport, ZoneTargets>;
+  targets_log: { until: IsoDate; sport: Sport; targets: ZoneTargets }[];
+}
+
+export const KIND = "troskel.plan";
+export const FORMAT = 1;
+export const ZONES: ZoneCode[] = ["Z1", "Z2", "Z3", "Z4", "Z5"];
+export const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;

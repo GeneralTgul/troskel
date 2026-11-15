@@ -1,0 +1,772 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Lopanalys//Training plan//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Träningsschema Exempel Löpare
+BEGIN:VEVENT
+UID:demo-2647-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261116T180000
+DTEND:20261116T182500
+SUMMARY:Återhämtningsjogg · 25 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 25 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261117T180000
+DTEND:20261117T183500
+SUMMARY:Lugn löpning · 35 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 35 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261119T180000
+DTEND:20261119T184200
+SUMMARY:Fartlek · 42 min
+DESCRIPTION:Fart i lekfull form: vänjer kroppen vid tröskelfart utan att 
+ slita som intervaller.\n\nUppvärmning: 10 min i Z2 (115–165 slag/min ·
+  4:33 min/km eller lugnare)\nIntervaller: 6 × 2 min i Z4 (170–174 slag/
+ min · 4:21–4:10 min/km)\, lugn jogg 2 min emellan\nNedjogg: 10 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nÖka till tröskelk
+ änsla i fartökningarna och jogga lugnt mellan dem utan att stanna.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261121T090000
+DTEND:20261121T093000
+SUMMARY:Lugn löpning · 30 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 30 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261122T090000
+DTEND:20261122T100500
+SUMMARY:Långpass · 1 h 5 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 5 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\, 
+ hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261123T180000
+DTEND:20261123T182500
+SUMMARY:Återhämtningsjogg · 25 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 25 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261124T180000
+DTEND:20261124T184000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261126T180000
+DTEND:20261126T184130
+SUMMARY:Backintervaller · 42 min
+DESCRIPTION:Styrka och löpsteg: kraft i frånskjutet med liten belastning 
+ på benen.\n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km
+  eller lugnare)\nIntervaller: 8 × 45 s i Z5 (174–192 slag/min · 4:10 m
+ in/km eller snabbare)\, vila 90 s\nNedjogg: 10 min i Z2 (115–165 slag/mi
+ n · 4:33 min/km eller lugnare)\n\nEn jämn backe med måttlig lutning. Kr
+ aftfullt uppför med hög hållning och korta steg\, lugn jogg ned som vil
+ a.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261128T090000
+DTEND:20261128T093500
+SUMMARY:Lugn löpning · 35 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 35 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261129T090000
+DTEND:20261129T101000
+SUMMARY:Långpass · 1 h 10 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 10 min i Z
+ 2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\,
+  hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261130T180000
+DTEND:20261130T182500
+SUMMARY:Återhämtningsjogg · 25 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 25 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261201T180000
+DTEND:20261201T184000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261203T180000
+DTEND:20261203T185200
+SUMMARY:Tröskelintervaller · 52 min
+DESCRIPTION:Flyttar tröskeln uppåt: du orkar hålla högre fart längre.\
+ n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lugn
+ are)\nIntervaller: 4 × 6 min i Z4 (170–174 slag/min · 4:21–4:10 min/
+ km)\, vila 1 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:33 min/km 
+ eller lugnare)\n\nStrax under tröskeln\, ansträngt men kontrollerat. Du 
+ ska kunna säga några ord och orka ett intervall till när du är klar. J
+ ogga eller gå i vilan.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261205T090000
+DTEND:20261205T093500
+SUMMARY:Lugn löpning · 35 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 35 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261206T090000
+DTEND:20261206T101500
+SUMMARY:Långpass · 1 h 15 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 15 min i Z
+ 2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\,
+  hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261208T180000
+DTEND:20261208T183000
+SUMMARY:Lugn löpning · 30 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 30 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261210T180000
+DTEND:20261210T183800
+SUMMARY:Fartlek · 38 min
+DESCRIPTION:Fart i lekfull form: vänjer kroppen vid tröskelfart utan att 
+ slita som intervaller.\n\nUppvärmning: 10 min i Z2 (115–165 slag/min ·
+  4:33 min/km eller lugnare)\nIntervaller: 5 × 2 min i Z4 (170–174 slag/
+ min · 4:21–4:10 min/km)\, lugn jogg 2 min emellan\nNedjogg: 10 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nÖka till tröskelk
+ änsla i fartökningarna och jogga lugnt mellan dem utan att stanna.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261212T090000
+DTEND:20261212T092500
+SUMMARY:Lugn löpning · 25 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 25 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261213T090000
+DTEND:20261213T095500
+SUMMARY:Långpass · 55 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 55 min i Z2 (1
+ 15–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\, hel
+ lre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261214T180000
+DTEND:20261214T183000
+SUMMARY:Återhämtningsjogg · 30 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 30 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261215T180000
+DTEND:20261215T184500
+SUMMARY:Lugn löpning · 45 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 45 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261217T180000
+DTEND:20261217T185000
+SUMMARY:Fartlek · 50 min
+DESCRIPTION:Fart i lekfull form: vänjer kroppen vid tröskelfart utan att 
+ slita som intervaller.\n\nUppvärmning: 10 min i Z2 (115–165 slag/min ·
+  4:33 min/km eller lugnare)\nIntervaller: 8 × 2 min i Z4 (170–174 slag/
+ min · 4:21–4:10 min/km)\, lugn jogg 2 min emellan\nNedjogg: 10 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nÖka till tröskelk
+ änsla i fartökningarna och jogga lugnt mellan dem utan att stanna.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261219T090000
+DTEND:20261219T094000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261220T090000
+DTEND:20261220T102000
+SUMMARY:Långpass · 1 h 20 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 20 min i Z
+ 2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\,
+  hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261221T180000
+DTEND:20261221T182500
+SUMMARY:Återhämtningsjogg · 25 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 25 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261222T180000
+DTEND:20261222T184800
+SUMMARY:Hårda intervaller · 48 min
+DESCRIPTION:Höjer den maximala syreupptagningen\, taket för din kondition
+ .\n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lu
+ gnare)\nIntervaller: 5 × 3 min i Z5 (174–192 slag/min · 4:10 min/km el
+ ler snabbare)\, vila 2 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:
+ 33 min/km eller lugnare)\n\nHårt och jämnt: samma fart på första och s
+ ista intervallet. Pulsen når zon 5 först en bit in i intervallet\, så s
+ tyr på fart och känsla i början.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261224T180000
+DTEND:20261224T185900
+SUMMARY:Tröskelintervaller · 59 min
+DESCRIPTION:Flyttar tröskeln uppåt: du orkar hålla högre fart längre.\
+ n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lugn
+ are)\nIntervaller: 5 × 6 min i Z4 (170–174 slag/min · 4:21–4:10 min/
+ km)\, vila 1 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:33 min/km 
+ eller lugnare)\n\nStrax under tröskeln\, ansträngt men kontrollerat. Du 
+ ska kunna säga några ord och orka ett intervall till när du är klar. J
+ ogga eller gå i vilan.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261226T090000
+DTEND:20261226T094000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261227T090000
+DTEND:20261227T102500
+SUMMARY:Långpass · 1 h 25 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 25 min i Z
+ 2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\,
+  hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261228T180000
+DTEND:20261228T184500
+SUMMARY:Återhämtningsjogg · 45 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 45 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261229T180000
+DTEND:20261229T185000
+SUMMARY:Hårda intervaller · 50 min
+DESCRIPTION:Höjer den maximala syreupptagningen\, taket för din kondition
+ .\n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lu
+ gnare)\nIntervaller: 4 × 4 min i Z5 (174–192 slag/min · 4:10 min/km el
+ ler snabbare)\, vila 3 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:
+ 33 min/km eller lugnare)\n\nHårt och jämnt: samma fart på första och s
+ ista intervallet. Pulsen når zon 5 först en bit in i intervallet\, så s
+ tyr på fart och känsla i början.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261231T180000
+DTEND:20261231T184000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-sat-race@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART;VALUE=DATE:20270102
+DTEND;VALUE=DATE:20270103
+SUMMARY:Seedningslopp
+DESCRIPTION:10 km
+CATEGORIES:Träning
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270103T090000
+DTEND:20270103T094500
+SUMMARY:Återhämtningsjogg · 45 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 45 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270105T180000
+DTEND:20270105T183000
+SUMMARY:Lugn löpning · 30 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 30 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270107T180000
+DTEND:20270107T190000
+SUMMARY:Test hos din coach · 1 h
+DESCRIPTION:Visar vad träningen har gett och ger nya zoner. Alla kommande 
+ pass får nya mål i puls och fart.\n\nUppvärmning: 15 min i Z2 (115–16
+ 5 slag/min · 4:33 min/km eller lugnare)\nTest: 35 min\nNedjogg: 10 min i 
+ Z2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nKom utvilad: lugn 
+ dag före\, ingen hård träning på två dagar\, samma mat och dryck som 
+ inför förra testet.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270110T090000
+DTEND:20270110T100500
+SUMMARY:Långpass · 1 h 5 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 5 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\, 
+ hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270111T180000
+DTEND:20270111T183000
+SUMMARY:Återhämtningsjogg · 30 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 30 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270112T180000
+DTEND:20270112T185300
+SUMMARY:Hårda intervaller · 53 min
+DESCRIPTION:Höjer den maximala syreupptagningen\, taket för din kondition
+ .\n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lu
+ gnare)\nIntervaller: 6 × 3 min i Z5 (174–192 slag/min · 4:10 min/km el
+ ler snabbare)\, vila 2 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:
+ 33 min/km eller lugnare)\n\nHårt och jämnt: samma fart på första och s
+ ista intervallet. Pulsen når zon 5 först en bit in i intervallet\, så s
+ tyr på fart och känsla i början.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270114T180000
+DTEND:20270114T190300
+SUMMARY:Tröskelintervaller · 1 h 3 min
+DESCRIPTION:Flyttar tröskeln uppåt: du orkar hålla högre fart längre.\
+ n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lugn
+ are)\nIntervaller: 4 × 8 min i Z4 (170–174 slag/min · 4:21–4:10 min/
+ km)\, vila 2 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:33 min/km 
+ eller lugnare)\n\nStrax under tröskeln\, ansträngt men kontrollerat. Du 
+ ska kunna säga några ord och orka ett intervall till när du är klar. J
+ ogga eller gå i vilan.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270116T090000
+DTEND:20270116T094000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270117T090000
+DTEND:20270117T103000
+SUMMARY:Långpass · 1 h 30 min
+DESCRIPTION:Veckans viktigaste uthållighetspass: lär kroppen att arbeta l
+ änge på fett och stärker muskler och senor.\n\nLöpning: 1 h 30 min i Z
+ 2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nLugnt hela vägen\,
+  hellre för sakta än för fort. Ta med dryck på pass över en timme.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270118T180000
+DTEND:20270118T183500
+SUMMARY:Återhämtningsjogg · 35 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 35 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270119T180000
+DTEND:20270119T190500
+SUMMARY:Tröskelintervaller · 1 h 5 min
+DESCRIPTION:Flyttar tröskeln uppåt: du orkar hålla högre fart längre.\
+ n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lugn
+ are)\nIntervaller: 3 × 12 min i Z4 (170–174 slag/min · 4:21–4:10 min
+ /km)\, vila 2 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:33 min/km
+  eller lugnare)\n\nStrax under tröskeln\, ansträngt men kontrollerat. Du
+  ska kunna säga några ord och orka ett intervall till när du är klar. 
+ Jogga eller gå i vilan.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270121T180000
+DTEND:20270121T184800
+SUMMARY:Fartlek · 48 min
+DESCRIPTION:Fart i lekfull form: vänjer kroppen vid tröskelfart utan att 
+ slita som intervaller.\n\nUppvärmning: 10 min i Z2 (115–165 slag/min ·
+  4:33 min/km eller lugnare)\nIntervaller: 6 × 3 min i Z4 (170–174 slag/
+ min · 4:21–4:10 min/km)\, lugn jogg 2 min emellan\nNedjogg: 10 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nÖka till tröskelk
+ änsla i fartökningarna och jogga lugnt mellan dem utan att stanna.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270123T090000
+DTEND:20270123T095000
+SUMMARY:Lugn löpning · 50 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 50 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270124T090000
+DTEND:20270124T104000
+SUMMARY:Långpass med fartökning · 1 h 40 min
+DESCRIPTION:Vänjer kroppen vid loppets fart på trötta ben.\n\nLöpning: 
+ 1 h 20 min i Z2 (115–165 slag/min · 4:33 min/km eller lugnare)\nLöpnin
+ g: 20 min i Z3 (165–170 slag/min · 4:33–4:21 min/km)\n\nLugnt som ett
+  vanligt långpass\, och de sista 20 minuterna i zon 3: raskt men kontroll
+ erat.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270125T180000
+DTEND:20270125T183500
+SUMMARY:Återhämtningsjogg · 35 min
+DESCRIPTION:Hjälper kroppen att ta upp gårdagens pass. Ska kännas lätta
+ re efteråt än före.\n\nLöpning: 35 min i Z2 (115–165 slag/min · 4:3
+ 3 min/km eller lugnare)\n\nKort och mycket lugnt\, i nedre delen av zon 2.
+  Känns benen tunga: korta passet eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270126T180000
+DTEND:20270126T190500
+SUMMARY:Tröskelintervaller · 1 h 5 min
+DESCRIPTION:Flyttar tröskeln uppåt: du orkar hålla högre fart längre.\
+ n\nUppvärmning: 15 min i Z2 (115–165 slag/min · 4:33 min/km eller lugn
+ are)\nIntervaller: 3 × 12 min i Z4 (170–174 slag/min · 4:21–4:10 min
+ /km)\, vila 2 min\nNedjogg: 10 min i Z2 (115–165 slag/min · 4:33 min/km
+  eller lugnare)\n\nStrax under tröskeln\, ansträngt men kontrollerat. Du
+  ska kunna säga några ord och orka ett intervall till när du är klar. 
+ Jogga eller gå i vilan.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270128T180000
+DTEND:20270128T184800
+SUMMARY:Fartlek · 48 min
+DESCRIPTION:Fart i lekfull form: vänjer kroppen vid tröskelfart utan att 
+ slita som intervaller.\n\nUppvärmning: 10 min i Z2 (115–165 slag/min ·
+  4:33 min/km eller lugnare)\nIntervaller: 6 × 3 min i Z4 (170–174 slag/
+ min · 4:21–4:10 min/km)\, lugn jogg 2 min emellan\nNedjogg: 10 min i Z2
+  (115–165 slag/min · 4:33 min/km eller lugnare)\n\nÖka till tröskelk
+ änsla i fartökningarna och jogga lugnt mellan dem utan att stanna.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270130T090000
+DTEND:20270130T095000
+SUMMARY:Lugn löpning · 50 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 50 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270131T090000
+DTEND:20270131T104000
+SUMMARY:Långpass med fartökning · 1 h 40 min
+DESCRIPTION:Vänjer kroppen vid loppets fart på trötta ben.\n\nLöpning: 
+ 1 h 20 min i Z2 (115–165 slag/min · 4:33 min/km eller lugnare)\nLöpnin
+ g: 20 min i Z3 (165–170 slag/min · 4:33–4:21 min/km)\n\nLugnt som ett
+  vanligt långpass\, och de sista 20 minuterna i zon 3: raskt men kontroll
+ erat.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270201T180000
+DTEND:20270201T184500
+SUMMARY:Lugn löpning · 45 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 45 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270202T180000
+DTEND:20270202T183000
+SUMMARY:Fartpass inför loppet · 30 min
+DESCRIPTION:Håller farten vaken utan att trötta.\n\nUppvärmning: 10 min 
+ i Z2 (115–165 slag/min · 4:33 min/km eller lugnare)\nIntervaller: 4 × 
+ 1 min i Z4 (170–174 slag/min · 4:21–4:10 min/km)\, vila 2 min\nNedjog
+ g: 10 min i Z2 (115–165 slag/min · 4:33 min/km eller lugnare)\n\nKorta 
+ inslag i loppets känsla med lång vila. Du ska vilja springa mer när du 
+ är klar.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270204T180000
+DTEND:20270204T184000
+SUMMARY:Lugn löpning · 40 min
+DESCRIPTION:Bygger uthållighet utan att slita. Det mesta av träningen ska
+  se ut så här.\n\nLöpning: 40 min i Z2 (115–165 slag/min · 4:33 min/
+ km eller lugnare)\n\nJämn\, lugn fart där du kan prata i hela meningar. 
+ Går pulsen över zon 2 i en backe: sakta ned eller gå.
+CATEGORIES:Träning
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-sat-race@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART;VALUE=DATE:20270206
+DTEND;VALUE=DATE:20270207
+SUMMARY:Stadsvarvet
+DESCRIPTION:21.1 km · under 1:35
+CATEGORIES:Träning
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
