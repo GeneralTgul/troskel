@@ -16,20 +16,20 @@ from typing import Any
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QComboBox, QFileDialog, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-                               QMessageBox, QScrollArea, QTableWidget, QTableWidgetItem,
+                               QMessageBox, QScrollArea, QSpinBox, QTableWidget, QTableWidgetItem,
                                QTabWidget, QVBoxLayout, QWidget)
 
 from lopanalys.assessments import erg_values
 from lopanalys.assessments.cadence import cadence_label, with_strap_cadence
 from lopanalys.core import paths, simulated
 from lopanalys.core.i18n import t
-from lopanalys.core.models import MAX_KINDS, Athlete, Session, StepRecord, TestKind, TimeSample
+from lopanalys.core.models import MAX_KINDS, Athlete, Session, StepRecord, TestKind, TimeSample, distance_m
 from lopanalys.core.sport import DEFAULT_SPORT, profile, sport_of
 from lopanalys.plan.models import RUNNING
 from lopanalys.ui import services, theme
 from lopanalys.ui.bridge import run_async
 from lopanalys.ui.context import GAIT_KINDS, TECHNIQUE_KINDS, AppContext, TestOutcome
-from lopanalys.ui.fmt import clock, num, pace
+from lopanalys.ui.fmt import clock, km, num, pace
 from lopanalys.ui.live_controller import gait_ref, gait_status
 from lopanalys.ui.widgets.charts import HrSpeedChart, LactateChart
 from lopanalys.ui.widgets.common import Card, PageHeader, StatusPill, button, clear_layout, field_label, label
@@ -66,6 +66,7 @@ class ResultsView(QWidget):
         self._zone_basis: tuple[Any, int | None, int | None] = (None, None, None)   # lactate, max HR, resting HR
         self._max_known = False    # max HR is the athlete's known value or was measured in a test to the limit
         self.max_hr: int | None = None
+        self._max_set: int | None = None    # the max HR the coach typed in for this result (saved as max_hr_set)
         self.max_view: services.MaxHrView | None = None
         self.hr_speed: Any = None   # assessments.hr_zones.HrSpeedResult of a zones test without lactate
         self.warmup: list[StepRecord] = []
@@ -272,6 +273,16 @@ class ResultsView(QWidget):
         self.zone_est.setStyleSheet(f"color: {theme.TOKENS['watch']}; font-weight: 600;")
         zrow.addWidget(self.zone_est)
         zrow.addStretch(1)
+        # The max HR the zones build on: the coach can change it, and the zones follow and are saved.
+        zrow.addWidget(label(t("ui.res.max_edit"), "Hint"))
+        self.max_edit = QSpinBox()
+        self.max_edit.setRange(0, 240)
+        self.max_edit.setSpecialValueText("–")
+        self.max_edit.setSuffix(" " + t("ui.unit.bpm"))
+        self.max_edit.setKeyboardTracking(False)
+        self.max_edit.setToolTip(t("ui.res.max_edit_tip"))
+        self.max_edit.valueChanged.connect(self._max_edited)
+        zrow.addWidget(self.max_edit)
         zc.body.addLayout(zrow)
         self.zones_table = QTableWidget(0, 4)
         self.zones_table.setHorizontalHeaderLabels([t("ui.res.col.zone"), t("ui.res.col.hr"), t("ui.res.col.speed"),
@@ -290,7 +301,17 @@ class ResultsView(QWidget):
         self.zone_card, self._overview = zc, ovl
         low = QHBoxLayout()
         low.setSpacing(16)
-        self.watch_card = Card(services.garmin_card_title())
+        self.watch_card = Card(t("assessments.garmin.title"))
+        brow2 = QHBoxLayout()
+        brow2.addWidget(label(t("assessments.watch.brand_label"), "Hint"))
+        self.watch_brand = QComboBox()
+        for key, name in services.watch_brand_choices():
+            self.watch_brand.addItem(name, key)
+        self.watch_brand.currentIndexChanged.connect(self._watch_brand_changed)
+        brow2.addWidget(self.watch_brand)
+        brow2.addStretch(1)
+        self.watch_card.body.addLayout(brow2)
+        self._watch_more = False         # "Läs mer": the zone limits and the why under the decision
         self.watch_lay = QVBoxLayout()
         self.watch_lay.setSpacing(8)
         self.watch_card.body.addLayout(self.watch_lay)
@@ -303,6 +324,7 @@ class ResultsView(QWidget):
         self.vo2_card.body.addStretch(1)
         low.addWidget(self.vo2_card, 4)
         ovl.addLayout(low)
+        self._low = low
         sa = QScrollArea()
         sa.setWidgetResizable(True)
         sa.setWidget(ov)
@@ -400,6 +422,10 @@ class ResultsView(QWidget):
         self.zone_system.blockSignals(True)
         self.zone_system.setCurrentIndex(max(0, self.zone_system.findData(res.get("zone_system"))))
         self.zone_system.blockSignals(False)
+        self._max_set = int(res["max_hr_set"]) if res.get("max_hr_set") else None
+        self.watch_brand.blockSignals(True)
+        self.watch_brand.setCurrentIndex(max(0, self.watch_brand.findData(getattr(a, "watch_brand", "") or "garmin")))
+        self.watch_brand.blockSignals(False)
         self.comment.blockSignals(True)
         self.comment.setPlainText(res.get("coach_comment", ""))
         self.comment.blockSignals(False)
@@ -465,6 +491,10 @@ class ResultsView(QWidget):
         self._mid_lay.setStretch(0, 5 if power else 6)
         self._mid_lay.setStretch(1, 5 if power else 4)
         # column 2: the pace (min/km or /500 m), or W/kg on the bike; column 6: the cadence in watt sports
+        # running: the pace column stands before km/h (the columns keep their numbers, only the order shown moves)
+        hh = self.table.horizontalHeader()
+        if (hh.visualIndex(2) < hh.visualIndex(1)) == power:
+            hh.moveSection(hh.visualIndex(2), hh.visualIndex(1))
         self.table.setHorizontalHeaderLabels([
             t("ui.wiz.col.stage"), unit, (prof.pace_unit or "W/kg") if power else t("ui.wiz.col.pace"),
             t("ui.res.col.hr"), t("ui.res.col.lactate"), "RPE",
@@ -492,8 +522,9 @@ class ResultsView(QWidget):
         self.table.setColumnHidden(5, hz)      # nobody stands by to ask for the effort: the test runs by itself
         self.table.setColumnHidden(6, not (hz or power))
         self.tabs.setTabText(0, t("ui.res.tab.overview_hr") if hz else t("ui.res.tab.overview"))
-        titles = ((t("ui.res.easy_speed"), "km/h"), (t("ui.res.relation"), t("ui.res.relation_unit"))) if hz else \
-            (("LT1", unit), ("LT2", unit))
+        # running: the thresholds as pace, km/h in the line under
+        titles = ((t("ui.res.easy_speed"), prof.pace_unit or ""), (t("ui.res.relation"), t("ui.res.relation_unit"))) if hz \
+            else (("LT1", unit), ("LT2", unit)) if power else (("LT1", prof.pace_unit or unit), ("LT2", prof.pace_unit or unit))
         if self._power_tiles():       # a test in watt without lactate: FTP (cycling) and the best minute instead
             best = (t("ui.res.map"), "W")
             titles = (("FTP", "W"), best) if self._ftp_sport() else (best, best)
@@ -674,8 +705,18 @@ class ResultsView(QWidget):
         self.t_lt2.setVisible(shown or (self._power_tiles() and self._ftp_sport()))
         self.table.setColumnHidden(4, not has)
         ovl, zc = self._overview, self.zone_card
+        # A zones test (max HR, heart rate and speed zones): what to type into the watch comes first,
+        # and the zone tables follow under it. Other tests keep it beside VO2max.
+        top = bool(self.session and self.session.kind in MAX_KINDS)
+        ovl.removeWidget(self.watch_card)
+        self._low.removeWidget(self.watch_card)
+        if top:
+            ovl.insertWidget(0, self.watch_card)
+        else:
+            self._low.insertWidget(0, self.watch_card, 6)
         ovl.removeWidget(zc)
-        ovl.insertWidget(2 if shown else 1, zc)   # tiles, [zones,] curve and stages, [zones,] watch and VO2max
+        # [watch,] tiles, [zones,] curve and stages, [zones,] watch and VO2max
+        ovl.insertWidget((2 if shown else 1) + (1 if top else 0), zc)
 
     def _fill_step_hr(self) -> None:
         """The zones test: the settled heart rate of each step and how much it still rose."""
@@ -712,9 +753,9 @@ class ResultsView(QWidget):
             self.t_lt2.set_value("–", t("ui.res.relation_none") if self.records else "")
         easy = services.easy_zone(self.zone_list)
         if easy and (easy.get("speed_low") or easy.get("speed_high")):
-            self.t_lt1.set_value(self._speed_range(easy, unit=False),
+            self.t_lt1.set_value(self._pace_range(easy),
                                  t("ui.res.easy_sub", zone=easy["code"], hr=f"{easy['hr_low']}–{easy['hr_high']}",
-                                   pace=self._pace_range(easy)))
+                                   kmh=self._speed_range(easy, unit=False)))
         else:
             self.t_lt1.set_value("–", "")
         self._fill_step_hr()
@@ -733,6 +774,11 @@ class ResultsView(QWidget):
         txt = f"{a}–{b}" if a and b else (f"< {b}" if b else f"> {a}")
         if not unit:
             return txt
+        if prof.load_quantity == "speed":       # running: the pace first, km/h after ("5:27–5:00 min/km (11,0–12,0 km/h)")
+            pa = ("≈" if z.get("speed_low_extrapolated") else "") + pace(lo) if lo else ""
+            pb = ("≈" if z.get("speed_high_extrapolated") else "") + pace(hi) if hi else ""
+            p_txt = f"{pa}–{pb}" if pa and pb else (f"> {pb}" if pb else f"< {pa}")
+            return f"{p_txt} {prof.pace_unit} ({txt} {prof.load_unit})"
         txt = f"{txt} {prof.load_unit}"
         if prof.load_quantity == "power" and prof.pace_unit:
             pa, pb = (pace(lo, sport) if lo else ""), (pace(hi, sport) if hi else "")
@@ -813,7 +859,8 @@ class ResultsView(QWidget):
             self.max_hr = None
         sport = self._sport()
         known = a.max_hr_for(sport) if a else None      # the max HR of the test's sport
-        mx = known or self.max_hr
+        # the coach's own value wins; it is also the athlete's saved max HR once saved
+        mx = self._max_set or known or self.max_hr
         try:
             self.lactate = services.analyze_lactate(self.records, self.method1.currentData(),
                                                     self.method.currentData(), mx, sport)
@@ -830,7 +877,10 @@ class ResultsView(QWidget):
         self._zone_basis = (self.lactate if self.lactate and self.lactate.lt2 else None, mx, rest)
         # The highest heart rate of a test that stopped short of the limit is not a max HR: it may
         # place the zones, but it is neither extrapolated to (VO2max) nor handed out for the watch.
-        self._max_known = bool(known) or self._to_exhaustion()
+        self._max_known = bool(known or self._max_set) or self._to_exhaustion()
+        self.max_edit.blockSignals(True)
+        self.max_edit.setValue(int(mx or 0))
+        self.max_edit.blockSignals(False)
         self.vo2 = services.estimate_vo2max(self.records, mx if self._max_known else None, rest,
                                             self._to_exhaustion(), self.session.protocol if self.session else None,
                                             self.max_view.likely_max if self.max_view else None)
@@ -852,8 +902,8 @@ class ResultsView(QWidget):
                 tile.set_value(num(thr.speed_kmh, 0), t("ui.res.thr_sub_power", hr=num(thr.hr, 0), extra=extra,
                                                         la=num(thr.lactate_mmol)))
             elif thr and thr.speed_kmh:
-                tile.set_value(num(thr.speed_kmh), t("ui.res.thr_sub", hr=num(thr.hr, 0), pace=pace(thr.speed_kmh),
-                                                     la=num(thr.lactate_mmol)))
+                tile.set_value(pace(thr.speed_kmh), t("ui.res.thr_sub", hr=num(thr.hr, 0), kmh=num(thr.speed_kmh),
+                                                      la=num(thr.lactate_mmol)))
             else:
                 tile.set_value("–", t("ui.res.too_few") if self.records else "")
         self._fill_power()
@@ -867,12 +917,21 @@ class ResultsView(QWidget):
         self.t_max.title = t("ui.res.max_likely") if self.max_view and self.max_view.likely_max else (
             t("ui.res.peak_not_max") if self.max_view and self.max_view.likely_max is False else t("ui.res.max_hr"))
         self.t_max.update()
-        if known and self.max_hr and self.max_hr < known:
+        if known and self.max_hr and self.max_hr < known and not self._max_set:
             sub = (sub + " · " if sub else "") + t("ui.res.saved_max", saved=known)
+        # the max HR is the highest 5-s mean; the highest single reading stands beside it
+        single = self.max_view.single if self.max_view else None
+        if single and self.max_hr and single != self.max_hr:
+            sub = (sub + " · " if sub else "") + t("ui.res.max_single", v=single)
+        if self._max_set and self._max_set != self.max_hr:
+            sub = (sub + " · " if sub else "") + t("ui.res.max_used", v=self._max_set)
         self.t_max.set_value(str(self.max_hr or "–"), sub, "good" if sub == t("ui.res.likely_max") else None)
         dur = (self.session.ended - self.session.started).total_seconds() if self.session and self.session.ended else \
             sum(r.duration_s for r in self.records)
-        self.t_dur.set_value(clock(dur), t("ui.res.n_stages", n=len(self.records)))
+        # running: the distance on the belt beside the stages
+        dist = distance_m(self.samples) if prof.load_quantity == "speed" and self.samples else None
+        self.t_dur.set_value(clock(dur), t("ui.res.n_stages", n=len(self.records))
+                             + (f" · {t('ui.res.distance', km=km(dist))}" if dist else ""))
         self._fill_vo2()
         self._refresh_zones()
         if self._hr_zones():
@@ -953,12 +1012,41 @@ class ResultsView(QWidget):
         self._html = None
 
     def _fill_watch(self) -> None:
-        """The card "Fyll i din klocka": what the athlete types into Garmin Connect."""
+        """The box "Fyll i klockan": for the chosen watch, one decision and the numbers to type in, and
+        where in the watch's app. The zone limits and why the watch differs come under "Läs mer"."""
         clear_layout(self.watch_lay)
-        card = services.garmin_card(self.garmin)
-        if card is None:
+        wc = services.watch_card(self.garmin, self.watch_brand.currentData())
+        if wc is None:
             self.watch_lay.addWidget(label(t("ui.res.watch_none"), "Hint", wrap=True))
             return
+        dec = label(wc["decision"], wrap=True)
+        dec.setStyleSheet("font-size: 19px; font-weight: 700;")
+        self.watch_lay.addWidget(dec)
+        if wc["enter"]:
+            eg = QGridLayout()
+            eg.setHorizontalSpacing(18)
+            eg.setVerticalSpacing(4)
+            for r, f in enumerate(wc["enter"]):
+                eg.addWidget(label(f["label"], "Hint"), r, 0)
+                big = label(f["value"])
+                big.setStyleSheet("font-size: 17px; font-weight: 700;")
+                eg.addWidget(big, r, 1)
+            eg.setColumnStretch(2, 1)
+            self.watch_lay.addLayout(eg)
+        if wc["where"]:
+            self.watch_lay.addWidget(label(wc["where"], wrap=True))
+        if wc["speed_note"]:
+            self.watch_lay.addWidget(label(wc["speed_note"], "Hint", wrap=True))
+        more = button(t("assessments.watch.less" if self._watch_more else "assessments.watch.more"),
+                      "chevron-right", kind="ghost")
+        more.clicked.connect(self._toggle_watch_more)
+        row = QHBoxLayout()
+        row.addWidget(more)
+        row.addStretch(1)
+        self.watch_lay.addLayout(row)
+        if not self._watch_more:
+            return
+        card = wc["details"]
         self.watch_lay.addWidget(label(card["intro"], wrap=True))
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
@@ -974,6 +1062,33 @@ class ResultsView(QWidget):
         grid.setColumnStretch(6, 1)
         self.watch_lay.addLayout(grid)
         self.watch_lay.addWidget(label(f"{card['why_title']} {card['why']}", "Hint", wrap=True))
+
+    def _toggle_watch_more(self) -> None:
+        self._watch_more = not self._watch_more
+        self._fill_watch()
+
+    def _watch_brand_changed(self, *_: Any) -> None:
+        """The athlete's watch: remembered on the athlete, and the box follows."""
+        key = self.watch_brand.currentData()
+        a = self.athlete
+        if a is not None and a.id is not None and key != getattr(a, "watch_brand", ""):
+            a.watch_brand = key
+            try:
+                self.ctx.store.set_watch_brand(a.id, key)
+            except Exception:
+                log.exception("saving the watch brand failed")
+        self._fill_watch()
+        self._html = None
+
+    def _max_edited(self, value: int) -> None:
+        """The coach changed the max HR: the zones and the watch values follow, and it is saved."""
+        if self.session is None:
+            return
+        value = int(value) if value >= 100 else 0
+        auto = (self.athlete.max_hr_for(self._sport()) if self.athlete else None) or self.max_hr
+        self._max_set = value if value and value != auto else None
+        self.recalculate()
+        self._changed()
 
     def _fill_vo2(self) -> None:
         """Estimated VO2max: never a lone number, always with interval, method and the disclaimer."""
@@ -1072,7 +1187,10 @@ class ResultsView(QWidget):
                 and self._zone_basis[0] is None and not self._to_exhaustion()):
             # no max HR and no thresholds in this sport: say so, and never borrow another sport's
             own = services.no_own_test_text(sport)
-        self.zone_note.setText("\n".join(x for x in (own, basis, note) if x))   # which max HR the zones use
+        # zones from max HR only: say it, so nobody takes the zone "Tröskel" for a measured threshold
+        only = services.max_only_text() if estimated else ""
+        mine = t("ui.res.max_set_note", v=self._max_set) if self._max_set and zs else ""
+        self.zone_note.setText("\n".join(x for x in (own, mine, basis, only, note) if x))   # which max HR the zones use
         self.zones_table.setRowCount(len(zs))
         self.zones_table.setFixedHeight(250 + 40 * max(0, len(zs) - 5))   # Friel has seven zones
         for r, z in enumerate(zs):
@@ -1519,8 +1637,12 @@ class ResultsView(QWidget):
                 s.result["lt1"] = vars(lv.lt1)
                 s.result["lt2"] = vars(lv.lt2)
             s.result["max_hr"] = self.max_hr
+            if self._max_set:
+                s.result["max_hr_set"] = self._max_set
+            else:
+                s.result.pop("max_hr_set", None)
             s.result["zone_system"] = self.zone_system.currentData()
-            new_max = self._new_max_hr(s)
+            new_max = self._max_set_for_athlete(s) if self._max_set else self._new_max_hr(s)
             s.result["garmin"] = self.garmin
             s.result["vo2max"] = self.vo2
             if self.power is not None:
@@ -1551,6 +1673,13 @@ class ResultsView(QWidget):
         except Exception as e:
             log.exception("save failed")
             QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
+
+    def _max_set_for_athlete(self, s: Session) -> int | None:
+        """The coach's max HR becomes the athlete's max HR in the test's sport (when it differs)."""
+        a = self.athlete
+        if not (a and self._max_set) or a.max_hr_for(s.sport) == self._max_set:
+            return None
+        return self._max_set
 
     def _new_max_hr(self, s: Session) -> int | None:
         """The athlete's new max HR after a max test, or None (a test peak below the

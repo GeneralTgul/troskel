@@ -10,7 +10,7 @@
   - [Rätta ett värde](#rätta-ett-värde)
   - [Kommentaren och sparandet](#kommentaren-och-sparandet)
 - [Träningszonerna](#träningszonerna)
-- [Fyll i din klocka](#fyll-i-din-klocka)
+- [Fyll i klockan](#fyll-i-klockan)
 - [Uppskattat VO2max](#uppskattat-vo2max)
 - [Historik och jämförelse](#historik-och-jämförelse)
 - [Rapporten och utskriften](#rapporten-och-utskriften)
@@ -30,10 +30,12 @@ Resultatet öppnas av sig självt när ett test är klart. Ett äldre test öppn
 
 | Ruta | Visar |
 |---|---|
-| *LT1* | Den aeroba tröskeln: farten, och under den pulsen, tempot och laktatvärdet vid tröskeln |
+| *LT1* | Den aeroba tröskeln: tempot (min/km), och under det farten i km/h, pulsen och laktatvärdet vid tröskeln |
 | *LT2* | Den anaeroba tröskeln, på samma sätt |
-| *Högsta puls* | Den högsta pulsen under testet |
-| *Testtid* | Testets längd och antalet steg som blev klara |
+| *Högsta puls* | Den högsta pulsen under testet: det högsta medelvärdet över 5 sekunder. Skiljer sig den högsta enskilda pulsen står den under, till exempel *högsta enskilda 200* |
+| *Testtid* | Testets längd, antalet steg som blev klara och i ett löptest sträckan på bandet |
+
+I löptester står tempot (min/km) först och km/h efter överallt: i rutorna, i tabellen *Stegen*, i zonerna och i rapporten. Cykel och SkiErg visar effekt och tempo per 500 m som förut.
 
 **Laktatkurvan** visar laktatvärdena mot farten, med trösklarna som streckade linjer och pulsen som en streckad röd linje mot skalan till höger. Finns ett tidigare test av samma slag för idrottaren ritas det i grått, och raden *Jämförs med testet* säger vilket.
 
@@ -70,20 +72,29 @@ Samma trösklar kan visas i sex zonsystem. Förvalt är Garmins fem zoner, så a
 
 Tabellen visar pulsen, farten och vad varje zon används till. Texten under tabellen förklarar systemet du valde. Rapporten använder samma val.
 
-**Utan laktattrösklar** räknas zonerna ur maxpulsen och märks *Uppskattade ur maxpuls*. Så är det efter ett maxpulstest och efter en laktattrappa med för få värden.
+**Utan laktattrösklar** räknas zonerna ur maxpulsen och märks *Uppskattade ur maxpuls*. Så är det efter ett maxpulstest och efter en laktattrappa med för få värden. Under tabellen står då också att zonerna bara bygger på maxpulsen, så att ingen tar zonen *Tröskel* för en uppmätt tröskel. Rapporten säger samma sak.
+
+**Maxpulsen** som zonerna bygger på står i rutan *Maxpuls* bredvid *Zonsystem*. Du kan ändra den: zonerna och värdena till klockan räknas om direkt, värdet sparas med testet och blir idrottarens maxpuls. Under tabellen står då att maxpulsen är ändrad för hand.
 
 **Efter *Puls- och fartzoner*** har zonerna också en fart, räknad ur sambandet mellan puls och fart i testets steg. De märks *Fart ur puls, inte ur laktat*, och ≈ framför en fart betyder att den ligger utanför de uppmätta stegen. Resultatet har då diagrammet *Puls mot fart* i stället för laktatkurvan, se [Puls- och fartzoner](../puls-och-fartzoner/puls-och-fartzoner.md#resultatet).
 
-## Fyll i din klocka
+## Fyll i klockan
 
-![Rutan Fyll i din klocka: maxpuls, laktattröskelpuls, vilopuls, tröskeltempo och fem zoner i slag per minut](images/klocka.png)
+![Rutan Fyll i klockan: val av klocka, beslutet med värdet att skriva in, var i klockans app det står, och Läs mer](images/klocka.png)
 
-Rutan ger värdena som idrottaren skriver in i Garmin Connect eller på klockan, så att klockans zoner följer testet:
+Rutan säger idrottaren vad som ska skrivas in i klockan, utan teorin. Efter ett maxpulstest och *Puls- och fartzoner* ligger den överst i resultatet, och zontabellerna kommer under den. Efter en laktattrappa står den bredvid *Uppskattat VO2max*.
 
-- **Efter en laktattrappa:** välj i Garmin Connect att zonerna bygger på laktattröskelpulsen (% LTHR), och fyll i maxpuls, laktattröskelpuls (LTHR), vilopuls, tröskeltempo och de fem zonerna. Zon 2 slutar då vid LT1 och zon 4 vid LT2.
-- **Utan laktattrösklar:** fyll i maxpulsen och låt zonerna bygga på procent av maxpuls.
-- **Värden som saknas** står utskrivna. Saknas vilopulsen ber rutan idrottaren mäta den liggande en lugn morgon. Är maxpulsen inte mätt, alltså varken känd sedan tidigare eller från ett test till utmattning, ska klockans eget värde stå kvar.
-- **Stycket *Varför visar klockan andra zoner?*** förklarar för idrottaren varför klockans förval skiljer sig från testet.
+Välj idrottarens klocka i listan *Klocka*: Garmin, Huawei, Polar, Coros, Suunto eller Apple Watch. Valet sparas på idrottaren. Rutan visar sedan ett beslut och bara de siffror som ska skrivas in:
+
+- **Med uppmätt tröskelpuls** (laktattrappa) och en klocka som tar den: *Välj LTHR-procent och skriv in tröskelpulsen 177.* (Huawei), eller zoner efter procent av tröskelpulsen (Garmin).
+- **Utan tröskel, med vilopuls** och en klocka med pulsreserv (Garmin, Huawei): *Välj HRR-procent och skriv in maxpuls 199 och vilopuls 52.*
+- **Annars:** *Välj Maxpulsprocent och skriv in maxpuls 199.* Polar, Coros, Suunto och Apple Watch får alltid maxpulsen.
+
+Raden *Var* säger var i klockans app värdena står. För Huawei Health är det *Inställningar för träningspuls → Stående*, för Garmin pulszonerna i Garmin Connect eller på klockan. För de andra märkena står bara *pulszonerna i klockans app*, eftersom menyvägen inte är kontrollerad.
+
+Under beslutet står att farterna i zonerna gäller på löpbandet, och att de är räknade ur maxpulsen när ingen tröskel är mätt.
+
+**Läs mer** visar resten: maxpuls, laktattröskelpuls, vilopuls, tröskeltempo, de fem zonerna i slag per minut och stycket *Varför visar klockan andra zoner?*. Värden som saknas står utskrivna. Saknas vilopulsen ber rutan idrottaren mäta den liggande en lugn morgon. Är maxpulsen inte mätt, alltså varken känd sedan tidigare eller från ett test till utmattning, ska klockans eget värde stå kvar, och rutan säger det.
 
 Finns ingen maxpuls alls visar rutan *Det behövs en maxpuls för att räkna fram värden till klockan.*
 

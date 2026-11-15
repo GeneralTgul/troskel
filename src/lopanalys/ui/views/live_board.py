@@ -5,6 +5,7 @@ Everything is driven by a ``LiveController``; the board itself holds no test log
 """
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from PySide6.QtCore import QRectF, Qt, QTimer
@@ -13,11 +14,13 @@ from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QVB
 
 from lopanalys.assessments.cadence import cadence_label
 from lopanalys.assessments.protocol import Phase, RunnerState
+from lopanalys.assessments.runner import stage_text
+from lopanalys.core.models import distance_m
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import profile
 from lopanalys.ui import theme
 from lopanalys.ui.context import CAMERA_OPTIONAL_KINDS, GAIT_KINDS, TECHNIQUE_KINDS
-from lopanalys.ui.fmt import clock, load, num, pace
+from lopanalys.ui.fmt import clock, km, load, num, pace, speed
 from lopanalys.ui.live_controller import LiveController, gait_ref, gait_status
 from lopanalys.ui.widgets.charts import LactateChart, TimeChart
 from lopanalys.ui.widgets.tiles import CountdownRing, GaitTile, MetricTile, PromptBanner
@@ -63,6 +66,10 @@ class NextStageCard(QWidget):
         p.drawText(QRectF(r.left() + pad, r.top() + pad + f.pixelSize() * 1.6, r.width() - pad * 2, s * 0.3),
                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.speed)
         lf = theme.font(max(11, int(s * 0.085)), QFont.Weight.DemiBold)
+        # the lines shrink together until the longest fits: nothing is cut off on a narrow card
+        widest = max((QFontMetricsF(lf).horizontalAdvance(ln.lstrip("!")) for ln in self.lines), default=0.0)
+        if widest > avail:
+            lf.setPixelSize(max(8, int(lf.pixelSize() * avail / widest)))
         p.setFont(lf)
         y = r.top() + pad + f.pixelSize() * 1.6 + s * 0.34
         for i, line in enumerate(self.lines):
@@ -87,6 +94,7 @@ class Header(QWidget):
         self.status = ""
         self.status_colour = "muted"
         self.total = "0:00"
+        self.distance = ""          # "2,35 km" in a running test, beside the total time
         self.setMinimumHeight(48)
 
     def paintEvent(self, _e: Any) -> None:
@@ -129,6 +137,14 @@ class Header(QWidget):
         tw = p.fontMetrics().horizontalAdvance(self.total)
         p.setPen(theme.color("text"))
         p.drawText(QRectF(r.right() - tw - 2, r.top(), tw + 2, h), Qt.AlignmentFlag.AlignVCenter, self.total)
+        if self.distance:
+            df = theme.font(int(h * 0.36), QFont.Weight.DemiBold, tabular=True)
+            p.setFont(df)
+            dw = p.fontMetrics().horizontalAdvance(self.distance)
+            p.setPen(theme.color("muted"))
+            p.drawText(QRectF(r.right() - tw - h * 0.4 - dw, r.top(), dw + 2, h), Qt.AlignmentFlag.AlignVCenter,
+                       self.distance)
+            tw += dw + h * 0.4
         if self.status:
             sf = theme.font(int(h * 0.27), QFont.Weight.Bold)
             p.setFont(sf)
@@ -255,10 +271,17 @@ class LiveBoard(QWidget):
                               if self.prof.pace_unit else MetricTile(t("ui.live.target_power"), "W", "chevron-right"))
             self.t_cadence = MetricTile(t(f"ui.live.cadence.{self.sport}"), t(f"ui.unit.cadence.{self.sport}"), "activity")
         else:
-            self.t_speed = MetricTile(t("ui.live.speed"), "km/h", "gauge")
+            # the pace first, km/h under it (the athlete thinks in min/km, the belt in km/h)
+            self.t_speed = MetricTile(t("ui.live.speed"), "min/km", "gauge")
             self.t_incline = MetricTile(t("ui.live.incline"), "%", "incline")
             self.t_cadence = MetricTile(t("ui.live.cadence"), t("ui.unit.spm"), "steps")
         self.hr_chart = TimeChart(t("ui.live.hr_chart"), window_s=900, colour="fix")
+        # the scale goes up to the max HR, written at the top: how far is left is seen at a glance
+        self.hr_chart.y_top = plan.athlete.max_hr_for(self.sport)
+        self.hr_chart.y_top_label = t("ui.live.hr_max_line")
+        # the distance on the belt: in the header on the TV, in a tile of its own on the coach's mirror
+        self.t_distance = MetricTile(t("ui.live.distance"), "km", "activity")
+        self.t_distance.setVisible(compact and not self.power)
         self.lac_chart = LactateChart(t("ui.live.lactate_chart"), live=True)
         self.lac_chart.x_unit = self.prof.load_unit
         self.lac_chart.x_decimals = self.prof.load_decimals
@@ -284,7 +307,7 @@ class LiveBoard(QWidget):
             root.addLayout(top, 1)
             tiles = QHBoxLayout()
             tiles.setSpacing(gap)
-            for w in (self.t_hr, self.t_speed, self.t_incline, self.t_cadence):
+            for w in (self.t_hr, self.t_speed, self.t_incline, self.t_cadence, self.t_distance):
                 tiles.addWidget(w)
             tw = QWidget()
             tw.setLayout(tiles)
@@ -372,7 +395,7 @@ class LiveBoard(QWidget):
 
     def _place_banner(self) -> None:
         vr = self.video.rect()
-        bh = max(70, int(vr.height() * 0.2))
+        bh = max(84, int(vr.height() * 0.21))     # room for a prompt on two lines on a scaled TV
         m = int(vr.width() * 0.04)
         self.banner.setGeometry(m, m, vr.width() - 2 * m, bh)
 
@@ -395,16 +418,19 @@ class LiveBoard(QWidget):
         self.header.update()
 
     def _load_text(self, stage: Any) -> str:
-        """A stage's load with the sport's unit ("12,0 km/h", "200 W"); a free stage says so."""
+        """A stage's load: the pace for running ("5:00 min/km", km/h in the line below), the load with
+        the sport's unit otherwise ("200 W"); a free stage says so."""
         if getattr(stage, "free", False):
             return t("ui.live.free")
+        if not self.power and stage.speed_kmh:
+            return f"{pace(stage.speed_kmh, self.sport)} {self.prof.pace_unit}"
         return load(stage.speed_kmh, self.sport)
 
     def _stage_lines(self, stage: Any) -> list[str]:
-        """The small lines under a stage's load: the incline for running, the pace on a SkiErg."""
+        """The small lines under a stage's load: km/h and the incline for running, the pace on a SkiErg."""
         lines = []
         if self.prof.has_incline:
-            lines.append(t("ui.live.incline_line", v=num(stage.incline_pct)))
+            lines.append(t("ui.live.kmh_incline_line", kmh=num(stage.speed_kmh), v=num(stage.incline_pct)))
         elif self.prof.pace_unit and not getattr(stage, "free", False):
             lines.append(t("ui.live.pace_line", p=pace(stage.speed_kmh, self.sport), unit=self.prof.pace_unit))
         elif getattr(stage, "free", False):
@@ -441,7 +467,7 @@ class LiveBoard(QWidget):
                                     "droplet", flash=True)
         elif ph == Phase.AWAIT_OPERATOR:
             status, scol = t("ui.live.status.operator"), "accent2"
-            sp = num(stage.speed_kmh) if stage else "–"
+            sp = speed(stage.speed_kmh, self.sport) if stage else "–"
             self.ring.set_state(self._stage_text(st.stage_index), "–:–", t("ui.live.waiting_operator"), 0.0, "accent2")
             self.banner.show_prompt(st.prompt or t("ui.live.set_speed", speed=sp),
                                     "" if self.power else
@@ -464,7 +490,7 @@ class LiveBoard(QWidget):
                 self.banner.show_prompt(st.prompt, ann, "watch", "droplet" if st.stage and st.stage.sample_lactate else "gauge",
                                         flash=True)
             elif ann and st.stage_remaining_s <= 15:
-                self.banner.show_prompt(ann, "", "accent2", "chevron-right")
+                self._announce(st, ann)
             else:
                 self.banner.clear()
             last = st.next_stage is None
@@ -497,11 +523,31 @@ class LiveBoard(QWidget):
             self.next_card.set_next(t("ui.live.next"), t("ui.live.walk" if not self.power else
                                                          f"ui.live.easy.{self.sport}"), [t("ui.live.recovery_sub")])
         self._state = st
+        self._distance()
         if self.power:
             self._power_tiles(self.ctl.treadmill)
         elif stage is not None and (self.ctl.treadmill is None or not getattr(self.ctl.treadmill, "measured", True)):
             self._speed_tiles(stage.speed_kmh, stage.incline_pct, target=True)
         self._place_banner()
+
+    def _announce(self, st: RunnerState, ann: str) -> None:
+        """The warning before a change: "NÄSTA STEG OM 12 S" counting down above the next stage's
+        target. A lactate sample or the end of the test keeps the runner's own words."""
+        nxt, stage = st.next_stage, st.stage
+        if nxt is None or getattr(nxt, "free", False) or (stage is not None and stage.sample_lactate):
+            self.banner.show_prompt(ann, "", "accent2", "chevron-right")
+            return
+        self.banner.show_prompt(stage_text(nxt.speed_kmh, nxt.incline_pct, self.sport), "", "accent2",
+                                "chevron-right", kicker=t("ui.live.next_in", s=max(1, math.ceil(st.stage_remaining_s))))
+
+    def _distance(self) -> None:
+        """The distance on the belt so far (running only)."""
+        if self.power:
+            return
+        fn = getattr(self.ctl, "distance_m", None)
+        d = fn() if callable(fn) else None
+        self.header.distance = km(d) if d else ""
+        self.t_distance.set_value(num(d / 1000, 2) if d else "–")
 
     def on_hr(self, v: tuple[int, int]) -> None:
         bpm, zone = v
@@ -578,9 +624,10 @@ class LiveBoard(QWidget):
         self.t_cadence.set_value(num(cad, 0) if cad else "–", t("ui.live.cadence_low") if low else "",
                                  "watch" if low else None)
 
-    def _speed_tiles(self, speed: float | None, incline: float | None, target: bool) -> None:
-        sub = t("ui.live.pace", p=pace(speed)) + (f"  ·  {t('ui.live.target')}" if target else "")
-        self.t_speed.set_value(num(speed), sub)
+    def _speed_tiles(self, kmh: float | None, incline: float | None, target: bool) -> None:
+        """The pace in the tile, km/h under it."""
+        sub = (f"{num(kmh)} km/h" if kmh and kmh > 0.5 else "") + (f"  ·  {t('ui.live.target')}" if target else "")
+        self.t_speed.set_value(pace(kmh), sub.strip(" ·"))
         self.t_incline.set_value(num(incline), t("ui.live.target") if target else "")
 
     def on_gait(self, g: Any) -> None:

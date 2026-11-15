@@ -29,6 +29,36 @@ def load(v: float | None, sport: Any = None, unit: bool = True) -> str:
     return f"{text} {p.load_unit}" if unit and text != "–" else text
 
 
+def speed(v: float | None, sport: Any = None) -> str:
+    """A load as the athlete reads it: the pace first and km/h after for running
+    ('5:00 min/km (12,0 km/h)'), else the load with its unit ('200 W', see ``load``)."""
+    p = profile(sport)
+    if p.load_quantity != "speed" or not v:
+        return load(v, sport)
+    return f"{pace(v, sport)} {p.pace_unit} ({load(v, sport)})"
+
+
+def speed_range(lo: float | None, hi: float | None, sport: Any = None) -> str:
+    """A range of running speeds with the pace first: '5:27–5:00 min/km (11,0–12,0 km/h)'.
+    With one end only, the signs follow each unit: '> 5:00 min/km (< 12,0 km/h)' is slower than 12 km/h."""
+    p = profile(sport)
+    if not lo and not hi:
+        return ""
+    if p.load_quantity != "speed":
+        a, b = num(lo, p.load_decimals) if lo else "", num(hi, p.load_decimals) if hi else ""
+        return (f"{a}–{b}" if a and b else (f"< {b}" if b else f"> {a}")) + f" {p.load_unit}"
+    if lo and hi:
+        return f"{pace(lo, sport)}–{pace(hi, sport)} {p.pace_unit} ({num(lo)}–{num(hi)} {p.load_unit})"
+    if hi:
+        return f"> {pace(hi, sport)} {p.pace_unit} (< {num(hi)} {p.load_unit})"
+    return f"< {pace(lo, sport)} {p.pace_unit} (> {num(lo)} {p.load_unit})"
+
+
+def km(metres: float | None) -> str:
+    """A distance in km with two decimals ('2,35 km'); '–' without one."""
+    return "–" if metres is None else f"{num(metres / 1000, 2)} km"
+
+
 def load_unit(sport: Any = None) -> str:
     """The unit of the load in a sport ('km/h', 'W')."""
     return profile(sport).load_unit

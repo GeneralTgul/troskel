@@ -31,7 +31,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from lopanalys.assessments.protocol import Phase, Protocol, RunnerState
 from lopanalys.core import paths
 from lopanalys.core.i18n import t
-from lopanalys.core.models import StepRecord, TimeSample
+from lopanalys.core.models import StepRecord, TimeSample, distance_m
 from lopanalys.ui import demo, services
 from lopanalys.ui.context import GAIT_KINDS, TECHNIQUE_KINDS, AppContext, ResumeFrom, TestOutcome, TestPlan
 
@@ -633,6 +633,14 @@ class LiveController(QObject):
         log.info("cadence tile %s at %.0f s: %s steps/min, source %s, title '%s'; saved samples (last 12 s): "
                  "median %s, source %s", where, now, "–" if value is None else f"{value:.0f}", source or "none",
                  title, f"{saved[len(saved) // 2]:.0f}" if saved else "–", ",".join(sorted(map(str, src))) or "none")
+
+    def distance_m(self) -> float | None:
+        """The distance on the belt so far in metres (the 1 Hz belt speed integrated), including the
+        part before a cut-off test was resumed; None before any samples."""
+        smp = list(getattr(self.runner, "samples", []) or []) if self.runner is not None else []
+        if self.resume is not None:
+            smp = [x for x in self.resume.samples if x.t_s < (smp[0].t_s if smp else 1e18)] + smp
+        return distance_m(smp) if len(smp) > 1 else None
 
     def _on_hr(self, s: Any) -> None:
         self.hr = int(s.bpm)

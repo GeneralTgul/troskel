@@ -73,7 +73,7 @@ Testet på ett riktigt band är *(inte provat på riktig hårdvara)*, se [PROV.m
 
 ## Resultatet
 
-![Resultatet efter Puls- och fartzoner i demoläget: rutorna Lugn fart, Samband puls–fart, Högsta puls och Testtid, diagrammet Puls mot fart och tabellen Stegen](images/resultat.png)
+![Resultatet efter Puls- och fartzoner i demoläget: rutan Fyll i klockan överst, rutorna Lugn fart, Samband puls–fart, Högsta puls och Testtid, diagrammet Puls mot fart och tabellen Stegen](images/resultat.png)
 
 Bilden är från demoläget med snabbspolad klocka och simulerad puls.
 
@@ -102,7 +102,7 @@ Zonerna är procent av maxpulsen. Förvalt är Garmins fem zoner (50, 60, 70, 80
 - **≈ framför en fart** betyder att den ligger utanför de uppmätta stegen. Linjen följs högst 2 km/h utanför stegen, och aldrig förbi den högsta farten i trappan. Längre ut ges ingen fart, och zonen skrivs då som *under* eller *över* en fart.
 - **Farterna gäller löpbandet med 1 % lutning.** Ute styr pulsen, inte farten: värme, backar, vätska och sömn flyttar pulsen från dag till dag.
 
-Maxpulsen sparas på idrottaren som efter ett maxpulstest, när trappan hann börja. Har idrottaren redan en högre maxpuls räknas zonerna på den, och den är linjen *maxpuls* i diagrammet. [*Fyll i din klocka*](../resultat/resultat.md#fyll-i-din-klocka) och [*Uppskattat VO2max*](../resultat/resultat.md#uppskattat-vo2max) fungerar som efter ett maxpulstest.
+Maxpulsen sparas på idrottaren som efter ett maxpulstest, när trappan hann börja. Har idrottaren redan en högre maxpuls räknas zonerna på den, och den är linjen *maxpuls* i diagrammet. [*Fyll i klockan*](../resultat/resultat.md#fyll-i-klockan) och [*Uppskattat VO2max*](../resultat/resultat.md#uppskattat-vo2max) fungerar som efter ett maxpulstest.
 
 ## Rapporten
 

@@ -102,6 +102,10 @@ class TimeChart(_Plot):
         self.points: list[tuple[float, float]] = []
         self.bands: list[tuple[float, float, str]] = []
         self.y_min_span = 40.0
+        # The top of the scale (the max HR on the TV): the axis ends there and says it with a line,
+        # higher values still lift the top. None: the top follows the values.
+        self.y_top: float | None = None
+        self.y_top_label = "max"
 
     def add(self, t: float, y: float) -> None:
         if self.points and t < self.points[-1][0]:  # clock restarted (test started): new series
@@ -130,6 +134,9 @@ class TimeChart(_Plot):
             mid = (hi + lo) / 2
             lo, hi = mid - self.y_min_span / 2, mid + self.y_min_span / 2
         lo, hi = lo - 4, hi + 4
+        top = self.y_top if self.y_top and self.y_top > lo + 10 else None
+        if top is not None:
+            hi = max(top, max(ys) + 2)
         self.xr, self.yr = (t0, max(t1, t0 + 1)), (lo, hi)
         for b0, b1, col in self.bands:
             a, b = max(b0, lo), min(b1, hi)
@@ -137,7 +144,12 @@ class TimeChart(_Plot):
                 c = theme.color(col, 22)
                 p.fillRect(QRectF(pr.left(), self.map(pr, t0, b).y(), pr.width(),
                                   self.map(pr, t0, a).y() - self.map(pr, t0, b).y()), c)
-        self.grid(p, pr, nice_ticks(lo, hi, 3))
+        ticks = nice_ticks(lo, hi, 3)
+        if top is not None:      # the max HR is the top tick; a round tick right under it would crowd it
+            ticks = [v for v in ticks if top - v > (hi - lo) * 0.12]
+        self.grid(p, pr, ticks)
+        if top is not None:
+            self.top_label(p, pr, top)
         if len(vis) < 2:
             return
         path = QPainterPath(self.map(pr, *vis[0]))
@@ -159,6 +171,23 @@ class TimeChart(_Plot):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(theme.color(self.colour))
         p.drawEllipse(last, 5, 5)
+
+
+    def top_label(self, p: QPainter, pr: QRectF, top: float) -> QRectF:
+        """The line and the label of ``y_top`` ("199 max") at the top of the scale; returns where
+        the label was drawn."""
+        y = self.map(pr, self.xr[0], top).y()
+        p.setPen(QPen(theme.color("fix", 160), 1.5, Qt.PenStyle.DashLine))
+        p.drawLine(QPointF(pr.left(), y), QPointF(pr.right(), y))
+        f = self.axis_font()
+        f.setWeight(QFont.Weight.Bold)
+        p.setFont(f)
+        p.setPen(theme.color("fix"))
+        rect = QRectF(pr.left() - 60, y - 10, 54, 20)
+        p.drawText(rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, num(top, 0))
+        lab = QRectF(pr.right() - pr.width() * 0.6, y + 2, pr.width() * 0.6 - 4, f.pixelSize() * 1.35)
+        p.drawText(lab, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, self.y_top_label)
+        return rect
 
 
 class LactateChart(_Plot):

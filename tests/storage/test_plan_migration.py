@@ -44,7 +44,7 @@ def test_main_database_migrates_and_keeps_everything(tmp_path):
     _main_db(p)
     with Database(p) as d:
         assert d.schema_version == dbmod.SCHEMA_VERSION >= PLAN_VERSION
-        assert dbmod.SCHEMA_VERSION == PLAN_VERSION                      # the plan is the newest migration
+        assert dbmod.SCHEMA_VERSION >= PLAN_VERSION                      # the plan, and the watch brand after it
         assert (tmp_path / "lopanalys.sqlite.v8.bak").is_file()        # the copy from before the upgrade
         (erik,) = d.list_athletes()
         assert erik.name == "Erik Sandberg" and erik.max_hr == 186 and erik.email == "erik@example.se"

@@ -18,7 +18,7 @@ from lopanalys.core.models import Session, TestKind
 from lopanalys.core.sport import DEFAULT_SPORT, profile, sport_of
 from lopanalys.ui import services, theme
 from lopanalys.ui.context import AppContext
-from lopanalys.ui.fmt import load, num
+from lopanalys.ui.fmt import num, speed, speed_range
 from lopanalys.ui.views.athletes import AthleteRow
 from lopanalys.ui.widgets.charts import LactateChart
 from lopanalys.ui.widgets.common import Card, PageHeader, button, label, page
@@ -174,10 +174,10 @@ class HistoryView(QWidget):
             easy = services.easy_zone(res.get("zones") or []) if s.kind == TestKind.HR_ZONES else None
             lo, hi = (easy or {}).get("speed_low_kmh"), (easy or {}).get("speed_high_kmh")
             if (lo or hi) and res.get("max_hr"):   # the zones test without lactate: the easy zone's speed
-                span = f"{num(lo)}–{num(hi)}" if lo and hi else (f"< {num(hi)}" if hi else f"> {num(lo)}")
+                span = speed_range(lo, hi)            # the pace first, km/h after
                 summary = t("ui.hist.zones_speed", n=res["max_hr"], zone=easy.get("code", ""), span=span)
             elif res.get("lt2"):
-                summary = f"LT2 {load(res['lt2'].get('speed_kmh'), s.sport)} · {num(res['lt2'].get('hr'), 0)}"
+                summary = f"LT2 {speed(res['lt2'].get('speed_kmh'), s.sport)} · {num(res['lt2'].get('hr'), 0)}"
             elif (res.get("power") or {}).get("ftp_w"):      # cycling: FTP from the 20 minute test or the ramp
                 summary = f"FTP {num(res['power']['ftp_w'], 0)} W" + (
                     f" · {t('ui.hist.maxhr', n=res['max_hr'])}" if res.get("max_hr") and s.kind == TestKind.MAX_HR else "")

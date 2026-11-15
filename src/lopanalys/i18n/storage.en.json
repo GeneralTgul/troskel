@@ -62,5 +62,6 @@
  "storage.error.move_failed": "The move failed: {err}. Nothing is changed, the old folder is still used.",
  "storage.extract.email": "E-mail",
  "storage.extract.watch_vo2max": "VO2max from the watch",
+ "storage.extract.watch_brand": "Watch brand",
  "storage.extract.watch_vo2max_date": "Date of the watch's VO2max"
 }

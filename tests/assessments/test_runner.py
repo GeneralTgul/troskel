@@ -97,7 +97,7 @@ def test_manual_mode_prompts_and_waits_for_operator():
     r, clock, tm, states, cues = make(p, controllable=False)
     r.start()
     assert r.phase == Phase.AWAIT_OPERATOR
-    assert states[-1].prompt == "Sätt bandet på 9,0 km/h · 1 %"
+    assert states[-1].prompt == "Sätt bandet på 6:40 min/km (9,0 km/h) · 1 %"
     run(r, clock, 30)                    # nothing happens until the operator confirms
     assert r.phase == Phase.AWAIT_OPERATOR and r.state.stage_elapsed_s == 0
     assert r.operator_ready()
@@ -106,9 +106,9 @@ def test_manual_mode_prompts_and_waits_for_operator():
     assert r.state.announcement.startswith("Om 15 s")
     assert any(c.kind == "pre_announce" for c in cues)
     run_until(r, clock, lambda: r.phase == Phase.LACTATE_PAUSE)
-    assert r.state.announcement == "Sedan: 10,0 km/h · 1 %"
+    assert r.state.announcement == "Sedan: 6:00 min/km (10,0 km/h) · 1 %"
     run_until(r, clock, lambda: r.phase == Phase.AWAIT_OPERATOR)
-    assert r.state.prompt == "Sätt bandet på 10,0 km/h · 1 %"
+    assert r.state.prompt == "Sätt bandet på 6:00 min/km (10,0 km/h) · 1 %"
     assert tm.log == []                  # never commands a manual treadmill
     assert r.operator_ready()
     assert not r.operator_ready()        # second press ignored

@@ -13,7 +13,7 @@ from lopanalys.core import simulated
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import profile
 from lopanalys.ui.context import AppContext
-from lopanalys.ui.fmt import clock, load, num, pace
+from lopanalys.ui.fmt import clock, load, num, pace, speed
 from lopanalys.ui.live_controller import LiveController
 from lopanalys.ui.sound import Cues
 from lopanalys.ui.views.live_board import LiveBoard, LiveWindow
@@ -249,7 +249,7 @@ class OperatorView(QWidget):
         self.lac_list.clear()
         stages = self.ctl.stages()
         for i, v in sorted(self.ctl.lactate.items()):
-            sp = num(stages[i].speed_kmh) if i < len(stages) else "–"
+            sp = speed(stages[i].speed_kmh) if i < len(stages) else "–"
             if self._power() and i < len(stages):
                 self.lac_list.addItem(t("ui.live.lactate_row_load", name=self.ctl.stage_name(i),
                                         load=self._load(stages[i]), v=num(v)))
@@ -292,7 +292,7 @@ class OperatorView(QWidget):
         st = self.ctl.state
         i = self.ctl.lactate_stage() if st else 0
         stages = self.ctl.stages()
-        sp = num(stages[i].speed_kmh) if i < len(stages) else "–"
+        sp = speed(stages[i].speed_kmh) if i < len(stages) else "–"
         if self._power() and i < len(stages):
             self.lac_for.setText(t("ui.live.lactate_for_load", name=self.ctl.stage_name(i), load=self._load(stages[i])))
             return
@@ -313,7 +313,7 @@ class OperatorView(QWidget):
         self.ready_btn.setVisible(st is not None and st.phase == Phase.AWAIT_OPERATOR)
         if st is not None and st.phase == Phase.AWAIT_OPERATOR and st.stage is not None:
             self.ready_btn.setText(t("ui.live.load_set_to", load=self._load(st.stage)) if self._power() else
-                                   t("ui.live.speed_set_to", speed=num(st.stage.speed_kmh)))
+                                   t("ui.live.speed_set_to", speed=speed(st.stage.speed_kmh)))
 
     def _update_sprint_note(self, st: RunnerState) -> None:
         """The line under *Slutspurt*: what the automatic sprint waits for, or when it started."""
