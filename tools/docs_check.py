@@ -7,7 +7,8 @@ Runs from the pre-commit hook and by hand. The rules are described in docs/dokum
 Errors (stop the commit):
   link     a relative link to a file that does not exist, or to an anchor (#heading) that does not exist
   image    an image the page shows that is missing or lies outside the page's own images/ folder,
-           and an image in an images/ folder that no page shows
+           and an image in an images/ folder that no page shows. The README pages in the root show
+           their own images from docs/images/readme/, and may show the handbook's images
   layout   a page that is not docs/.../<name>/<name>.md in lower-case kebab-case
            (docs/index.md, docs/dokumentationsrutin.md and the older pages in LEGACY are exempt)
   index    a page without a row in tools/docs_index.yaml, a row without a page,
@@ -66,6 +67,15 @@ def check_links(root: Path, page: Path, text: str, errors: list[str]) -> None:
             errors.append(f"link: {name(root, page)}: the anchor #{unquote(frag)} does not exist in {name(root, dest)}")
 
 
+def allowed_image(root: Path, page: Path, dest: Path) -> bool:
+    """A page under docs/ shows only its own images/; a README in the root shows docs/images/readme/
+    and the images of the handbook pages."""
+    if page.parent.resolve() == root and page.name in README_PAGES:
+        return dest.parent == (root / "docs/images/readme").resolve() or (
+            dest.parent.name == "images" and (root / "docs/handbok").resolve() in dest.parents)
+    return dest.parent == (page.parent / "images").resolve()
+
+
 def check_images(root: Path, page: Path, text: str, errors: list[str], used: set[Path]) -> None:
     for m in IMAGE.finditer(strip_code(text)):
         src = unquote(m.group(1) or m.group(2))
@@ -75,7 +85,7 @@ def check_images(root: Path, page: Path, text: str, errors: list[str], used: set
         used.add(dest)
         if not dest.is_file():
             errors.append(f"image: {name(root, page)}: {src} is missing")
-        elif dest.parent != (page.parent / "images").resolve():
+        elif not allowed_image(root, page, dest):
             errors.append(f"image: {name(root, page)}: {src} lies outside the page's own images/ folder")
 
 
@@ -90,7 +100,7 @@ def check_layout(root: Path, page: Path, errors: list[str]) -> None:
 
 
 def check_unused_images(root: Path, used: set[Path], errors: list[str]) -> None:
-    for d in (root / "docs").rglob("images"):
+    for d in [*(root / "docs").rglob("images"), root / "docs/images/readme"]:
         for f in sorted(d.iterdir()) if d.is_dir() else []:
             if f.suffix.lower() in IMAGE_TYPES and f.resolve() not in used:
                 errors.append(f"image: {f.relative_to(root).as_posix()} is not shown by any page")
@@ -118,6 +128,7 @@ def retired_words(root: Path, pages: list[Path]) -> list[str]:
 
 
 ROOT_PAGES = ("README.md", "README.sv.md", "CONTRIBUTING.md")   # English entry, Swedish entry, the DCO
+README_PAGES = ("README.md", "README.sv.md")
 
 
 def name(root: Path, p: Path) -> str:
@@ -134,8 +145,9 @@ def check(root: Path) -> tuple[list[str], list[str]]:
     for page in pages:
         text = read(page)
         check_links(root, page, text, errors)
-        if page in docs:
+        if page in docs or page.name in README_PAGES:
             check_images(root, page, text, errors, used)
+        if page in docs:
             check_layout(root, page, errors)
     check_unused_images(root, used, errors)
     errors += [f"index: {p}" for p in docs_index.problems(root)]

@@ -523,6 +523,7 @@ def seed_demo_data(store: Any) -> None:
     """Fill an empty database with a few demo athletes and two earlier lactate tests."""
     from datetime import date, datetime, timedelta, timezone
 
+    from lopanalys.core.i18n import t
     from lopanalys.core.models import (
         Athlete,
         Session,
@@ -550,7 +551,7 @@ def seed_demo_data(store: Any) -> None:
     for months, lactate, hr_end in tests:
         started = now - timedelta(days=30 * months)
         s = Session(None, erik.id, TestKind.LACTATE_STEP, started, started + timedelta(minutes=39),
-                    protocol_name="Laktattrappa 8–15 km/h", treadmill_mode="ftms")
+                    protocol_name=t("ui.demo.lactate_protocol"), treadmill_mode="ftms")
         s = store.save_session(s)
         recs = [StepRecord(i, 8.0 + i, 1.0, 240, hr_end=hr_i, lactate_mmol=la, rpe=min(20, 7 + 2 * i))
                 for i, (la, hr_i) in enumerate(zip(lactate, hr_end))]

@@ -51,3 +51,16 @@ def test_erik_gets_better_between_his_two_lactate_tests():
     # far enough apart for zones 3 and 4 to be a few beats wide each, not two or three
     assert after.lt2.speed_kmh - after.lt1.speed_kmh >= 1.0 and after.lt2.hr - after.lt1.hr >= 8
     assert after.lt2.hr < erik.max_hr
+
+
+def test_the_demo_tests_are_named_in_the_language_of_the_program():
+    from lopanalys.core import i18n
+    before = i18n.language()
+    try:
+        for lang, name in (("sv", "Laktattrappa 8–15 km/h"), ("en", "Lactate step test 8–15 km/h")):
+            i18n.set_language(lang)
+            store = _Store()
+            seed_demo_data(store)
+            assert {s.protocol_name for s in store.sessions} == {name}
+    finally:
+        i18n.set_language(before)

@@ -149,6 +149,39 @@ def test_shot_list_must_point_at_real_pages_and_known_views(repo: Path) -> None:
     assert docs_shots.missing(repo) == ["docs/guide/images/idrottare.png", "docs/guide/images/x.png"]
 
 
+def test_shot_rows_may_name_a_language_and_the_readme(repo: Path) -> None:
+    shots = [{"view": "tv", "page": "README.md", "file": "tv.png", "lang": "en"},
+             {"view": "operator", "page": "README.md", "file": "operator.png", "lang": "de"},
+             {"view": "idrottare", "page": "docs/guide/guide.md", "file": "idrottare.png"}]
+    put(repo / "tools/docs_shots.json", json.dumps({"shots": shots}))
+    assert docs_shots.target(repo, shots[0]) == repo / "docs/images/readme/tv.png"
+    assert [docs_shots.lang(s) for s in shots] == ["en", "de", "sv"]
+    assert docs_shots.problems(repo) == ["tools/docs_shots.json: unknown language 'de' for 'operator'"]
+
+
+def test_readme_shows_its_own_images_and_the_handbooks(repo: Path) -> None:
+    from PIL import Image
+    for f in ("docs/images/readme/tv.png", "docs/handbok/start/images/start.png", "docs/guide/images/egen.png"):
+        (repo / f).parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (4, 4)).save(repo / f)
+    put(repo / "docs/handbok/start/start.md", "# Start\n\n![Start](images/start.png)\n")
+    put(repo / "docs/guide/guide.md", read_text(repo / "docs/guide/guide.md") + "\n![Egen](images/egen.png)\n")
+    put(repo / "tools/docs_index.yaml", read_text(repo / "tools/docs_index.yaml") + "  handbok/start/start.md: Start.\n")
+    import docs_index
+    put(repo / "docs/index.md", docs_index.render(repo))
+    put(repo / "README.md", "# Demo\n\n![TV](docs/images/readme/tv.png)\n")
+    put(repo / "README.sv.md", "# Demo\n\n![Start](docs/handbok/start/images/start.png)\n")
+    assert errors(repo) == []
+    put(repo / "README.sv.md", "# Demo\n\n![Egen](docs/guide/images/egen.png)\n")
+    assert errors(repo) == ["image: README.sv.md: docs/guide/images/egen.png lies outside the page's own images/ folder"]
+    put(repo / "README.md", "# Demo\n")
+    assert "image: docs/images/readme/tv.png is not shown by any page" in errors(repo)
+
+
+def read_text(p: Path) -> str:
+    return p.read_text(encoding="utf-8")
+
+
 def test_every_view_in_the_shot_list_has_a_method() -> None:
     for view in docs_shots.VIEWS:
         assert callable(getattr(docs_shots.Studio, view.replace("-", "_"))), view

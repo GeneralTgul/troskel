@@ -59,6 +59,14 @@
     {"view": "resultat-bikefit-forslag", "page": "docs/handbok/bikefit/bikefit.md", "file": "forslag.png"},
     {"view": "resultat-bikefit-checklista", "page": "docs/handbok/bikefit/bikefit.md", "file": "checklista.png"},
     {"view": "resultat-stakteknik", "page": "docs/handbok/stakteknik/stakteknik.md", "file": "resultat.png"},
-    {"view": "resultat-stakteknik-jamforelse", "page": "docs/handbok/stakteknik/stakteknik.md", "file": "jamforelse.png"}
+    {"view": "resultat-stakteknik-jamforelse", "page": "docs/handbok/stakteknik/stakteknik.md", "file": "jamforelse.png"},
+    {"view": "tv-med-laktat", "page": "README.md", "file": "tv.png", "lang": "en", "live": true},
+    {"view": "operator-med-laktat", "page": "README.md", "file": "operator.png", "lang": "en", "live": true},
+    {"view": "tv-tva-vinklar", "page": "README.md", "file": "tv-two-angles.png", "lang": "en", "live": true},
+    {"view": "resultat-laktat", "page": "README.md", "file": "result-lactate.png", "lang": "en"},
+    {"view": "resultat-zoner", "page": "README.md", "file": "result-zones.png", "lang": "en"},
+    {"view": "resultat-klocka", "page": "README.md", "file": "result-watch.png", "lang": "en"},
+    {"view": "traningsschema", "page": "README.md", "file": "training-plan.png", "lang": "en"},
+    {"view": "resultat-lopteknik", "page": "README.md", "file": "result-gait.png", "lang": "en", "live": true}
   ]
 }

@@ -114,7 +114,7 @@
  "plan.pdf.fact.slot": "{day} {minutes}",
  "plan.pdf.summary": "The plan in short",
  "plan.pdf.tile.weeks": "Length",
- "plan.pdf.tile.sessions": "Sessions a week",
+ "plan.pdf.tile.sessions": "Per week",
  "plan.pdf.tile.sessions_sub": "{n} sessions in all",
  "plan.pdf.tile.volume": "Time in the load weeks",
  "plan.pdf.tile.volume_sub": "grows by at most 10 % a week",

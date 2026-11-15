@@ -2,6 +2,40 @@
 
 *Tröskel* (repot och programfilen heter `lopanalys`) är löpanalys och fystester för coacher: kameran (även GoPro), löpbandet, cykeltrainern och SkiErgen, pulsbandet, laktatet och utskrivna rapporter. Se [docs/ARKITEKTUR.md](docs/ARKITEKTUR.md). [English: README.md](README.md)
 
+![TV-vyn under en laktattrappa: löparen med skelettet och vinklarna, pulsen, farten och klockan för steget](docs/handbok/under-testet/images/tv.png)
+
+*TV-vyn under en laktattrappa, i helskärm för idrottaren. Alla skärmbilder är från demoläget: påhittade idrottare och simulerad utrustning.*
+
+## Skärmbilder
+
+**Operatörssidan.** Coachens vy under testet: knapparna, sifferfältet för laktatvärdet och pulsen, farten och tekniken just nu.
+
+![Operatörssidan under en laktattrappa](docs/handbok/under-testet/images/operator.png)
+
+**Två kameror.** Löparen filmas från sidan och bakifrån samtidigt, och TV:n visar värdena från båda.
+
+![TV-vyn med två kameravinklar under ett löpteknikstest](docs/handbok/under-testet/images/tv-tva-vinklar.png)
+
+**Laktatkurvan.** LT1 och LT2 på kurvan, jämförda med förra testet, och stegen som går att rätta efteråt.
+
+![Resultatsidan med laktatkurvan, trösklarna och stegen](docs/handbok/resultat/images/laktat.png)
+
+**Träningszonerna.** Zonerna i det valda systemet, i puls och tempo.
+
+![Träningszonerna i Garmins fem zoner](docs/handbok/resultat/images/zoner.png)
+
+**Fyll i klockan.** Det som ska in i idrottarens klocka, här en Garmin.
+
+![Rutan Fyll i klockan med tröskelpulsen för en Garmin](docs/handbok/resultat/images/klocka.png)
+
+**Löptekniken.** Testets mätvärden mot målen.
+
+![Fliken Löpteknik på resultatsidan](docs/handbok/lopteknik/images/resultat.png)
+
+**Träningsschemat.** Ett schema fram till ett mållopp, byggt på testets zoner.
+
+![Träningsschemat med timmar per vecka och zon fram till målloppet](docs/handbok/traningsschema/images/traningsschema.png)
+
 ## Dokumentation
 
 Allt står i [docs/index.md](docs/index.md): [handboken](docs/handbok/handbok.md) för den som kör testerna, arkitekturen, proven på riktig hårdvara och underlagen.

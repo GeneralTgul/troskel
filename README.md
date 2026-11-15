@@ -4,6 +4,10 @@
 
 The program, its interface and its documentation are in Swedish (an English interface exists for most texts). [Svenska: README.sv.md](README.sv.md)
 
+![The TV view during a lactate step test: the runner with the skeleton and the angles, heart rate, pace, the stage clock and the lactate values so far](docs/images/readme/tv.png)
+
+*The TV view during a lactate step test, in full screen for the athlete. All screenshots are from the demo mode: made-up athletes and simulated equipment.*
+
 ## What it does
 
 - **Runs the test protocol:** the program sets the speed, incline or power for each stage, counts down, tells the coach when to take a blood sample, and saves everything as it goes.
@@ -33,6 +37,36 @@ The lactate values are measured with a hand-held meter and typed in during the t
 | Cameras | Webcams and capture cards, a GoPro HERO8 or later over USB, a phone or IP camera over the network, or a video file. Two cameras can film at once | GoPro over USB used in real tests, the rest not yet tried |
 
 What has and has not been tried on real hardware is listed in [docs/PROV.md](docs/PROV.md) (Swedish). Everything is tested against simulators in the test suite, and a demo mode runs the whole program without any equipment.
+
+## Screenshots
+
+**The operator page.** The coach's view of the running test: the controls, the number pad for the lactate value and the values saved so far.
+
+![The operator page during a lactate step test](docs/images/readme/operator.png)
+
+**Two cameras.** The runner filmed from the side and from behind at once, with the values of both views on the TV.
+
+![The TV view with two camera angles during a running technique test](docs/images/readme/tv-two-angles.png)
+
+**The lactate curve.** LT1 and LT2 marked on the curve, compared with the previous test, and the stages that can be corrected afterwards.
+
+![The result page with the lactate curve, the thresholds and the stages](docs/images/readme/result-lactate.png)
+
+**Training zones.** The zones in the chosen system, in heart rate and pace.
+
+![The training zones in Garmin's five-zone system](docs/images/readme/result-zones.png)
+
+**Set up the watch.** What to enter in the athlete's watch, here a Garmin.
+
+![The box Set up the watch with the threshold heart rate for a Garmin watch](docs/images/readme/result-watch.png)
+
+**Running technique.** The measured values of the test against their targets.
+
+![The running technique tab of the result page](docs/images/readme/result-gait.png)
+
+**The training plan.** A plan to a goal race, built on the zones of the test.
+
+![The training plan with the weekly hours by zone up to the goal race](docs/images/readme/training-plan.png)
 
 ## Build and run
 

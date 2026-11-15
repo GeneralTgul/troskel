@@ -45,7 +45,7 @@ tools/
 
 - **En sida ligger i en egen mapp med samma namn:** `docs/<kapitel>/<kapitel>.md`, och en undersida som `docs/<kapitel>/<sida>/<sida>.md`. Det gäller även en sida utan bilder, eftersom den kan få bilder senare.
 - **Namnen är kebab-case:** små bokstäver, siffror och bindestreck (`under-testet`). Å, ä och ö är tillåtna.
-- **Bilderna ligger i sidans egen `images/`** och länkas relativt: `![Sidan Idrottare](images/idrottare.png)`. En sida visar aldrig en annan sidas bild.
+- **Bilderna ligger i sidans egen `images/`** och länkas relativt: `![Sidan Idrottare](images/idrottare.png)`. En sida visar aldrig en annan sidas bild. Undantaget är förstasidorna i roten: `README.md` visar sina engelska bilder ur `docs/images/readme/`, och `README.sv.md` visar handbokens svenska bilder, så att ingen bild finns två gånger.
 - **Skript ligger i `tools/`,** aldrig under `docs/`.
 - **Kapitel eller undersida:** ett ämne som går att läsa för sig får ett eget kapitel. Det som bara fördjupar ett kapitel, och skulle göra det för långt, blir en undersida. Kapitelsidan är översikten, och undersidan länkar tillbaka med `../<kapitel>.md`.
 
@@ -90,6 +90,7 @@ python tools/docs_shots.py --list     # vyerna som verktyget kan ta
 På en delad maskin körs det med ett eget minnestak: `systemd-run --user --scope -q -p MemoryMax=2G -p MemorySwapMax=0 python tools/docs_shots.py`.
 
 - **Listan är [`tools/docs_shots.json`](../tools/docs_shots.json):** en rad per bild med vyn, sidan och filnamnet. En ny bild av en vy som verktyget redan kan är en ny rad där. En ny vy är en ny metod i klassen `Studio` och ett namn i `VIEWS`.
+- **Språket:** bilderna tas på svenska. En rad med `"lang": "en"` tas på engelska, och programmet startas en gång per språk. `--lang en` tar bara de engelska raderna. Raderna för `README.md` hamnar i `docs/images/readme/`, nedskalade till 1600 px bredd och komprimerade.
 - **Bara demodata.** Bilderna visar demoidrottarna och simulerade enheter. Verktyget använder en egen tom datamapp som tas bort efteråt, och hämtar inget från internet.
 - **Bilderna ändras inte i onödan.** Fönstret har en fast storlek (1440 × 900, TV-vyn 1920 × 1080), demotesterna får fasta datum, och en fil skrivs bara om när den nya bilden skiljer sig mer än brus från den gamla. Åldern på demoidrottarna räknas från dagens datum, så de bilderna ändras när någon av dem fyller år.
 - **Rörliga vyer har `"live": true`:** kamerabilden och ett pågående test ser olika ut varje gång. De tas bara när filen saknas, när vyn nämns vid namn eller med `--all`. Ta om dem när livevyn eller operatörssidan har ändrats.

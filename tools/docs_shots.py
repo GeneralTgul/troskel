@@ -1,7 +1,9 @@
 """Takes the screenshots in the documentation from the program in demo mode, without a screen.
 
 tools/docs_shots.json says which view goes to which page: ``{"view", "page", "file"}``. The image is
-saved in the page's own ``images/`` folder. The program runs offscreen with simulated devices and the
+saved in the page's own ``images/`` folder; the images of the README pages in the root go to ``docs/images/readme/``.
+A row may carry ``"lang": "en"`` to take the view in English (the default is Swedish, ``"sv"``): the program is
+started once per language that the run needs. The program runs offscreen with simulated devices and the
 demo athletes only (never real people), in a fixed window size and with fixed dates on the demo tests.
 A file is only rewritten when the new image differs from the old one by more than noise, so a run
 that changes nothing leaves the repository clean.
@@ -12,6 +14,7 @@ on every run, so they are only taken when the file is missing, when named, or wi
     python tools/docs_shots.py              the still views, and live views whose file is missing
     python tools/docs_shots.py --all        every view
     python tools/docs_shots.py tv operator  only these views
+    python tools/docs_shots.py --lang en    only the rows in this language (with or without view names)
     python tools/docs_shots.py --list       the views the tool knows
     python tools/docs_shots.py --check      start nothing: exit 1 on a bad row or a missing image
 
@@ -44,7 +47,8 @@ VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
          "protokoll-lopteknik", "nytt-test-kamera", "nytt-test-band-och-puls", "nytt-test-kontroll",
          "nytt-test-kontroll-utan-kamera",
-         "protokoll-pulsfart", "operator", "tv", "operator-laktatprov", "tv-laktatprov", "resultat-maxpuls",
+         "protokoll-pulsfart", "operator", "tv", "operator-laktatprov", "tv-laktatprov",
+         "operator-med-laktat", "tv-med-laktat", "resultat-maxpuls",
          "resultat-pulsfart", "resultat-lopteknik",
          "nytt-test-tva-kameror", "lagg-till-telefon", "tv-tva-vinklar",
          # cycling and SkiErg: the wizard, the result of a simulated test, and the TV last
@@ -54,6 +58,13 @@ VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost
          "protokoll-bikefit", "kamera-bikefit", "kontroll-bikefit", "protokoll-stakteknik", "kamera-stakteknik",
          "resultat-bikefit", "resultat-bikefit-forslag", "resultat-bikefit-checklista", "resultat-stakteknik",
          "resultat-stakteknik-jamforelse", "tv-bikefit", "tv-stakteknik")
+LANGS = ("sv", "en")
+ROOT_PAGES = ("README.md", "README.sv.md")   # the front pages: their images lie in README_IMAGES
+README_IMAGES = "docs/images/readme"
+README_WIDTH = 1600       # the front page's images are scaled down to this width and compressed
+# the made-up goal race of the training plan, in the language of the shot
+PLAN_GOAL = {"sv": ("Vårloppet halvmaraton", "Premiärmilen"), "en": ("Spring half marathon", "Season opener 10K")}
+DEMO_LACTATE = ("1,1", "1,2", "1,5")   # typed in after the first stages of the running test
 POWER_TEST_DATE = datetime(2026, 9, 22, 8, 30, tzinfo=timezone.utc)
 
 
@@ -64,18 +75,26 @@ def load(root: Path) -> dict[str, Any]:
 
 
 def target(root: Path, shot: dict[str, Any]) -> Path:
-    """Where the shot is saved: the images/ folder next to its page."""
+    """Where the shot is saved: the images/ folder next to its page, or README_IMAGES for a README in the root."""
+    if shot["page"] in ROOT_PAGES:
+        return root / README_IMAGES / shot["file"]
     return (root / shot["page"]).parent / "images" / shot["file"]
 
 
+def lang(shot: dict[str, Any]) -> str:
+    return str(shot.get("lang", "sv"))
+
+
 def problems(root: Path) -> list[str]:
-    """Rows in the list that cannot work: unknown view, page that does not exist, bad file name."""
+    """Rows in the list that cannot work: unknown view or language, page that does not exist, bad file name."""
     out, seen = [], set()
     for shot in load(root).get("shots", []):
         view, page, file = shot.get("view", ""), shot.get("page", ""), shot.get("file", "")
         if view not in VIEWS:
             out.append(f"{CONFIG}: unknown view '{view}'")
-        if not page.startswith("docs/") or not (root / page).is_file():
+        if lang(shot) not in LANGS:
+            out.append(f"{CONFIG}: unknown language '{lang(shot)}' for '{view}'")
+        if not (page.startswith("docs/") or page in ROOT_PAGES) or not (root / page).is_file():
             out.append(f"{CONFIG}: the page {page} for '{view}' does not exist")
         elif not file.endswith(".png") or "/" in file:
             out.append(f"{CONFIG}: the file for '{view}' is a plain name that ends with .png")
@@ -102,6 +121,16 @@ def differs(old: Path, new: Path, tolerance: float = TOLERANCE) -> bool:
     return float((d.max(axis=2) > PIXEL_NOISE).mean()) > tolerance
 
 
+def shrink(path: Path, width: int = README_WIDTH) -> None:
+    """Scale the image down to ``width`` (if wider) and save it compressed, without metadata."""
+    from PIL import Image
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        if im.width > width:
+            im = im.resize((width, round(im.height * width / im.width)), Image.Resampling.LANCZOS)
+        im.save(path, "PNG", optimize=True)
+
+
 def save_if_changed(new: Path, dest: Path, tolerance: float = TOLERANCE) -> bool:
     """Move the fresh image to its place unless the one already there shows the same thing."""
     if dest.is_file() and not differs(dest, new, tolerance):
@@ -115,7 +144,7 @@ def save_if_changed(new: Path, dest: Path, tolerance: float = TOLERANCE) -> bool
 class Studio:
     """Drives the demo program to each view and hands back the widget to photograph."""
 
-    def __init__(self, home: Path, size: tuple[int, int], tv_size: tuple[int, int]) -> None:
+    def __init__(self, home: Path, size: tuple[int, int], tv_size: tuple[int, int], lang: str = "sv") -> None:
         os.environ["LOPANALYS_HOME"] = str(home)
         os.environ["LOPANALYS_NO_DOWNLOAD"] = "1"   # never reach the internet
         os.environ["LOPANALYS_KEY_DIR"] = str(home / "keys")   # the key for the demo password goes with the folder
@@ -132,8 +161,9 @@ class Studio:
         from lopanalys.ui import services
         services.analyze_video = lambda *a, **k: None
         services.model_ready = lambda: True
-        self.app, self.win = build(["--demo", "--fast", str(FAST), "--lang", "sv"])
+        self.app, self.win = build(["--demo", "--fast", str(FAST), "--lang", lang])
         self.tv_size = tv_size
+        self.lang = lang
         self.kind: str | None = None        # the test that is running now
         self.power_tests: dict[str, int] = {}   # simulated cycling and SkiErg tests saved for the result views
         self.extra: list[Any] = []          # dialogs to close at the end
@@ -435,6 +465,27 @@ class Studio:
         self._test("combined")
         return self._phase("lactate_pause").tv
 
+    def _with_lactate(self) -> Any:
+        """The running test a few stages in, with the lactate of the first stages typed in."""
+        from lopanalys.assessments.protocol import Phase
+        op = self._test("combined")
+        while len(op.ctl.lactate) < len(DEMO_LACTATE):
+            self._phase("lactate_pause", 90)
+            for key in DEMO_LACTATE[len(op.ctl.lactate)]:
+                op.pad.press(key)
+            op.pad.submit()
+            self.wait_until(lambda: op.ctl.state.phase != Phase.LACTATE_PAUSE, 60, "the next stage")
+        self._phase("running")
+        self.wait(2500)
+        return op
+
+    def operator_med_laktat(self) -> Any:
+        self._with_lactate()
+        return self.win
+
+    def tv_med_laktat(self) -> Any:
+        return self._with_lactate().tv
+
     def _plan(self) -> Any:
         """Träningsschema for the demo athlete with the form filled in and the plan previewed (fixed dates)."""
         self._end_test()
@@ -448,12 +499,13 @@ class Studio:
                                     (6, "120", "09:00")):
             v.minutes[day].setText(minutes)
             v.clocks[day].setText(clock)
-        v.goal_name.setText("Vårloppet halvmaraton")
+        goal, milestone = PLAN_GOAL[self.lang]
+        v.goal_name.setText(goal)
         v.goal_date.edit.setText("2027-05-22")
         v.goal_km.setText("21,1")
         v.goal_target.setText("under 1:45")
         row = v.add_milestone()
-        row.name.setText("Premiärmilen")
+        row.name.setText(milestone)
         row.date.edit.setText("2027-03-27")
         row.km.setText("10")
         v.start.edit.setText("2026-11-16")
@@ -723,19 +775,29 @@ def _technique_views(cls: type) -> None:
 _technique_views(Studio)
 
 
-def run(root: Path, names: list[str], everything: bool) -> int:
+def run(root: Path, names: list[str], everything: bool, only: str | None = None) -> int:
     cfg = load(root)
     shots = [s for s in cfg["shots"] if (s["view"] in names if names else
-                                         everything or not s.get("live") or not target(root, s).is_file())]
+                                         everything or not s.get("live") or not target(root, s).is_file())
+             and (only is None or lang(s) == only)]
     unknown = [n for n in names if n not in {s["view"] for s in cfg["shots"]}]
     if unknown:
         print(f"not in {CONFIG}: {', '.join(unknown)}")
         return 1
+    failed = 0
+    for language in LANGS:     # one start of the program per language, with fresh demo data
+        mine = [s for s in shots if lang(s) == language]
+        if mine:
+            failed += _run(root, cfg, mine, language)
+    return 1 if failed else 0
+
+
+def _run(root: Path, cfg: dict[str, Any], shots: list[dict[str, Any]], language: str) -> int:
     home = Path(tempfile.gettempdir()) / "lopanalys-docs-shots"   # a fixed path: it shows in Inställningar
     shutil.rmtree(home, ignore_errors=True)
     tmp = Path(tempfile.mkdtemp(prefix="docs-shots-"))
     failed = 0
-    studio = Studio(home, tuple(cfg.get("size", (1440, 900))), tuple(cfg.get("tv_size", (1920, 1080))))
+    studio = Studio(home, tuple(cfg.get("size", (1440, 900))), tuple(cfg.get("tv_size", (1920, 1080))), language)
     try:
         for shot in sorted(shots, key=lambda s: VIEWS.index(s["view"])):
             dest = target(root, shot)
@@ -745,18 +807,20 @@ def run(root: Path, names: list[str], everything: bool) -> int:
                 fresh = tmp / shot["file"]
                 if not widget.grab().save(str(fresh), "PNG"):
                     raise OSError("the image could not be saved")
+                if shot["page"] in ROOT_PAGES:
+                    shrink(fresh)
                 changed = save_if_changed(fresh, dest, float(shot.get("tolerance", TOLERANCE)))
                 print(("updated:   " if changed else "unchanged: ") + dest.relative_to(root).as_posix())
             except Exception as e:  # noqa: BLE001 - one failed view must not lose the others
                 failed += 1
-                print(f"FAILED:    {shot['view']}: {e}")
+                print(f"FAILED:    {shot['view']} ({language}): {e}")
     finally:
         try:
             studio.close()
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
             shutil.rmtree(home, ignore_errors=True)
-    return 1 if failed else 0
+    return failed
 
 
 def main(argv: list[str]) -> int:
@@ -771,7 +835,12 @@ def main(argv: list[str]) -> int:
     if bad:
         print("\n".join(bad))
         return 1
-    return run(ROOT, [a for a in argv if not a.startswith("--")], "--all" in argv)
+    only = argv[argv.index("--lang") + 1] if "--lang" in argv[:-1] else None
+    if only is not None and only not in LANGS:
+        print(f"unknown language '{only}': {', '.join(LANGS)}")
+        return 1
+    names = [a for i, a in enumerate(argv) if not a.startswith("--") and not (i and argv[i - 1] == "--lang")]
+    return run(ROOT, names, "--all" in argv, only)
 
 
 if __name__ == "__main__":
