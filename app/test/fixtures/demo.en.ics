@@ -1,0 +1,768 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Lopanalys//Training plan//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Training plan Exempel Löpare
+BEGIN:VEVENT
+UID:demo-2647-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261116T180000
+DTEND:20261116T182500
+SUMMARY:Recovery jog · 25 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 25 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261117T180000
+DTEND:20261117T183500
+SUMMARY:Easy run · 35 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 35 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261119T180000
+DTEND:20261119T184200
+SUMMARY:Fartlek · 42 min
+DESCRIPTION:Speed in a playful form: gets the body used to threshold pace w
+ ithout the wear of intervals.\n\nWarm-up: 10 min in Z2 (115–165 bpm · 4
+ :33 min/km or slower)\nIntervals: 6 × 2 min in Z4 (170–174 bpm · 4:21
+ –4:10 min/km)\, easy jog 2 min between\nCool-down: 10 min in Z2 (115–1
+ 65 bpm · 4:33 min/km or slower)\n\nPick up to threshold effort in the sur
+ ges and jog easily between them without stopping.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261121T090000
+DTEND:20261121T093000
+SUMMARY:Easy run · 30 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 30 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2647-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261122T090000
+DTEND:20261122T100500
+SUMMARY:Long run · 1 h 5 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 5 min in Z2 
+ (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too 
+ slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261123T180000
+DTEND:20261123T182500
+SUMMARY:Recovery jog · 25 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 25 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261124T180000
+DTEND:20261124T184000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261126T180000
+DTEND:20261126T184130
+SUMMARY:Hill repeats · 42 min
+DESCRIPTION:Strength and stride: power in the push-off with little impact o
+ n the legs.\n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slow
+ er)\nIntervals: 8 × 45 s in Z5 (174–192 bpm · 4:10 min/km or faster)\,
+  rest 90 s\nCool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slowe
+ r)\n\nAn even hill with a moderate slope. Strong uphill with a tall postur
+ e and short steps\, an easy jog down as rest.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261128T090000
+DTEND:20261128T093500
+SUMMARY:Easy run · 35 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 35 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2648-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261129T090000
+DTEND:20261129T101000
+SUMMARY:Long run · 1 h 10 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 10 min in Z2
+  (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too
+  slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261130T180000
+DTEND:20261130T182500
+SUMMARY:Recovery jog · 25 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 25 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261201T180000
+DTEND:20261201T184000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261203T180000
+DTEND:20261203T185200
+SUMMARY:Threshold intervals · 52 min
+DESCRIPTION:Moves the threshold up: you can hold a higher pace for longer.\
+ n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterva
+ ls: 4 × 6 min in Z4 (170–174 bpm · 4:21–4:10 min/km)\, rest 1 min\nC
+ ool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nJust be
+ low the threshold\, hard but controlled. You should be able to say a few w
+ ords and manage one more interval when you finish. Jog or walk in the rest
+ s.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261205T090000
+DTEND:20261205T093500
+SUMMARY:Easy run · 35 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 35 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2649-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261206T090000
+DTEND:20261206T101500
+SUMMARY:Long run · 1 h 15 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 15 min in Z2
+  (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too
+  slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261208T180000
+DTEND:20261208T183000
+SUMMARY:Easy run · 30 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 30 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261210T180000
+DTEND:20261210T183800
+SUMMARY:Fartlek · 38 min
+DESCRIPTION:Speed in a playful form: gets the body used to threshold pace w
+ ithout the wear of intervals.\n\nWarm-up: 10 min in Z2 (115–165 bpm · 4
+ :33 min/km or slower)\nIntervals: 5 × 2 min in Z4 (170–174 bpm · 4:21
+ –4:10 min/km)\, easy jog 2 min between\nCool-down: 10 min in Z2 (115–1
+ 65 bpm · 4:33 min/km or slower)\n\nPick up to threshold effort in the sur
+ ges and jog easily between them without stopping.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261212T090000
+DTEND:20261212T092500
+SUMMARY:Easy run · 25 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 25 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2650-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261213T090000
+DTEND:20261213T095500
+SUMMARY:Long run · 55 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 55 min in Z2 (11
+ 5–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too slo
+ w than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261214T180000
+DTEND:20261214T183000
+SUMMARY:Recovery jog · 30 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 30 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261215T180000
+DTEND:20261215T184500
+SUMMARY:Easy run · 45 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 45 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261217T180000
+DTEND:20261217T185000
+SUMMARY:Fartlek · 50 min
+DESCRIPTION:Speed in a playful form: gets the body used to threshold pace w
+ ithout the wear of intervals.\n\nWarm-up: 10 min in Z2 (115–165 bpm · 4
+ :33 min/km or slower)\nIntervals: 8 × 2 min in Z4 (170–174 bpm · 4:21
+ –4:10 min/km)\, easy jog 2 min between\nCool-down: 10 min in Z2 (115–1
+ 65 bpm · 4:33 min/km or slower)\n\nPick up to threshold effort in the sur
+ ges and jog easily between them without stopping.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261219T090000
+DTEND:20261219T094000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2651-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261220T090000
+DTEND:20261220T102000
+SUMMARY:Long run · 1 h 20 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 20 min in Z2
+  (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too
+  slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261221T180000
+DTEND:20261221T182500
+SUMMARY:Recovery jog · 25 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 25 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261222T180000
+DTEND:20261222T184800
+SUMMARY:Hard intervals · 48 min
+DESCRIPTION:Raises the maximal oxygen uptake\, the ceiling of your fitness.
+ \n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterv
+ als: 5 × 3 min in Z5 (174–192 bpm · 4:10 min/km or faster)\, rest 2 mi
+ n\nCool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nHar
+ d and even: the same pace in the first and the last interval. The heart ra
+ te reaches zone 5 only some way into the interval\, so go by pace and feel
+  at first.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261224T180000
+DTEND:20261224T185900
+SUMMARY:Threshold intervals · 59 min
+DESCRIPTION:Moves the threshold up: you can hold a higher pace for longer.\
+ n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterva
+ ls: 5 × 6 min in Z4 (170–174 bpm · 4:21–4:10 min/km)\, rest 1 min\nC
+ ool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nJust be
+ low the threshold\, hard but controlled. You should be able to say a few w
+ ords and manage one more interval when you finish. Jog or walk in the rest
+ s.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261226T090000
+DTEND:20261226T094000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2652-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261227T090000
+DTEND:20261227T102500
+SUMMARY:Long run · 1 h 25 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 25 min in Z2
+  (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too
+  slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261228T180000
+DTEND:20261228T184500
+SUMMARY:Recovery jog · 45 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 45 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261229T180000
+DTEND:20261229T185000
+SUMMARY:Hard intervals · 50 min
+DESCRIPTION:Raises the maximal oxygen uptake\, the ceiling of your fitness.
+ \n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterv
+ als: 4 × 4 min in Z5 (174–192 bpm · 4:10 min/km or faster)\, rest 3 mi
+ n\nCool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nHar
+ d and even: the same pace in the first and the last interval. The heart ra
+ te reaches zone 5 only some way into the interval\, so go by pace and feel
+  at first.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20261231T180000
+DTEND:20261231T184000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-sat-race@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART;VALUE=DATE:20270102
+DTEND;VALUE=DATE:20270103
+SUMMARY:Seedningslopp
+DESCRIPTION:10 km
+CATEGORIES:Training
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2653-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270103T090000
+DTEND:20270103T094500
+SUMMARY:Recovery jog · 45 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 45 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270105T180000
+DTEND:20270105T183000
+SUMMARY:Easy run · 30 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 30 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270107T180000
+DTEND:20270107T190000
+SUMMARY:Test at your coach · 1 h
+DESCRIPTION:Shows what the training has given and sets new zones. Every com
+ ing session gets new targets in heart rate and pace.\n\nWarm-up: 15 min in
+  Z2 (115–165 bpm · 4:33 min/km or slower)\nTest: 35 min\nCool-down: 10 
+ min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nCome rested: an easy
+  day before\, no hard training for two days\, the same food and drink as b
+ efore the last test.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2701-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270110T090000
+DTEND:20270110T100500
+SUMMARY:Long run · 1 h 5 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 5 min in Z2 
+ (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too 
+ slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270111T180000
+DTEND:20270111T183000
+SUMMARY:Recovery jog · 30 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 30 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270112T180000
+DTEND:20270112T185300
+SUMMARY:Hard intervals · 53 min
+DESCRIPTION:Raises the maximal oxygen uptake\, the ceiling of your fitness.
+ \n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterv
+ als: 6 × 3 min in Z5 (174–192 bpm · 4:10 min/km or faster)\, rest 2 mi
+ n\nCool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nHar
+ d and even: the same pace in the first and the last interval. The heart ra
+ te reaches zone 5 only some way into the interval\, so go by pace and feel
+  at first.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270114T180000
+DTEND:20270114T190300
+SUMMARY:Threshold intervals · 1 h 3 min
+DESCRIPTION:Moves the threshold up: you can hold a higher pace for longer.\
+ n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterva
+ ls: 4 × 8 min in Z4 (170–174 bpm · 4:21–4:10 min/km)\, rest 2 min\nC
+ ool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nJust be
+ low the threshold\, hard but controlled. You should be able to say a few w
+ ords and manage one more interval when you finish. Jog or walk in the rest
+ s.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270116T090000
+DTEND:20270116T094000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2702-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270117T090000
+DTEND:20270117T103000
+SUMMARY:Long run · 1 h 30 min
+DESCRIPTION:The key endurance session of the week: teaches the body to work
+  long on fat and strengthens muscles and tendons.\n\nRun: 1 h 30 min in Z2
+  (115–165 bpm · 4:33 min/km or slower)\n\nEasy all the way\, rather too
+  slow than too fast. Bring a drink on runs over an hour.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270118T180000
+DTEND:20270118T183500
+SUMMARY:Recovery jog · 35 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 35 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270119T180000
+DTEND:20270119T190500
+SUMMARY:Threshold intervals · 1 h 5 min
+DESCRIPTION:Moves the threshold up: you can hold a higher pace for longer.\
+ n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterva
+ ls: 3 × 12 min in Z4 (170–174 bpm · 4:21–4:10 min/km)\, rest 2 min\n
+ Cool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nJust b
+ elow the threshold\, hard but controlled. You should be able to say a few 
+ words and manage one more interval when you finish. Jog or walk in the res
+ ts.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270121T180000
+DTEND:20270121T184800
+SUMMARY:Fartlek · 48 min
+DESCRIPTION:Speed in a playful form: gets the body used to threshold pace w
+ ithout the wear of intervals.\n\nWarm-up: 10 min in Z2 (115–165 bpm · 4
+ :33 min/km or slower)\nIntervals: 6 × 3 min in Z4 (170–174 bpm · 4:21
+ –4:10 min/km)\, easy jog 2 min between\nCool-down: 10 min in Z2 (115–1
+ 65 bpm · 4:33 min/km or slower)\n\nPick up to threshold effort in the sur
+ ges and jog easily between them without stopping.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270123T090000
+DTEND:20270123T095000
+SUMMARY:Easy run · 50 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 50 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2703-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270124T090000
+DTEND:20270124T104000
+SUMMARY:Long run with a fast finish · 1 h 40 min
+DESCRIPTION:Gets the body used to race pace on tired legs.\n\nRun: 1 h 20 m
+ in in Z2 (115–165 bpm · 4:33 min/km or slower)\nRun: 20 min in Z3 (165
+ –170 bpm · 4:33–4:21 min/km)\n\nEasy like a normal long run\, and the
+  last 20 minutes in zone 3: brisk but controlled.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270125T180000
+DTEND:20270125T183500
+SUMMARY:Recovery jog · 35 min
+DESCRIPTION:Helps the body absorb yesterday's session. You should feel bett
+ er after than before.\n\nRun: 35 min in Z2 (115–165 bpm · 4:33 min/km o
+ r slower)\n\nShort and very easy\, in the lower part of zone 2. If the leg
+ s feel heavy: shorten the run or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270126T180000
+DTEND:20270126T190500
+SUMMARY:Threshold intervals · 1 h 5 min
+DESCRIPTION:Moves the threshold up: you can hold a higher pace for longer.\
+ n\nWarm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)\nInterva
+ ls: 3 × 12 min in Z4 (170–174 bpm · 4:21–4:10 min/km)\, rest 2 min\n
+ Cool-down: 10 min in Z2 (115–165 bpm · 4:33 min/km or slower)\n\nJust b
+ elow the threshold\, hard but controlled. You should be able to say a few 
+ words and manage one more interval when you finish. Jog or walk in the res
+ ts.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270128T180000
+DTEND:20270128T184800
+SUMMARY:Fartlek · 48 min
+DESCRIPTION:Speed in a playful form: gets the body used to threshold pace w
+ ithout the wear of intervals.\n\nWarm-up: 10 min in Z2 (115–165 bpm · 4
+ :33 min/km or slower)\nIntervals: 6 × 3 min in Z4 (170–174 bpm · 4:21
+ –4:10 min/km)\, easy jog 2 min between\nCool-down: 10 min in Z2 (115–1
+ 65 bpm · 4:33 min/km or slower)\n\nPick up to threshold effort in the sur
+ ges and jog easily between them without stopping.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-sat@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270130T090000
+DTEND:20270130T095000
+SUMMARY:Easy run · 50 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 50 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2704-sun@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270131T090000
+DTEND:20270131T104000
+SUMMARY:Long run with a fast finish · 1 h 40 min
+DESCRIPTION:Gets the body used to race pace on tired legs.\n\nRun: 1 h 20 m
+ in in Z2 (115–165 bpm · 4:33 min/km or slower)\nRun: 20 min in Z3 (165
+ –170 bpm · 4:33–4:21 min/km)\n\nEasy like a normal long run\, and the
+  last 20 minutes in zone 3: brisk but controlled.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-mon@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270201T180000
+DTEND:20270201T184500
+SUMMARY:Easy run · 45 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 45 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-tue@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270202T180000
+DTEND:20270202T183000
+SUMMARY:Pre-race session · 30 min
+DESCRIPTION:Keeps the speed awake without tiring you.\n\nWarm-up: 10 min in
+  Z2 (115–165 bpm · 4:33 min/km or slower)\nIntervals: 4 × 1 min in Z4 
+ (170–174 bpm · 4:21–4:10 min/km)\, rest 2 min\nCool-down: 10 min in Z
+ 2 (115–165 bpm · 4:33 min/km or slower)\n\nShort efforts at race feel w
+ ith long rests. You should want to run more when you finish.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-thu@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART:20270204T180000
+DTEND:20270204T184000
+SUMMARY:Easy run · 40 min
+DESCRIPTION:Builds endurance without wearing you down. Most of the training
+  should look like this.\n\nRun: 40 min in Z2 (115–165 bpm · 4:33 min/km
+  or slower)\n\nEven\, easy pace at which you can talk in full sentences. I
+ f the heart rate passes zone 2 on a hill: slow down or walk.
+CATEGORIES:Training
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:demo-2705-sat-race@lopanalys
+DTSTAMP:20261116T000000Z
+DTSTART;VALUE=DATE:20270206
+DTEND;VALUE=DATE:20270207
+SUMMARY:Stadsvarvet
+DESCRIPTION:21.1 km · under 1:35
+CATEGORIES:Training
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
