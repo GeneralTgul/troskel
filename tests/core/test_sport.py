@@ -78,7 +78,7 @@ def test_every_sport_has_its_own_protocols():
 
 
 def test_stage_text_follows_the_sport():
-    assert stage_text(12.0, 1.0) == "12,0 km/h · 1 %" == stage_text(12.0, 1.0, "run")
+    assert stage_text(12.0, 1.0) == "5:00 min/km (12,0 km/h) · 1 %" == stage_text(12.0, 1.0, "run")
     assert stage_text(200, 0, Sport.BIKE) == "200 W"
     assert stage_text(202.5, 0, "skierg") == "202 W · 2:00 /500 m"
 

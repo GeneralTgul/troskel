@@ -35,13 +35,14 @@ Bilden är från ett test som filmas (*Kombinerat*). Laktattrappan, maxpulsteste
 |---|---|
 | Kamerabilden | Idrottaren med skelettet och vinklarna ritade i bilden |
 | Ringen | Vilket steg som pågår och tiden kvar till nästa. Under ett laktatprov visar den tiden kvar av pausen |
-| *NÄSTA* | Nästa stegs fart, lutning och längd, och om ett laktatprov tas efter steget som pågår |
+| *NÄSTA* | Nästa stegs tempo (min/km) med km/h och lutning under, stegets längd, och om ett laktatprov tas efter steget som pågår |
 | *PULS* | Pulsen just nu. När idrottarens maxpuls är känd visas också zonen och procent av max |
-| *FART*, *LUTNING*, *KADENS* | Bandets värden och stegfrekvensen |
+| *FART*, *LUTNING*, *KADENS* | Bandets värden och stegfrekvensen. Farten står som tempo (min/km) med km/h under |
 | Rutorna under bilden | Löptekniken just nu, med grön, gul eller röd markering. Från sidan: översteg, underbenets vinkel, bålens lutning och studs |
-| Diagrammen | Pulsen under testet och laktatvärdena som skrivits in |
+| Uppe till höger | Sträckan på bandet hittills och testets totala tid |
+| Diagrammen | Pulsen under testet och laktatvärdena som skrivits in. Pulsskalan slutar vid idrottarens maxpuls, som står överst med en streckad linje |
 
-Inför varje byte visas en rad om vad som kommer, till exempel *Om 15 s: 9,5 km/h · 1 %*. Med ljudsignalen påslagen hörs korta pip de sista sekunderna före bytet.
+Inför varje byte visas en blå ruta som räknar ned till nästa steg: *NÄSTA STEG OM 12 S* och under det *6:19 min/km (9,5 km/h) · 1 %*. Texten i rutorna över bilden blir mindre och bryts på två rader hellre än att klippas, också på en TV med större skalning. Med ljudsignalen påslagen hörs korta pip de sista sekunderna före bytet.
 
 ### Två kameror
 
@@ -60,7 +61,7 @@ Två kameror på riktig hårdvara är *(inte provat på riktig hårdvara)*, se [
 
 ![Operatörssidan: samma bild och värden som TV:n till vänster, och korten Styrning, Laktat och Ansträngning till höger](images/operator.png)
 
-Till vänster ser du samma sak som idrottaren. Rubriken visar idrottaren, protokollet, hur bandet styrs och kameran, eller båda kamerorna. Märket uppe till höger visar läget: *Redo*, *Startar*, *Pågår*, *Laktatprov*, *Ställ in bandet*, *Pausat*, *Återhämtning*, *Klart* eller *Stoppat*.
+Till vänster ser du samma sak som idrottaren, och i ett löptest också rutan *STRÄCKA* med sträckan på bandet. Rubriken visar idrottaren, protokollet, hur bandet styrs och kameran, eller båda kamerorna. Märket uppe till höger visar läget: *Redo*, *Startar*, *Pågår*, *Laktatprov*, *Ställ in bandet*, *Pausat*, *Återhämtning*, *Klart* eller *Stoppat*.
 
 Kortet *Styrning*:
 
@@ -77,7 +78,7 @@ Kortet *Ansträngning (Borg 6–20)*: fråga *Hur ansträngande känns det just 
 
 ## Manuellt band
 
-När bandet är valt som *Manuellt* ställer du själv farten. Inför varje steg visar TV:n *Sätt bandet på 12,0 km/h* med lutningen under, och operatörssidan får knappen *Bandet står på 12,0 km/h*. Steget börjar när du trycker på den.
+När bandet är valt som *Manuellt* ställer du själv farten. Inför varje steg visar TV:n *Sätt bandet på 5:00 min/km (12,0 km/h) · 1 %*, och operatörssidan får knappen *Bandet står på 5:00 min/km (12,0 km/h)*. Steget börjar när du trycker på den.
 
 Det manuella läget är *(inte provat på riktig hårdvara)*, se [PROV.md](../../PROV.md#testerna-och-databasen).
 

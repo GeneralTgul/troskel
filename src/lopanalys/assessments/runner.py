@@ -28,7 +28,7 @@ live gait values of a technique test stopped half-way are not lost).
 stage ``k`` and its clock and samples go on from ``T`` seconds, so the records and samples saved
 before the cut can be joined with the new ones.
 
-Manual treadmills: before every change the TV shows "Sätt bandet på 12,0 km/h · 1 %" and the
+Manual treadmills: before every change the TV shows "Sätt bandet på 5:00 min/km (12,0 km/h) · 1 %" and the
 stage clock waits for ``operator_ready()``; 15 s before each change it says what comes next.
 If a controllable treadmill throws, the runner falls back to manual prompts rather than stopping.
 
@@ -121,11 +121,11 @@ class SystemClock:
 
 
 def stage_text(load: float, incline_pct: float, sport: Any = None) -> str:
-    """The target as shown on the TV: '12,0 km/h · 1 %' for running, else the load with the sport's
-    unit ('200 W'), and the pace where the sport has one ('200 W · 2:01 /500 m')."""
+    """The target as shown on the TV: the pace first for running ('5:00 min/km (12,0 km/h) · 1 %'),
+    else the load with the sport's unit ('200 W'), and the pace where the sport has one ('200 W · 2:01 /500 m')."""
     p = profile(sport)
     if p.sport is Sport.RUN:
-        return f"{fmt_kmh(load)} km/h · {fmt_pct(incline_pct)} %"
+        return f"{p.pace_str(load)} min/km ({fmt_kmh(load)} km/h) · {fmt_pct(incline_pct)} %"
     text = f"{p.load_str(load).replace('.', ',')} {p.load_unit}"
     return f"{text} · {p.pace_str(load)} {p.pace_unit}" if p.pace_unit else text
 

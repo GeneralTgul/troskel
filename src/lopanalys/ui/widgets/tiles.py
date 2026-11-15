@@ -103,7 +103,11 @@ class MetricTile(QWidget):
             p.drawRoundedRect(QRectF(track.left(), track.top(), track.width() * max(0.0, min(1.0, self.progress)),
                                      track.height()), track.height() / 2, track.height() / 2)
         if self.sub:
-            p.setFont(tf)
+            sf = QFont(tf)
+            sw = QFontMetricsF(sf).horizontalAdvance(self.sub)
+            if sw > avail:          # a long line under the value shrinks rather than being cut off
+                sf.setPixelSize(max(8, int(sf.pixelSize() * avail / sw)))
+            p.setFont(sf)
             p.setPen(theme.color("muted"))
             p.drawText(QRectF(x, base_y + prog_h, avail, sub_h),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom, self.sub)
@@ -214,13 +218,56 @@ class GaitTile(QWidget):
                    QFontMetricsF(sf).elidedText(line, Qt.TextElideMode.ElideRight, r.width() - 2 * pad))
 
 
+def wrap_text(text: str, fm: QFontMetricsF, width: float) -> list[str]:
+    """Greedy word wrap of ``text`` into lines no wider than ``width`` (a word wider than the width
+    gets a line of its own and is left too wide: the caller then picks a smaller font)."""
+    lines: list[str] = []
+    cur = ""
+    for word in text.split():
+        cand = f"{cur} {word}" if cur else word
+        if cur and fm.horizontalAdvance(cand) > width:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = cand
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def fit_text(text: str, weight: QFont.Weight, width: float, height: float, start_px: int,
+             max_lines: int = 2, min_px: int = 9, line_h: float = 1.18) -> tuple[QFont, list[str]]:
+    """The largest font (from ``start_px`` down) at which ``text`` fits in ``width`` x ``height``:
+    one line if it can at a readable size, else wrapped into up to ``max_lines``. Returns the font and
+    the lines; every line is then at most ``width`` wide (the prompt is never clipped)."""
+    px = max(min_px, int(start_px))
+    while True:
+        f = theme.font(px, weight)
+        fm = QFontMetricsF(f)
+        for n in range(1, max_lines + 1):
+            lines = [text] if n == 1 else wrap_text(text, fm, width)
+            if (len(lines) <= n and len(lines) * px * line_h <= height + 0.5
+                    and all(fm.horizontalAdvance(ln) <= width for ln in lines)):
+                # one line only at 85 % of the size that would fill the height, else two lines
+                if n == 1 or len(lines) > 1:
+                    return f, lines
+        if px <= min_px:
+            return f, wrap_text(text, fm, width) or [text]
+        px = max(min_px, int(px * 0.93))
+
+
 class PromptBanner(QWidget):
-    """Big prompt across the video ('Ta laktatprov', 'Sätt bandet på 12,0 km/h'); can flash."""
+    """Big prompt across the video ('Ta laktatprov', 'Sätt bandet på 5:00 min/km'); can flash.
+
+    ``kicker`` is a small line above the prompt ("NÄSTA STEG OM 12 S"), ``sub`` a smaller line
+    below it. Every line is fitted to the banner: the font shrinks, and the prompt wraps onto a
+    second line, before anything would be cut off (``layout()``, which the tests read too)."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.text = ""
         self.sub = ""
+        self.kicker = ""
         self.icon = ""
         self.colour = "watch"
         self._on = True
@@ -231,9 +278,9 @@ class PromptBanner(QWidget):
         self.hide()
 
     def show_prompt(self, text: str, sub: str = "", colour: str = "watch", icon: str = "",
-                    flash: bool = False) -> None:
+                    flash: bool = False, kicker: str = "") -> None:
         changed = (text, sub, colour, flash) != (self.text, self.sub, self.colour, self._flash)
-        self.text, self.sub, self.colour, self.icon = text, sub, colour, icon
+        self.text, self.sub, self.colour, self.icon, self.kicker = text, sub, colour, icon, kicker
         if changed:
             self._flash = flash
             self._on = True
@@ -248,40 +295,82 @@ class PromptBanner(QWidget):
     def clear(self) -> None:
         self._timer.stop()
         self.text = ""
+        self.kicker = ""
         self.hide()
 
     def _tick(self) -> None:
         self._on = not self._on
         self.update()
 
+    def layout(self) -> dict[str, Any]:
+        """Where everything goes: {"box", "icon", "lines": [(font, text, QRectF)]}. Each line's
+        rectangle lies inside the box and is at least as wide as its text."""
+        r = QRectF(self.rect()).adjusted(2, 2, -2, -2)
+        h = r.height()
+        pad = max(8.0, min(h * 0.2, r.width() * 0.035))
+        x = r.left() + pad
+        icon = None
+        if self.icon:
+            sz = max(16.0, min(h * 0.42, r.width() * 0.09))
+            icon = QRectF(x, r.center().y() - sz / 2, sz, sz)
+            x += sz + pad * 0.8
+        w = max(10.0, r.right() - pad - x)
+        inner = h - 2 * pad * 0.7
+        # the share of the height for each part; the prompt gets what is left
+        k_h = inner * 0.24 if self.kicker else 0.0
+        s_h = inner * 0.3 if self.sub else 0.0
+        t_h = inner - k_h - s_h
+        out: list[tuple[QFont, str, QRectF]] = []
+        parts = []
+        if self.kicker:
+            parts.append((self.kicker.upper(), QFont.Weight.Bold, k_h, 1))
+        parts.append((self.text, QFont.Weight.Bold, t_h, 2))
+        if self.sub:
+            parts.append((self.sub, QFont.Weight.DemiBold, s_h, 2))
+        fitted = []
+        for text, weight, part_h, n in parts:
+            f, lines = fit_text(text, weight, w, part_h, int(part_h / 1.18 if n == 1 or part_h < 40 else part_h / 1.3),
+                                max_lines=n)
+            fitted.append((f, lines))
+        # centre the block vertically
+        line_h = [f.pixelSize() * 1.18 for f, _ in fitted]
+        total = sum(lh * len(lines) for lh, (_, lines) in zip(line_h, fitted))
+        y = r.top() + max(pad * 0.4, (h - total) / 2)
+        for (f, lines), lh in zip(fitted, line_h):
+            for ln in lines:
+                out.append((f, ln, QRectF(x, y, w, lh)))
+                y += lh
+        return {"box": r, "icon": icon, "lines": out}
+
     def paintEvent(self, _e: Any) -> None:
         if not self.text:
             return
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(2, 2, -2, -2)
+        lay = self.layout()
+        r = lay["box"]
         c = theme.color(self.colour)
         bg = QColor(c) if self._on else QColor(c).darker(170)
-        bg.setAlpha(240)
+        bg.setAlpha(238)
         path = QPainterPath()
-        path.addRoundedRect(r, r.height() * 0.2, r.height() * 0.2)
+        rad = min(r.height() * 0.18, 22.0)
+        path.addRoundedRect(r, rad, rad)
         p.fillPath(path, bg)
         fg = theme.color("ink") if self.colour in ("watch", "good") else QColor("#FFFFFF")
-        h = r.height()
-        x = r.left() + h * 0.35
-        if self.icon:
-            sz = int(h * 0.5)
-            p.drawPixmap(int(x), int(r.center().y() - sz / 2), theme.pixmap(self.icon, fg.name(), sz))
-            x += sz + h * 0.25
-        f = theme.font(int(h * (0.36 if self.sub else 0.45)), QFont.Weight.Bold)
-        p.setFont(f)
-        p.setPen(fg)
-        if self.sub:
-            p.drawText(QRectF(x, r.top() + h * 0.1, r.right() - x - h * 0.3, h * 0.52),
-                       Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.text)
-            p.setFont(theme.font(int(h * 0.18), QFont.Weight.DemiBold))
-            p.drawText(QRectF(x, r.top() + h * 0.58, r.right() - x - h * 0.3, h * 0.3),
-                       Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.sub)
-        else:
-            p.drawText(QRectF(x, r.top(), r.right() - x, h), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                       self.text)
+        if lay["icon"] is not None:
+            ir = lay["icon"]
+            ring = QColor(fg)
+            ring.setAlpha(40)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(ring)
+            p.drawEllipse(ir.adjusted(-ir.width() * 0.18, -ir.width() * 0.18, ir.width() * 0.18, ir.width() * 0.18))
+            sz = int(ir.width() * 0.72)
+            p.drawPixmap(int(ir.center().x() - sz / 2), int(ir.center().y() - sz / 2), theme.pixmap(self.icon, fg.name(), sz))
+        kick = self.kicker.upper() if self.kicker else None
+        for f, text, rect in lay["lines"]:
+            p.setFont(f)
+            col = QColor(fg)
+            if kick is not None and text == kick:
+                col.setAlpha(200)
+            p.setPen(col)
+            p.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)

@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Iterable
 
 from lopanalys.core.sport import DEFAULT_SPORT, Sport, sport_of
 
@@ -163,3 +163,21 @@ class TimeSample:
     def load(self) -> float | None:
         """The load at this moment in the unit of the test's sport (km/h for running)."""
         return self.speed_kmh
+
+
+MAX_SAMPLE_GAP_S = 5.0     # a longer gap between two samples adds no distance (the belt may have stood still)
+
+
+def distance_m(samples: Iterable["TimeSample"], until_s: float | None = None) -> float:
+    """The distance run on the belt in metres: the belt speed integrated over the samples (trapezoids),
+    up to ``until_s`` if given. Gaps longer than ``MAX_SAMPLE_GAP_S`` count nothing."""
+    total, prev = 0.0, None
+    for x in samples:
+        if until_s is not None and x.t_s > until_s:
+            break
+        if prev is not None and x.speed_kmh is not None and prev.speed_kmh is not None:
+            dt = x.t_s - prev.t_s
+            if 0 < dt <= MAX_SAMPLE_GAP_S:
+                total += (x.speed_kmh + prev.speed_kmh) / 2 / 3.6 * dt
+        prev = x
+    return total
