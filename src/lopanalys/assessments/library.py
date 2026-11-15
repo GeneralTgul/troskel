@@ -12,8 +12,8 @@ Protocol choices follow common exercise-physiology lab practice:
   - Max HR ramp: thorough warm-up, then a short ramp (incline +1 %/min at constant speed, or
     +0.5 km/h per 30 s) to volitional exhaustion in about 8-12 min, optional final sprint.
   - Combined: lactate steps, then straight into the ramp (one visit gives LT1, LT2 and max HR).
-  - Heart rate and speed zones (no lactate): 4-5 steps of 4 min without pauses, the last one a
-    little below the estimated threshold so that the heart rate settles in every step, then
+  - Heart rate and speed zones (no lactate): 4-5 steps of 3 min (4 min can be chosen) without
+    pauses, the last one a little below the estimated threshold so that the heart rate settles in every step, then
     straight into a speed ramp (+0.5 km/h per minute) to exhaustion. Constant 1 % incline.
   - Gait check: 2-3 speeds x 120 s, recorded on video: the stride settles after the speed change,
     and there are more steps to analyse.
@@ -230,17 +230,24 @@ def _overflow_text(mode: str) -> str:
     return t("assessments.desc.overflow_incline", step=fmt_pct(Protocol.overflow_incline_pct))
 
 
+# The zones test's steps: 3 min is enough for the heart rate to settle below the threshold (the steady
+# value is the mean of the last minute, hr_zones.STEADY_WINDOW_S) and keeps the test short; 4 min can be
+# chosen. Changed from 4 min and a 10 min warm-up after a test on the treadmill (2026-11-15).
+HR_ZONES_STAGE_S = 180.0
+HR_ZONES_WARMUP_S = 360.0
+
+
 def hr_zones_start_for(level: str | None = None, estimated_lt2_kmh: float | None = None,
                         step_kmh: float = 1.0, stages: int = 5) -> float:
     """Start speed so that the last steady step lands half a km/h below the estimated threshold:
-    above it the heart rate does not settle in four minutes."""
+    above it the heart rate does not settle in a step."""
     lt2 = estimated_lt2_kmh if estimated_lt2_kmh else LEVELS.get(level or "recreational", 12.5)
     return max(6.0, _round_half(lt2 - 0.5 - (stages - 1) * step_kmh))
 
 
-def hr_zones(start_kmh: float, step_kmh: float = 1.0, stages: int = 5, stage_s: float = 240,
+def hr_zones(start_kmh: float, step_kmh: float = 1.0, stages: int = 5, stage_s: float = HR_ZONES_STAGE_S,
              incline_pct: float = 1.0, *, ramp_step_s: float = 60, ramp_speed_step_kmh: float = 0.5,
-             warmup_s: float = 600, warmup_kmh: float | None = None,
+             warmup_s: float = HR_ZONES_WARMUP_S, warmup_kmh: float | None = None,
              limits: TreadmillLimits = DEFAULT_LIMITS) -> Protocol:
     """Heart rate and speed zones without lactate: steady steps, then a speed ramp to exhaustion.
 
