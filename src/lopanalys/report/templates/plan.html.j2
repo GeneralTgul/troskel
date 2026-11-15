@@ -57,7 +57,7 @@
 </figure>
 
 <div class="cover-zones">
-  <div class="cz-head"><b>{{ t("plan.pdf.zones.title") }}</b><span>{{ t("plan.pdf.zones.estimated" if zones_estimated else ("plan.pdf.zones.sub" if has_targets else "plan.pdf.zones.none")) }}</span></div>
+  <div class="cz-head"><b>{{ t("plan.pdf.zones.title") }}</b><span>{{ zones_sub }}</span></div>
   <div class="cz-bar" style="grid-template-columns: repeat({{ zones | length }}, 1fr)">
     {% for z in zones %}
     <div class="cz">
@@ -93,7 +93,7 @@
   </table>
 
   <div class="block">
-  <h3 class="keep">{{ t("plan.pdf.zones.title") }}<span class="sub">{{ t("plan.pdf.zones.estimated" if zones_estimated else ("plan.pdf.zones.sub" if has_targets else "plan.pdf.zones.none")) }}</span></h3>
+  <h3 class="keep">{{ t("plan.pdf.zones.title") }}<span class="sub">{{ zones_sub }}</span></h3>
   <table class="zones-table">
     <thead><tr><th class="first">{{ t("report.col.zone") }}</th>{% if has_targets %}<th class="n">{{ t("report.col.hr") }}</th><th class="n last">{{ t("report.col.pace") }}</th>{% endif %}</tr></thead>
     <tbody>

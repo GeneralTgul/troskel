@@ -1372,11 +1372,13 @@ def send_test_mail(cfg: Any, to: str | None = None) -> None:
 
 def mailed_text(session: Session | None) -> str:
     """"Skickat till idrottaren ..." for the latest time the test was mailed, or ""."""
-    from datetime import datetime
     sent = (session.result or {}).get("mailed") if session else None
-    if not sent:
-        return ""
-    last = sent[-1]
+    return _sent_line(sent[-1]) if sent else ""
+
+
+def _sent_line(last: dict[str, Any]) -> str:
+    """One mailing {"at", "what"} as "Skickat till idrottaren 2026-11-15 14:02: rapporten + FIT-filen"."""
+    from datetime import datetime
     try:
         when = datetime.fromisoformat(last["at"]).astimezone().strftime("%Y-%m-%d %H:%M")
     except (KeyError, ValueError, TypeError):
@@ -1389,7 +1391,7 @@ def mailed_text(session: Session | None) -> str:
 # Training plan
 # =============================================================================================
 
-PLAN_TEST_KINDS = (TestKind.LACTATE_STEP, TestKind.MAX_HR)
+PLAN_TEST_KINDS = (TestKind.LACTATE_STEP, TestKind.MAX_HR, TestKind.HR_ZONES)
 HEALTH_ITEMS = ("asked", "cleared", "advice")   # the boxes of the health declaration, i18n ui.plan.health.<item>
 HEALTH_VALID_DAYS = 365
 
@@ -1405,13 +1407,13 @@ class StoredPlan:
 
 
 def plan_test_ok(s: Session) -> bool:
-    """True for a test a plan can be built on: a running lactate or max HR test. The plans are built for
+    """True for a test a plan can be built on: a running lactate, max HR or zones test. The plans are built for
     running (plan.models.RUNNING); a test in another sport has other zones and never moves them."""
     return s.kind in PLAN_TEST_KINDS and sport_of(s.sport) is DEFAULT_SPORT
 
 
 def plan_tests(store: Store, athlete_id: int) -> list[Session]:
-    """The tests a plan can be built on: running lactate and max HR tests that were not cut off, newest first."""
+    """The tests a plan can be built on: running lactate, max HR and zones tests that were not cut off, newest first."""
     return [s for s in store.history(athlete_id)
             if plan_test_ok(s) and getattr(s, "status", "finished") in ("finished", "stopped")]
 
@@ -1419,7 +1421,13 @@ def plan_tests(store: Store, athlete_id: int) -> list[Session]:
 def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> Any:
     """What the athlete can do, for the plan: the anchors of ``session`` as the result page computes them
     (saved threshold methods; the athlete's known max HR before the test's peak). Without a test: the
-    athlete's max HR alone (estimated zones), or nothing."""
+    athlete's max HR alone (estimated zones), or nothing.
+
+    A zones test (Puls- och fartzoner) gives the max HR of its ramp and the relation heart rate ->
+    speed of its steps, so the estimated zones get a pace. Its peak counts as a max HR only when the
+    athlete ran to the limit in the ramp (the rule of the result page and the collected report): a
+    test stopped in the steady steps leaves the max HR to the athlete's saved value."""
+    from lopanalys.plan import resolve
     from lopanalys.plan.models import RUNNING, Capacity
     if session is None or session.id is None:
         if athlete.max_hr:
@@ -1429,8 +1437,15 @@ def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> An
     warm = {i for i, st in enumerate((session.protocol or {}).get("stages", [])) if st.get("is_warmup")}
     records = [r for r in store.records(session.id) if r.index not in warm]
     age = (session.started.date() - athlete.birth_date).days / 365.25 if athlete.birth_date else None
-    mv = analyze_max_hr(store.samples(session.id), records, res.get("exhaustion_t_s"), age)
+    samples = store.samples(session.id)
+    mv = analyze_max_hr(samples, records, res.get("exhaustion_t_s"), age)
     peak = (mv.peak if mv else None) or max((r.hr_end or 0 for r in records), default=0) or None
+    line = None
+    if session.kind == TestKind.HR_ZONES:
+        rel = analyze_hr_speed(records, samples, session.protocol, res.get("exhaustion_t_s"))
+        line = resolve.speed_line(rel)
+        if res.get("exhaustion_t_s") is None or rel is None or not rel.ramp_reached:
+            peak = None                     # a stop in the steady steps is not a max
     mx = athlete.max_hr or peak
     lv = analyze_lactate(records, res.get("lt1_method"), res.get("lt2_method"), mx)
     a = _anchors(lv if lv is not None and lv.lt2 else None, mx, athlete.resting_hr)
@@ -1438,7 +1453,7 @@ def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> An
     if not (a.max_hr or a.has_thresholds):
         return Capacity(RUNNING, None, tested, session.protocol_name)
     # without the lactate curve: what is stored and read back is the same as what was built on
-    return Capacity(RUNNING, dataclass_replace(a, source=None), tested, session.protocol_name)
+    return Capacity(RUNNING, dataclass_replace(a, source=None), tested, session.protocol_name, line)
 
 
 def load_plan(store: Store, athlete: Athlete) -> StoredPlan | None:
@@ -1487,7 +1502,7 @@ def health_valid(health: dict[str, Any] | None, today: date | None = None) -> bo
 
 
 def retest_candidate(store: Store, athlete: Athlete, stored: StoredPlan | None = None) -> Session | None:
-    """The athlete's newest lactate or max HR test when it is newer than the test the saved plan is
+    """The athlete's newest lactate, max HR or zones test when it is newer than the test the saved plan is
     built on; None when there is no plan or nothing newer."""
     stored = stored or load_plan(store, athlete)
     if stored is None or athlete.id is None:
@@ -1530,3 +1545,20 @@ def render_plan(plan: Any, branding: dict[str, Any]) -> str:
 def plan_ics(plan: Any) -> bytes:
     from lopanalys.plan import ics
     return ics.to_ics(plan).encode("utf-8")
+
+
+def plan_mail_greeting(athlete: Athlete, plan: Any, branding: dict[str, Any]) -> tuple[str, str]:
+    """(subject, body) of the mail with the training plan (share.mail.plan_greeting)."""
+    from lopanalys.share import mail
+    return mail.plan_greeting(athlete.first_name, plan.start.isoformat(), len(plan.weeks),
+                              branding.get("coach") or "", branding.get("business") or "")
+
+
+def plan_mailed_text(store: Store, stored: StoredPlan | None) -> str:
+    """"Skickat till idrottaren ..." for the latest time the saved plan was mailed, or ""."""
+    if stored is None or stored.row_id is None:
+        return ""
+    sent = [e for e in store.db.plan_events(stored.row_id) if e["kind"] == "mailed"]
+    if not sent:
+        return ""
+    return _sent_line({"at": sent[-1]["at"], "what": sent[-1]["detail"].get("what", [])})

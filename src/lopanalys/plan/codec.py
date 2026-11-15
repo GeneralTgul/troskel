@@ -6,7 +6,7 @@ The athlete's name is not part of the stored request: the caller passes it in wh
 the name lives in one place (the athlete's row).
 
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
-default zone system, which needs the thresholds only.
+default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
 from __future__ import annotations
 
@@ -16,10 +16,11 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 
-from .models import Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, Week, Workout
+from .models import Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, Week, Workout
 
 FORMAT = 1
 _ANCHOR_FIELDS = tuple(f.name for f in fields(Anchors) if f.name != "source")
+_LINE_FIELDS = tuple(f.name for f in fields(SpeedLine))
 # Plans saved before the sport keys came from core.sport called running "running".
 _OLD_SPORT = {"running": "run"}
 
@@ -42,14 +43,19 @@ def _pt(v: str | None) -> time | None:
 
 def capacity_to_dict(c: Capacity) -> dict[str, Any]:
     anchors = None if c.anchors is None else {k: getattr(c.anchors, k) for k in _ANCHOR_FIELDS}
-    return {"sport": c.sport, "anchors": anchors, "tested": _d(c.tested), "source": c.source}
+    d = {"sport": c.sport, "anchors": anchors, "tested": _d(c.tested), "source": c.source}
+    if c.speed_line is not None:       # only a zones test has one: older plans are stored without the key
+        d["speed_line"] = {k: getattr(c.speed_line, k) for k in _LINE_FIELDS}
+    return d
 
 
 def capacity_from_dict(d: dict[str, Any]) -> Capacity:
     a = d.get("anchors")
     anchors = None if a is None else Anchors(**{k: _sport(a[k]) if k == "sport" else a.get(k)
                                                 for k in _ANCHOR_FIELDS if k in a or k != "sport"})
-    return Capacity(_sport(d["sport"]), anchors, _pd(d.get("tested")), d.get("source", ""))
+    ln = d.get("speed_line")
+    line = None if not ln else SpeedLine(**{k: ln[k] for k in _LINE_FIELDS if k in ln})
+    return Capacity(_sport(d["sport"]), anchors, _pd(d.get("tested")), d.get("source", ""), line)
 
 
 def _goal_to_dict(g: Goal) -> dict[str, Any]:

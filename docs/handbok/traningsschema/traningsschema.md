@@ -1,15 +1,17 @@
 # Träningsschema
 
-*Bygga ett träningsschema på ett test, spara det på idrottaren, skriva ut det och ge idrottaren passen som kalenderfil. Tillbaka till [handboken](../handbok.md).*
+*Bygga ett träningsschema på ett test, spara det på idrottaren, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
 
 <!-- toc -->
 ## Innehåll
 
 - [Öppna träningsschemat](#öppna-träningsschemat)
 - [Fyll i formuläret](#fyll-i-formuläret)
+  - [Vad testet ger schemat](#vad-testet-ger-schemat)
 - [Förhandsvisa schemat](#förhandsvisa-schemat)
 - [Hälsodeklarationen](#hälsodeklarationen)
 - [Spara och lämna ut](#spara-och-lämna-ut)
+  - [Skicka schemat med e-post](#skicka-schemat-med-e-post)
 - [Efter ett nytt test](#efter-ett-nytt-test)
 - [Det som inte är provat](#det-som-inte-är-provat)
 <!-- /toc -->
@@ -19,9 +21,9 @@
 Sidan *Träningsschema* gäller en idrottare i taget och öppnas på två sätt:
 
 - **Från *Idrottare*:** välj idrottaren och tryck *Träningsschema* överst i formuläret.
-- **Från ett resultat:** raden under rubriken på ett laktat- eller maxpulstest har knappen *Träningsschema*. Schemat byggs då på det testet.
+- **Från ett resultat:** raden under rubriken på ett laktattest, ett maxpulstest och testet *Puls- och fartzoner* har knappen *Träningsschema*. Schemat byggs då på det testet.
 
-Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det senaste laktat- eller maxpulstestet är valt. *Tillbaka* går till sidan du kom från.
+Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det senaste av de tre testerna är valt. *Tillbaka* går till sidan du kom från.
 
 ![Sidan Träningsschema: formuläret till vänster och översikten över schemat till höger](images/traningsschema.png)
 
@@ -40,6 +42,16 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | | *Startdatum* | Schemat börjar första måndagen från och med datumet. Tomt betyder i dag |
 
 Datum skrivs som `2027-05-22` eller väljs i kalendern bredvid fältet.
+
+### Vad testet ger schemat
+
+| Test | Puls i zonerna | Fart i zonerna |
+|---|---|---|
+| Laktattest | Ur trösklarna | Ur trösklarna, bara där testet mätte |
+| Maxpulstest | Uppskattad ur maxpulsen | Ingen |
+| *Puls- och fartzoner* | Uppskattad ur maxpulsen från trappan till max | Ur sambandet mellan puls och fart i stegen. *≈* framför en fart betyder att den ligger lite utanför stegen. Längre ut anges ingen fart |
+
+Maxpulsen är den högsta pulsen som medel över 5 sekunder. Har idrottaren en sparad maxpuls används den i stället. Ett zontest som avbröts i stegen, innan trappan till max hann gå en minut, eller som slutade utan *Utmattad*, ger ingen maxpuls: då bygger zonerna på idrottarens sparade maxpuls, och utan en sådan får schemat bara zon och ansträngning. Farten ur stegen gäller ändå.
 
 ![Nedre delen av formuläret: målet, delmålet, startdatumet och hälsodeklarationen](images/mal-och-halsodeklaration.png)
 
@@ -64,7 +76,7 @@ Sist i formuläret finns tre rutor. Gå igenom dem med idrottaren:
 2. inget av svaren hindrar träningen, eller så har en läkare sagt ja till den,
 3. idrottaren vet att schemat är ett träningsråd och inte sjukvård.
 
-**Alla tre måste vara ibockade innan schemat skrivs ut, sparas som PDF eller som kalenderfil.** Annars säger programmet till och lämnar inte ut något. Förhandsvisa och spara går utan rutorna. Datumet för deklarationen sparas med schemat, och efter 12 månader är rutorna tomma igen.
+**Alla tre måste vara ibockade innan schemat skrivs ut, sparas som PDF eller som kalenderfil, eller skickas till idrottaren.** Annars säger programmet till och lämnar inte ut något. Förhandsvisa och spara går utan rutorna. Datumet för deklarationen sparas med schemat, och efter 12 månader är rutorna tomma igen.
 
 ## Spara och lämna ut
 
@@ -74,20 +86,29 @@ Sist i formuläret finns tre rutor. Gå igenom dem med idrottaren:
 | *Skriv ut* | Skriver ut schemat på den skrivare du väljer |
 | *Spara PDF* | Sparar utskriften som PDF |
 | *Kalenderfil* | Sparar passen som en `.ics`-fil som idrottaren öppnar i telefonens kalender. En ny import av ett ändrat schema skriver över passen i stället för att dubblera dem |
+| *Skicka till idrottaren* | Mejlar PDF:en och kalenderfilen till idrottarens adress, se [Skicka schemat med e-post](#skicka-schemat-med-e-post) |
 | *Avbryt* | Tar tillbaka formuläret till det sparade schemat |
 | *Ta bort schemat* | Tar bort schemat. Testerna ligger kvar |
 
-*Skriv ut*, *Spara PDF* och *Kalenderfil* sparar alltid schemat först, så att det idrottaren får är det som finns i programmet. Lämnar du sidan med osparade ändringar frågar programmet om de ska kastas.
+*Skriv ut*, *Spara PDF*, *Kalenderfil* och *Skicka till idrottaren* sparar alltid schemat först, så att det idrottaren får är det som finns i programmet. Lämnar du sidan med osparade ändringar frågar programmet om de ska kastas.
 
 Ett sparat schema ändras inte av att det öppnas, och inte av en ny programversion. Det byggs om först när du ändrar något i formuläret och sparar.
 
 **Om uppgifterna:** schemat sparas i databasen på idrottaren och tas bort när idrottaren tas bort. Det följer med i *Exportera allt*. PDF:en och kalenderfilen innehåller idrottarens namn, och programmet kommer ihåg var de sparades så att raderingen hittar dem.
 
+### Skicka schemat med e-post
+
+*Skicka till idrottaren* använder samma e-postkonto och samma fråga som när resultatet skickas, se [Skicka till idrottaren](../resultat/resultat.md#skicka-till-idrottaren). Knappen är grå, med skälet bredvid, när idrottaren saknar e-postadress, inte har kryssat i *Kontakt om uppföljning* i samtycket eller när e-posten inte är inställd under *Inställningar → E-post*.
+
+Innan något skickas visar programmet adressen, de två bilagorna (`traningsschema-<startdatum>.pdf` och `.ics`), ämnet och texten. Ämnet är *Ditt träningsschema från* företaget eller coachen. Texten säger hur kalenderfilen öppnas i en iPhone och i en Android-telefon, och går att ändra. Mejlet går iväg först när du trycker *Skicka*.
+
+Efteråt står det bredvid knappen när schemat senast skickades. Programmet antecknar tiden och vad som skickades i schemats logg, aldrig adressen. PDF:en som mejlas sparas inte på datorn.
+
 ## Efter ett nytt test
 
 Schemat anger varje pass i en zon. Pulsen och farten räknas ur testet. Rättar du ett laktatvärde i testet som schemat bygger på följer målen med nästa gång schemat öppnas.
 
-När idrottaren har gjort ett nytt laktat- eller maxpulstest erbjuder programmet att lägga om schemat, på två ställen:
+När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest erbjuder programmet att lägga om schemat, på två ställen:
 
 - **På resultatet av det nya testet:** raden under rubriken säger att idrottaren har ett schema som bygger på ett äldre test, med knappen *Lägg om schemat*.
 - **På sidan *Träningsschema*:** en gul rad överst säger att det finns ett nyare test, med samma knapp.
@@ -102,4 +123,4 @@ Skriv ut schemat igen eller spara en ny kalenderfil efteråt, så får idrottare
 
 ## Det som inte är provat
 
-Utskriften på en riktig skrivare och kalenderfilen i en telefon är inte provade än. Läget står i [PROV.md](../../PROV.md).
+Utskriften på en riktig skrivare, kalenderfilen i en telefon och schemat med e-post till en riktig inkorg är inte provade än. Läget står i [PROV.md](../../PROV.md).

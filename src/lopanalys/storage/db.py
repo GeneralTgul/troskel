@@ -1342,6 +1342,15 @@ class Database:
                 "plan": json.loads(r["plan_json"]), "health": json.loads(r["health_json"]),
                 "created": r["created"], "updated": r["updated"]}
 
+    def log_plan_event(self, plan_id: int, kind: str, detail: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Add ``kind`` to the plan's log without changing the plan (e.g. "mailed": what was attached,
+        never the address). Returns the entry as plan_events() gives it."""
+        entry = {"at": _now(), "kind": kind, "detail": dict(detail or {})}
+        with self.transaction() as c:
+            c.execute("INSERT INTO plan_events (plan_id,at,kind,detail_json) VALUES (?,?,?,?)",
+                      (plan_id, entry["at"], kind, _jd(entry["detail"])))
+        return entry
+
     def plan_events(self, plan_id: int) -> list[dict[str, Any]]:
         """The plan's log, oldest first: [{"at", "kind", "detail"}]."""
         return [{"at": r["at"], "kind": r["kind"], "detail": json.loads(r["detail_json"])}
