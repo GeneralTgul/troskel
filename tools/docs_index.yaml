@@ -7,6 +7,7 @@
 Handbok:
   handbok/handbok.md: För den som kör testerna, från start av programmet till utskriven rapport.
 Programmet:
+  app/app.md: Appen för idrottaren: schemat från coachen i telefonen, utan server och utan konto.
   ARKITEKTUR.md: Vad programmet gör, tekniken, modulerna och reglerna i koden.
   PROV.md: Proven som kräver riktig hårdvara, och vilka som är gjorda.
 Underlag:

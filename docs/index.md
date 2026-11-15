@@ -22,6 +22,7 @@
 
 ## Programmet
 
+- [Appen för idrottaren](app/app.md): Appen för idrottaren: schemat från coachen i telefonen, utan server och utan konto.
 - [Arkitektur](ARKITEKTUR.md): Vad programmet gör, tekniken, modulerna och reglerna i koden.
 - [Prov som väntar på hårdvara](PROV.md): Proven som kräver riktig hårdvara, och vilka som är gjorda.
 
