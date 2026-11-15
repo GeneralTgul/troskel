@@ -33,7 +33,7 @@ Uppvärmningen och steg 1 har samma lutning. Tabellen *Så blir testet* visar fa
 
 Testet har inget sista steg. Det fortsätter tills du trycker på *Utmattad* eller idrottaren stoppar bandet på panelen, och raden under tabellen säger *fortsätter tills idrottaren är utmattad*.
 
-Under tabellen står hur länge trappan går från steg 1 tills bandet når sin högsta lutning och sin högsta fart, till exempel *Från steg 1 når trappan bandets högsta lutning (12 %) efter 11 min, högsta farten (18,0 km/h) efter 23 min*.
+Under tabellen står vad trappan gör vid bandets gränser, till exempel *Trappan ökar 1 % varje minut till bandets högsta lutning (12 %) och sedan 0,5 km/h varje minut till högsta farten (18,0 km/h).* Bandets gränser: se [Bandets högsta fart och lutning](#bandets-högsta-fart-och-lutning).
 
 ## Välj startfart
 
