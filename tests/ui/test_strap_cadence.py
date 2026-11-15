@@ -42,3 +42,30 @@ def test_tile_prefers_the_strap(qapp):
     board.ctl = SimpleNamespace()                          # a controller without strap support
     LiveBoard._cadence_tile(board)
     assert board.t_cadence.title == "Kadens"
+
+
+def test_cadence_before_the_start_is_not_the_first_minutes(monkeypatch, caplog):
+    """In a test on 2026-11-15 the tile showed "about 100" for the first 6 min while the saved values
+    were 158-176: the walking before the start kept its times on the old clock, later than "now"."""
+    import logging
+
+    from lopanalys.ui import live_controller as lc
+    clock = [1000.0]
+    monkeypatch.setattr(lc.time, "perf_counter", lambda: clock[0])
+    c = LiveController.__new__(LiveController)
+    c._t0, c.hr_series, c.cadence_series, c.runner, c._cad_logged = 1000.0, [], [], None, {}
+    for i in range(360):                                   # 6 min of walking while the camera is framed
+        clock[0] = 1000.0 + i
+        c.cadence_series.append((c.elapsed(), 100.0))
+    c._restart_clock(clock[0])                             # Starta testet
+    assert c.cadence_series[-1][0] == 0.0 and c.cadence_series[0][0] == -359.0
+    for i in range(1, 16):
+        clock[0] += 1
+        c.cadence_series.append((c.elapsed(), 170.0))
+    assert c.strap_cadence() == 170.0                      # after 15 s: no longer the median of the walking
+    with caplog.at_level(logging.INFO, logger="lopanalys.ui.live_controller"):
+        c.log_cadence_tile("tv", 170.0, "strap", "Kadens (pulsbandet)")
+        c.log_cadence_tile("tv", 171.0, "strap", "Kadens (pulsbandet)")    # within the minute: not again
+        c.log_cadence_tile("operator", 170.0, "strap", "Kadens (pulsbandet)")
+    lines = [r.getMessage() for r in caplog.records if "cadence tile" in r.getMessage()]
+    assert len(lines) == 2 and "cadence tile tv at 15 s: 170 steps/min, source strap, title 'Kadens (pulsbandet)'" in lines[0]

@@ -79,6 +79,7 @@ def gait_status(metric: str, value: float | None) -> str | None:
 
 STRAP_CADENCE_STALE_S = 5.0   # older strap cadence is not shown; the camera's is used
 CHECKPOINT_S = 10.0           # the running test (with its samples) is written this often
+CADENCE_LOG_S = 60.0          # what the cadence tiles show is logged this often
 BALANCE_S = 5.0               # two views: how often the second view's analysis rate is reconsidered
 
 
@@ -172,6 +173,7 @@ class LiveController(QObject):
         self.hr: int | None = None
         self.hr_series: list[tuple[float, int]] = []
         self.cadence_series: list[tuple[float, float]] = []   # strap cadence (RSC): (elapsed s, steps/min)
+        self._cad_logged: dict[str, float] = {}               # log_cadence_tile: when each view was logged
         self.treadmill: Any = None
         self.gait: Any = None
         self.lactate: dict[int, float] = {}
@@ -312,7 +314,7 @@ class LiveController(QObject):
             return False
         r = self.resume
         offset = r.t_offset_s if r else 0.0
-        self._t0 = time.perf_counter() - offset
+        self._restart_clock(time.perf_counter() - offset)
         s = self.session
         s.result = dict(s.result or {}, plan_kind=self.plan.kind)
         if r is None:
@@ -595,6 +597,18 @@ class LiveController(QObject):
                 return i
         return len(self.zones)
 
+    def _restart_clock(self, t0: float) -> None:
+        """The test's clock starts at ``t0`` (perf_counter). The heart rate and cadence received before,
+        while the camera was framed, keep their place before 0 on the new clock.
+
+        Before 2026-11-15 they kept their times on the old clock, which were later than the new one's
+        "now": the strap's cadence tile took them all as the last 12 s, and showed the median of the
+        walking before the start ("about 100") for as long as the setup had taken (6 min in a test)."""
+        shift = t0 - self._t0
+        self._t0 = t0
+        self.hr_series = [(tt - shift, h) for tt, h in self.hr_series]
+        self.cadence_series = [(tt - shift, c) for tt, c in self.cadence_series]
+
     def strap_cadence(self, window_s: float = 12.0) -> float | None:
         """The strap's cadence (median of the last ``window_s``), or None when it has none or is stale."""
         if not self.cadence_series:
@@ -602,8 +616,23 @@ class LiveController(QObject):
         now = self.elapsed()
         if now - self.cadence_series[-1][0] > STRAP_CADENCE_STALE_S:
             return None
-        vals = sorted(c for tt, c in self.cadence_series if now - tt <= window_s)
+        vals = sorted(c for tt, c in self.cadence_series if 0.0 <= now - tt <= window_s)
         return vals[len(vals) // 2] if vals else None
+
+    def log_cadence_tile(self, where: str, value: float | None, source: str | None, title: str) -> None:
+        """Once a minute per view (``where``: "tv" | "operator"): what the cadence tile shows, next to
+        the cadence the test saves in its 1 Hz samples, so the two can be compared afterwards."""
+        now = self.elapsed()
+        last = self._cad_logged.get(where)
+        if last is not None and 0.0 <= now - last < CADENCE_LOG_S:
+            return
+        self._cad_logged[where] = now
+        smp = list(getattr(self.runner, "samples", []) or [])[-12:] if self.runner else []
+        saved = sorted(float(x.cadence_spm) for x in smp if getattr(x, "cadence_spm", None))
+        src = {getattr(x, "cadence_source", None) for x in smp if getattr(x, "cadence_spm", None)}
+        log.info("cadence tile %s at %.0f s: %s steps/min, source %s, title '%s'; saved samples (last 12 s): "
+                 "median %s, source %s", where, now, "–" if value is None else f"{value:.0f}", source or "none",
+                 title, f"{saved[len(saved) // 2]:.0f}" if saved else "–", ",".join(sorted(map(str, src))) or "none")
 
     def _on_hr(self, s: Any) -> None:
         self.hr = int(s.bpm)
