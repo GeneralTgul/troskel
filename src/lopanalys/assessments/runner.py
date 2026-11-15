@@ -98,6 +98,7 @@ SPRINT_AFTER_S = 720.0       # the ramp has run 12 min (the top of the 8-12 min 
 SPRINT_MIN_RAMP_S = 240.0    # ... or, after at least 4 min of ramp, the heart rate levelled off:
 SPRINT_PLATEAU_S = 60.0      #     it rose at most SPRINT_PLATEAU_BPM over the last 60 s
 SPRINT_PLATEAU_BPM = 2.0
+SPRINT_INCLINE_PCT = 2.0     # a sprint at the belt's highest speed raises the incline this much instead
 
 
 @dataclass
@@ -477,9 +478,14 @@ class TestRunner:
             return self._shift
 
     def _sprint_stage(self) -> Stage:
+        """The sprint: +final_sprint_kmh, or +SPRINT_INCLINE_PCT when the belt is already at its
+        highest speed (the zones test's ramp can reach it)."""
         p, cur = self.protocol, self._cur
-        return self._clamp(Stage(cur.speed_kmh + p.final_sprint_kmh, cur.incline_pct, p.final_sprint_s,
-                                 t("assessments.stage.sprint")))
+        s = self._clamp(Stage(cur.speed_kmh + p.final_sprint_kmh, cur.incline_pct, p.final_sprint_s,
+                              t("assessments.stage.sprint")))
+        if self._run and s.speed_kmh <= cur.speed_kmh + 1e-6:
+            s = self._clamp(replace(s, incline_pct=cur.incline_pct + SPRINT_INCLINE_PCT))
+        return s
 
     def _sprint_due(self) -> bool:
         """At the end of the current ramp step: should the automatic final sprint come next?"""
@@ -487,8 +493,9 @@ class TestRunner:
         if (not self._run or not p.final_sprint_auto or p.final_sprint_s <= 0 or p.final_sprint_kmh <= 0
                 or self._sprint_index is not None or self._cur.is_warmup or self._idx < self._ramp_start()):
             return False
-        if self._sprint_stage().speed_kmh <= self._cur.speed_kmh + 1e-6:
-            return False                  # at the highest speed: a sprint cannot go faster
+        sp = self._sprint_stage()
+        if sp.speed_kmh <= self._cur.speed_kmh + 1e-6 and sp.incline_pct <= self._cur.incline_pct + 1e-6:
+            return False                  # at the highest speed and incline: a sprint cannot be harder
         ramp_s = self._ramp_elapsed_s()
         if ramp_s >= SPRINT_AFTER_S - 1e-6:
             return True

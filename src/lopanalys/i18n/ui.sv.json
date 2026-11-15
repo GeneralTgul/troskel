@@ -417,7 +417,7 @@
   "ui.live.recovery_banner_sub": "Vi mäter hur snabbt pulsen går ner",
   "ui.live.walk": "Gå",
   "ui.live.final_sprint": "Slutspurt",
-  "ui.live.final_sprint_tip": "Höj farten för en sista spurt innan idrottaren är helt slut.",
+  "ui.live.final_sprint_tip": "Höj farten för en sista spurt innan idrottaren är helt slut. På bandets högsta fart höjs lutningen i stället.",
   "ui.live.sprint_before": "Slutspurten: startar när pulsen har planat ut (steg högst {limit} slag den senaste minuten), tidigast {min} in i trappan, och senast {after} in i trappan",
   "ui.live.sprint_wait": "Slutspurten: pulsen {rise} slag senaste minuten (startar vid högst {limit}, tidigast {min} in i trappan) · senast om {left}",
   "ui.live.sprint_wait_nohr": "Slutspurten: ingen puls den senaste minuten (startar när den stigit högst {limit} slag, tidigast {min} in i trappan) · senast om {left}",

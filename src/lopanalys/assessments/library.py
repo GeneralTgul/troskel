@@ -248,6 +248,7 @@ def hr_zones_start_for(level: str | None = None, estimated_lt2_kmh: float | None
 def hr_zones(start_kmh: float, step_kmh: float = 1.0, stages: int = 5, stage_s: float = HR_ZONES_STAGE_S,
              incline_pct: float = 1.0, *, ramp_step_s: float = 60, ramp_speed_step_kmh: float = 0.5,
              warmup_s: float = HR_ZONES_WARMUP_S, warmup_kmh: float | None = None,
+             final_sprint_s: float = 30, final_sprint_kmh: float = 2.0,
              limits: TreadmillLimits = DEFAULT_LIMITS) -> Protocol:
     """Heart rate and speed zones without lactate: steady steps, then a speed ramp to exhaustion.
 
@@ -255,6 +256,8 @@ def hr_zones(start_kmh: float, step_kmh: float = 1.0, stages: int = 5, stage_s: 
     sample, then at once the ramp: +`ramp_speed_step_kmh` every `ramp_step_s` from the last step's
     speed until the athlete stops. The incline stays at `incline_pct` all the way, so one relation
     between heart rate and speed holds for the whole test. Runs without anyone at the computer.
+    `final_sprint_s` > 0: the coach can start a final sprint in the ramp (*Slutspurt*, +`final_sprint_kmh`;
+    at the belt's highest speed the incline rises instead, see runner.SPRINT_INCLINE_PCT).
     """
     if ramp_step_s <= 0 or ramp_speed_step_kmh <= 0:
         raise ValueError(t("assessments.error.step"))
@@ -275,10 +278,14 @@ def hr_zones(start_kmh: float, step_kmh: float = 1.0, stages: int = 5, stage_s: 
     base.description = t("assessments.protocol.hrzones.desc", warmup=int(round(warmup_s / 60)), stages=stages,
                          min=fmt_pct(stage_s / 60), start=fmt_kmh(first.speed_kmh), step=fmt_kmh(step_kmh),
                          incline=fmt_pct(last.incline_pct), ramp=fmt_kmh(ramp_speed_step_kmh), s=int(ramp_step_s))
+    if final_sprint_s > 0:
+        base.final_sprint_s, base.final_sprint_kmh = float(final_sprint_s), float(final_sprint_kmh)
+        base.description += " " + t("assessments.desc.sprint", s=int(final_sprint_s), kmh=fmt_kmh(final_sprint_kmh))
     base.builder = "hr_zones"
     base.params = dict(start_kmh=start_kmh, step_kmh=step_kmh, stages=stages, stage_s=stage_s,
                        incline_pct=incline_pct, ramp_step_s=ramp_step_s,
-                       ramp_speed_step_kmh=ramp_speed_step_kmh, warmup_s=warmup_s, warmup_kmh=warmup_kmh)
+                       ramp_speed_step_kmh=ramp_speed_step_kmh, warmup_s=warmup_s, warmup_kmh=warmup_kmh,
+                       final_sprint_s=final_sprint_s, final_sprint_kmh=final_sprint_kmh)
     return base
 
 

@@ -81,3 +81,26 @@ def test_the_combined_test_says_its_incline_ramp():
     r.start()
     run_until(r, clock, lambda: r.state.stage_index == 2 and r.phase == Phase.RUNNING)
     assert r.state.prompt == "Ta laktatprov · Trappan: +1 % varje minut"   # the sample on the move is still said
+
+
+def test_the_zones_test_has_the_final_sprint():
+    p = library.hr_zones(9.0, 1.0, 3, stage_s=180, warmup_s=60)
+    assert p.final_sprint_s == 30 and p.final_sprint_kmh == 2.0 and not p.final_sprint_auto
+    r, clock, tm, states, cues = make(p)
+    r.start()
+    run_until(r, clock, lambda: r.state.stage_index == 5 and r.phase == Phase.RUNNING)
+    v = tm.speed
+    assert r.final_sprint()
+    assert tm.speed == v + 2.0 and r.state.stage.label == "Slutspurt"
+    run_until(r, clock, lambda: r.phase == Phase.RECOVERY)
+
+
+def test_a_sprint_at_the_highest_speed_raises_the_incline():
+    # the belt's highest speed is 18 km/h (FakeTreadmill): a ramp from 17,5 reaches it
+    p = library.hr_zones(14.5, 1.0, 3, stage_s=180, warmup_s=0)
+    r, clock, tm, states, cues = make(p)
+    r.start()
+    run_until(r, clock, lambda: r.phase == Phase.RUNNING and tm.speed == 18.0)
+    inc = tm.incline
+    assert r.final_sprint()
+    assert tm.speed == 18.0 and tm.incline == inc + 2.0

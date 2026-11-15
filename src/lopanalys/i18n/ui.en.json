@@ -417,7 +417,7 @@
   "ui.live.recovery_banner_sub": "Measuring how fast your heart rate drops",
   "ui.live.walk": "Walk",
   "ui.live.final_sprint": "Final sprint",
-  "ui.live.final_sprint_tip": "Raise the speed for a last sprint before the athlete is completely spent.",
+  "ui.live.final_sprint_tip": "Raise the speed for a last sprint before the athlete is completely spent. At the belt's highest speed the incline rises instead.",
   "ui.live.sprint_before": "Final sprint: starts when the heart rate has levelled off (rose at most {limit} beats over the last minute), at the earliest {min} into the ramp, and at the latest {after} into the ramp",
   "ui.live.sprint_wait": "Final sprint: heart rate {rise} beats over the last minute (starts at {limit} or less, at the earliest {min} into the ramp) · at the latest in {left}",
   "ui.live.sprint_wait_nohr": "Final sprint: no heart rate over the last minute (starts when it rose {limit} beats or less, at the earliest {min} into the ramp) · at the latest in {left}",

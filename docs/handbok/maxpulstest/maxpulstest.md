@@ -69,7 +69,7 @@ Slutspurten startar av sig själv, eftersom idrottaren ofta är ensam på bandet
 - när pulsen har planat ut (steg högst 2 slag den sista minuten) efter minst 4 min i trappan, eller
 - efter 12 min i trappan.
 
-TV:n säger *Slutspurt nu!*. Efter spurten går bandet ner till gångfart och återhämtningspulsen mäts. Är farten redan på bandets max blir det ingen spurt. Knappen *Slutspurt* i livevyn finns kvar för den som vill starta den själv.
+TV:n säger *Slutspurt nu!*. Efter spurten går bandet ner till gångfart och återhämtningspulsen mäts. Är farten redan på bandets max ökar spurten lutningen 2 % i stället. Bara när både farten och lutningen är på max blir det ingen spurt. Knappen *Slutspurt* i livevyn finns kvar för den som vill starta den själv.
 
 Under knappen *Slutspurt* på operatörssidan står hur nära spurten är, med värdena just nu, till exempel *Slutspurten: pulsen +5 slag senaste minuten (startar vid högst 2, tidigast 4:00 in i trappan) · senast om 6:30*. Tiderna räknas från trappans första steg. Under uppvärmningen står bara villkoren, och när spurten har startat står det när och varför, till exempel *Slutspurten startade 9:12 in i trappan (pulsen planade ut)*. TV:n visar inte raden.
 
