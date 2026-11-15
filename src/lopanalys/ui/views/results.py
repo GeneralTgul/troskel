@@ -809,6 +809,8 @@ class ResultsView(QWidget):
             self.max_view = None
         self.max_hr = (self.max_view.peak if self.max_view else None) or \
             max((r.hr_end or 0 for r in self.records), default=0) or None
+        if not services.own_peak_counts(self.session):    # stopped, not a max test: no max HR, no zones from it
+            self.max_hr = None
         sport = self._sport()
         known = a.max_hr_for(sport) if a else None      # the max HR of the test's sport
         mx = known or self.max_hr

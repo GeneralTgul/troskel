@@ -405,6 +405,17 @@ def _zone_dict(z: zone_systems.Zone) -> dict[str, Any]:
                 speed_high_extrapolated=z.speed_high_extrapolated, raw=z)
 
 
+def own_peak_counts(session: Session | None) -> bool:
+    """False for a test that was stopped (or cut off) before its end and is not a max test: its highest
+    heart rate is not a max HR, and neither a max HR nor zones are computed from it. Before 2026-11-15 a
+    technique test stopped half-way got "max HR 89" and zones from it."""
+    if session is None:
+        return True
+    if session.status not in ("stopped", "interrupted"):
+        return True
+    return session.kind in MAX_KINDS or (session.result or {}).get("exhaustion_t_s") is not None
+
+
 def zones(lactate: LactateView | None, max_hr: int | None, resting_hr: int | None,
           system: str = zone_systems.DEFAULT_SYSTEM, sport: Any = None) -> list[dict[str, Any]]:
     """Training zones in one system, as dicts: name, code, hr_low, hr_high, speed_low, speed_high,
