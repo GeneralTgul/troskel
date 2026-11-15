@@ -1,6 +1,7 @@
 """Idrottare: the athlete register with search, and the form to create or edit an athlete."""
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 from pathlib import Path
@@ -26,6 +27,8 @@ from lopanalys.ui.widgets.common import (
     page,
     scrolled,
 )
+
+log = logging.getLogger(__name__)
 
 
 def _age(b: date | None) -> int | None:
@@ -255,6 +258,7 @@ class AthleteForm(Card):
     start_test = Signal(object)
     extract = Signal(object)        # the athlete: "Exportera allt"
     open_plan = Signal(object)
+    renew_plan = Signal(object)     # the athlete: *Förnya* on a plan whose workouts end within a week
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent=parent, pad=28)
@@ -269,6 +273,10 @@ class AthleteForm(Card):
         self.plan_btn = button(t("ui.plan.title"), "calendar")
         self.plan_btn.clicked.connect(lambda: self.athlete and self.open_plan.emit(self.athlete))
         top.addWidget(self.plan_btn)
+        self.renew_btn = button(t("ui.plan.renew"), "refresh")
+        self.renew_btn.clicked.connect(lambda: self.athlete and self.renew_plan.emit(self.athlete))
+        self.renew_btn.hide()
+        top.addWidget(self.renew_btn)
         self.test_btn = button(t("ui.athletes.start_test"), "play", kind="primary")
         self.test_btn.clicked.connect(lambda: self.athlete and self.start_test.emit(self.athlete))
         self.extract_btn = button(t("ui.athletes.extract"), "download")
@@ -416,6 +424,7 @@ class AthleteForm(Card):
         self.extract_btn.setVisible(not new)
         self.withdraw_btn.setVisible(not new and bool(a and a.consent_registered))
         self.plan_btn.setVisible(not new)
+        self.renew_btn.hide()                       # shown by the view when the plan's workouts run out
         a = a or Athlete(None, "", "")
         self.first.setText(a.first_name)
         self.last.setText(a.last_name)
@@ -603,6 +612,7 @@ class AthletesView(QWidget):
         self.form.start_test.connect(self.start_test)
         self.form.extract.connect(self.export_all)
         self.form.open_plan.connect(self.open_plan)
+        self.form.renew_plan.connect(self._renew_plan)
         self.stack.addWidget(self.empty)
         # small screens: the fields scroll instead of being squeezed, the buttons stay below the scroll area
         self.form_page = QWidget()
@@ -667,12 +677,32 @@ class AthletesView(QWidget):
         d = self.due.get(a.id) if a is not None and a.id is not None else None
         texts = [t(f"ui.remind.{d['reason']}", name=a.name, date=d["last"])] if d is not None else []
         texts.append(services.max_test_due(self.ctx.store, a))   # a max test older than two years
+        renew = None
+        if a is not None and a.id is not None:
+            try:
+                renew = services.plan_renew_due(self.ctx.store, a)
+            except Exception:
+                log.exception("reading the plan failed")
+        if renew is not None:                    # the plan's workouts end within a week: *Förnya* beside the plan
+            texts.append(t("ui.athletes.plan_renew", date=renew.plan.detailed_until.sunday.isoformat()))
+        self.form.renew_btn.setVisible(renew is not None)
         texts = [x for x in texts if x]
         if not texts:
             self.form.reminder.hide()
             return
         self.form.reminder.setText("\n\n".join(texts))
         self.form.reminder.show()
+
+    def _renew_plan(self, a: Athlete) -> None:
+        """*Förnya* in the form: the plan's next weeks get their workouts, nothing to fill in."""
+        try:
+            stored = services.renew_plan(self.ctx.store, a)
+        except Exception as e:
+            log.exception("renewing the plan failed")
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
+            return
+        QMessageBox.information(self, t("ui.plan.title"), t("ui.plan.renew_done", week=stored.plan.detailed_until.index))
+        self._show_reminder()
 
     def _show_due(self) -> None:
         """*Visa*: open the first athlete on the reminder list."""

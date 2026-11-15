@@ -6,6 +6,10 @@ is saved per athlete, printed, saved as PDF and as a calendar file, and mailed t
 files, views/send_mail.py). Nothing leaves the program before every box of the health declaration
 is ticked.
 
+The plan rolls (plan.rolling): only the next four weeks have workouts, the rest is a sketch. A row
+under the overview says how far the workouts run, with *Förnya*, which details the next weeks on
+what is saved without filling in anything; the banner offers it when they run out within a week.
+
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
 """
@@ -25,6 +29,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QGrid
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Athlete
 from lopanalys.plan import RUNNING, Goal, Plan, PlanRequest, Slot, build_plan
+from lopanalys.plan import rolling
+from lopanalys.plan.engine import horizon_for
 from lopanalys.plan.models import LEVELS, WEEKDAY_KEYS, ZONES
 from lopanalys.plan.resolve import targets
 from lopanalys.plan.text import hours, start_line
@@ -149,6 +155,9 @@ class PlanView(QWidget):
         self.retest_btn = button(t("ui.plan.retest_apply"), "refresh", kind="primary")
         self.retest_btn.clicked.connect(self.apply_retest)
         brow.addWidget(self.retest_btn)
+        self.banner_renew = button(t("ui.plan.renew"), "refresh", kind="primary")
+        self.banner_renew.clicked.connect(lambda: self.renew())
+        brow.addWidget(self.banner_renew)
         self.banner.body.addLayout(brow)
         self.banner.hide()
         outer.addWidget(self.banner)
@@ -319,6 +328,14 @@ class PlanView(QWidget):
         col.addWidget(self.headline)
         col.addWidget(self.subline)
         col.addWidget(self.startline)
+        hrow = QHBoxLayout()               # how far the workouts run, and *Förnya*
+        hrow.setSpacing(8)
+        self.horizon = label("", "Hint", wrap=True)
+        hrow.addWidget(self.horizon, 1)
+        self.renew_btn = button(t("ui.plan.renew"), "refresh", kind="ghost")
+        self.renew_btn.clicked.connect(lambda: self.renew())
+        hrow.addWidget(self.renew_btn, 0, Qt.AlignmentFlag.AlignVCenter)
+        col.addLayout(hrow)
         top.addLayout(col, 1)
         self.full_btn = button(t("ui.plan.print_preview"), "eye", kind="ghost")
         self.full_btn.clicked.connect(lambda: self.show_printout())
@@ -512,12 +529,34 @@ class PlanView(QWidget):
                 self._retest = services.retest_candidate(self.ctx.store, a, self.stored)
             except Exception:
                 log.exception("looking for a newer test failed")
-        if self._retest is None:
+        renew = self.stored is not None and rolling.renew_soon(self.stored.plan, date.today())
+        self.retest_btn.setVisible(self._retest is not None)
+        self.banner_renew.setVisible(self._retest is None and renew)
+        if self._retest is not None:          # a new test renews too (services.apply_retest)
+            s = self._retest
+            self.banner_text.setText(t("ui.plan.retest_offer", test=s.protocol_name,
+                                       date=f"{s.started.astimezone():%Y-%m-%d}"))
+        elif renew:
+            assert self.stored is not None
+            plan = self.stored.plan
+            last = plan.detailed_until
+            to = horizon_for(plan.start, len(plan.weeks), date.today())
+            self.banner_text.setText(t("ui.plan.renew_offer", date=last.sunday.isoformat(), week=to))
+        else:
             self.banner.hide()
             return
-        s = self._retest
-        self.banner_text.setText(t("ui.plan.retest_offer", test=s.protocol_name, date=f"{s.started.astimezone():%Y-%m-%d}"))
         self.banner.show()
+
+    def _show_horizon(self) -> None:
+        """*Detaljerat till och med vecka N (datum). [Förnya]*: shown while weeks after it are a sketch."""
+        plan = self.plan
+        sketch = plan is not None and bool(plan.sketch_weeks)
+        self.horizon.setVisible(sketch)
+        self.renew_btn.setVisible(sketch and self.stored is not None and plan is self.stored.plan)
+        if sketch:
+            assert plan is not None
+            last = plan.detailed_until
+            self.horizon.setText(t("ui.plan.horizon", week=last.index, date=last.sunday.isoformat()))
 
     # ------------------------------------------------------------------ the overview
     def _show(self) -> None:
@@ -539,11 +578,12 @@ class PlanView(QWidget):
         self.subline.setText(f"{_day(plan.start)} – {_day(plan.end)} {plan.end.year}   ·   "
                              + t("ui.plan.based_on", basis=basis))
         self.startline.setText(start_line(plan))
+        self._show_horizon()
         load = [wk.minutes for wk in plan.weeks if wk.kind == "load"] or [wk.minutes for wk in plan.weeks]
-        sessions = [len([w for w in wk.workouts if not w.goal]) for wk in plan.weeks if wk.kind == "load"]
+        sessions = [wk.sessions for wk in plan.weeks if wk.kind == "load"]
         self.t_weeks.set_value(str(len(plan.weeks)), f"{_day(plan.start)} – {_day(plan.end)}")
         self.t_sessions.set_value(str(max(sessions)) if sessions else "–",
-                                  t("plan.pdf.tile.sessions_sub", n=len(plan.workouts)))
+                                  t("plan.pdf.tile.sessions_sub", n=sum(wk.sessions for wk in plan.weeks)))
         self.t_volume.set_value(f"{hours(min(load))}–{hours(max(load))}", t("ui.plan.tile.volume_sub"))
         self.t_easy.set_value(str(round(100 * plan.easy_share)), t("ui.plan.tile.easy_sub"))
         self.chart.set_plan(plan)
@@ -648,7 +688,7 @@ class PlanView(QWidget):
             return None
         assert self.athlete is not None
         try:
-            plan = build_plan(req, plan_id=f"p{self.athlete.id}")
+            plan = build_plan(req, plan_id=f"p{self.athlete.id}", today=date.today())
         except ValueError as e:      # the engine's own message, e.g. the goal is too close
             return self._fail(str(e))
         if not self.start.text().strip():        # an empty start is today: the plan keeps that day
@@ -697,6 +737,7 @@ class PlanView(QWidget):
         self.stored = services.StoredPlan(plan, sid, health, row)
         self._loaded = (self._inputs(), self._health())
         self.del_btn.show()
+        self._show_horizon()
         self._fill_banner()
         self._changed()
         return True
@@ -730,6 +771,28 @@ class PlanView(QWidget):
         self.stored = services.load_plan(self.ctx.store, a)
         self._fill(None)
         QMessageBox.information(self, t("ui.plan.title"), t("ui.plan.retest_done", date=date.today().isoformat()))
+
+    def renew(self, today: date | None = None) -> bool:
+        """*Förnya*: the saved plan gets its workouts up to four weeks from today; the form, the test and
+        the health declaration stay as saved, and weeks that already had workouts keep them."""
+        a = self.athlete
+        if a is None or self.stored is None or not self.confirm_discard():
+            return False
+        before = self.stored.plan.horizon
+        try:
+            self.stored = services.renew_plan(self.ctx.store, a, today)
+        except Exception as e:
+            log.exception("renewing the plan failed")
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
+            return False
+        self.stored = services.load_plan(self.ctx.store, a)
+        self._fill(None)
+        assert self.stored is not None
+        plan = self.stored.plan
+        QMessageBox.information(self, t("ui.plan.title"),
+                                t("ui.plan.renew_done", week=plan.detailed_until.index) if plan.horizon != before
+                                else t("ui.plan.renew_nothing"))
+        return True
 
     def confirm_discard(self) -> bool:
         """True when nothing is unsaved, or the coach chose to throw the changes away (as the athlete form)."""

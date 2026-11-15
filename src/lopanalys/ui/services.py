@@ -1539,7 +1539,7 @@ def retest_candidate(store: Store, athlete: Athlete, stored: StoredPlan | None =
 def apply_retest(store: Store, athlete: Athlete, session: Session, today: date | None = None) -> StoredPlan:
     """Lay the rest of the saved plan on a new test (plan.resolve.retest): from today on every workout
     gets the targets of ``session``; earlier workouts keep theirs, and no workout changes its day."""
-    from lopanalys.plan import resolve
+    from lopanalys.plan import resolve, rolling
     stored = load_plan(store, athlete)
     if stored is None:
         raise ValueError("no plan")
@@ -1547,10 +1547,39 @@ def apply_retest(store: Store, athlete: Athlete, session: Session, today: date |
     cap = plan_capacity(store, athlete, session)
     old = stored.plan.request.capacity_for(cap.sport)
     plan = resolve.retest(stored.plan, cap, from_date=today)
+    plan = rolling.roll_forward(plan, today)             # the same path as Förnya: the next weeks get their workouts
     save_plan(store, athlete, plan, session.id, None, "retest",
               {"from_session": stored.session_id, "to_session": session.id, "from_date": today.isoformat(),
-               "tested_before": old.tested.isoformat() if old.tested else None})
+               "tested_before": old.tested.isoformat() if old.tested else None,
+               "horizon": [stored.plan.horizon, plan.horizon]})
     return StoredPlan(plan, session.id, stored.health, stored.row_id)
+
+
+def renew_plan(store: Store, athlete: Athlete, today: date | None = None) -> StoredPlan:
+    """*Förnya*: the saved plan with its workouts up to four weeks from today (plan.rolling.roll_forward).
+    The form, the test and the health declaration stay as saved; detailed weeks never change. Saved
+    (with a "renewed" event) only when there was something to detail."""
+    from lopanalys.plan import rolling
+    stored = load_plan(store, athlete)
+    if stored is None:
+        raise ValueError("no plan")
+    today = today or date.today()
+    plan = rolling.roll_forward(stored.plan, today)
+    if plan is stored.plan:
+        return stored
+    save_plan(store, athlete, plan, stored.session_id, None, "renewed",
+              {"from_week": stored.plan.horizon, "to_week": plan.horizon, "date": today.isoformat(),
+               "engine_version": plan.engine_version})
+    return StoredPlan(plan, stored.session_id, stored.health, stored.row_id)
+
+
+def plan_renew_due(store: Store, athlete: Athlete, today: date | None = None) -> StoredPlan | None:
+    """The athlete's saved plan when its detailed weeks end within 7 days and more weeks follow, else None."""
+    from lopanalys.plan import rolling
+    stored = load_plan(store, athlete)
+    if stored is None or not rolling.renew_soon(stored.plan, today or date.today()):
+        return None
+    return stored
 
 
 def render_plan(plan: Any, branding: dict[str, Any]) -> str:

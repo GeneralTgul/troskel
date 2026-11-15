@@ -68,3 +68,10 @@
 .week-foot .zl span { display: inline-flex; align-items: center; gap: 1.2mm; font-variant-numeric: tabular-nums; }
 .week-foot .zl i { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; }
 .week-foot h2 { font-size: 7.5pt; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; margin: 0 0 2mm; }
+.plan-sketch { break-before: page; }
+.plan-sketch-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.plan-sketch-table th { text-align: left; font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0 2mm 1.5mm; border-bottom: 0.3mm solid var(--ink); }
+.plan-sketch-table td { padding: 1.6mm 2mm; border-bottom: 0.2mm solid var(--rule); }
+.plan-sketch-table .n { text-align: right; font-variant-numeric: tabular-nums; }
+.plan-sketch-table .muted { color: var(--muted); }
+.plan-sketch-table tr { break-inside: avoid; }

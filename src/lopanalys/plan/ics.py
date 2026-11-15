@@ -66,7 +66,8 @@ def _event(w: Workout, plan: Plan, stamp: str) -> list[str]:
 
 
 def to_ics(plan: Plan) -> str:
-    """The whole plan as iCalendar text with CRLF line ends. Write it as UTF-8 bytes to a .ics file."""
+    """The plan as iCalendar text with CRLF line ends: the workouts of the detailed weeks (a rolling plan
+    has no workouts in its sketch). Write it as UTF-8 bytes to a .ics file."""
     stamp = plan.created.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = t("plan.ics.name", name=plan.request.athlete_name)
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:{PRODID}", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",

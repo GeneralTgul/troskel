@@ -52,6 +52,7 @@
     <span>{{ t("plan.pdf.overview.legend") }}</span>
     {% for z in zones %}<span><i style="background: {{ z.color }}"></i>{{ z.code }} {{ z.name }}</span>{% endfor %}
     {% if has_unzoned %}<span><i style="background: {{ unzoned }}"></i>{{ t("plan.pdf.overview.test") }}</span>{% endif %}
+    {% if has_sketch %}<span><i style="background: {{ zones[1].color }}; opacity: {{ sketch_opacity }}"></i>{{ t("plan.pdf.overview.sketch") }}</span>{% endif %}
   </div>
   {{ overview }}
 </figure>
@@ -174,5 +175,28 @@
   {% endif %}
 </section>
 {% endfor %}
+
+{# ============================== the sketch: the weeks after the detailed ones ============================== #}
+{% if sketch %}
+<section class="section plan-sketch">
+  <div class="section-head">
+    <div class="kicker">{{ t("plan.pdf.sketch.kicker") }}</div>
+    <h2>{{ t("plan.pdf.sketch.title") }}</h2>
+    <p class="lead">{{ sketch_lead }}</p>
+  </div>
+  <table class="plan-sketch-table">
+    <thead><tr><th class="first">{{ t("plan.pdf.col.week") }}</th><th>{{ t("plan.pdf.col.block") }}</th>
+      <th>{{ t("plan.pdf.col.kind") }}</th><th class="n">{{ t("plan.pdf.col.time") }}</th>
+      <th class="n last">{{ t("plan.pdf.col.sessions") }}</th></tr></thead>
+    <tbody>
+    {% for w in sketch %}
+      <tr><td class="first"><b>{{ w.index }}</b> <span class="muted">{{ w.dates }}</span></td><td>{{ w.block }}</td>
+        <td>{{ w.kind }}{% if w.marker %} · <b>{{ w.marker }}</b>{% endif %}</td><td class="n">{{ w.total }} {{ t("plan.pdf.unit.hours") }}</td>
+        <td class="n last">{{ t("plan.pdf.sketch.sessions", n=w.sessions, q=w.quality) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
 </body>
 </html>

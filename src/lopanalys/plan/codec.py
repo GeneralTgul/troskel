@@ -5,6 +5,10 @@ plan stays the same when the rules change (``Plan.engine_version`` says which ru
 The athlete's name is not part of the stored request: the caller passes it in when reading, so
 the name lives in one place (the athlete's row).
 
+The rolling plan (plan.rolling) stores its horizon, the last week with workouts, and the weeks after
+it as sketches (sums without workouts). A plan saved before that has neither and reads back as a
+plan where every week is detailed. ``engine_version`` says which rules built it (or last rolled it on).
+
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
@@ -16,9 +20,9 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 
-from .models import Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, Week, Workout
+from .models import Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, Week, WeekSketch, Workout
 
-FORMAT = 1
+FORMAT = 2                    # 2: the rolling plan (horizon and sketched weeks); 1 reads as fully detailed
 _ANCHOR_FIELDS = tuple(f.name for f in fields(Anchors) if f.name != "source")
 _LINE_FIELDS = tuple(f.name for f in fields(SpeedLine))
 # Plans saved before the sport keys came from core.sport called running "running".
@@ -122,22 +126,39 @@ def plan_to_dict(p: Plan) -> dict[str, Any]:
         "capacity_log": [[_d(until), capacity_to_dict(c)] for until, c in p.capacity_log],
         "blocks": [{"kind": b.kind, "first_week": b.first_week, "weeks": b.weeks, "start": _d(b.start),
                     "reason": _note_to_dict(b.reason)} for b in p.blocks],
-        "weeks": [{"index": w.index, "monday": _d(w.monday), "block": w.block, "kind": w.kind,
-                   "target_minutes": w.target_minutes, "notes": [_note_to_dict(n) for n in w.notes],
-                   "workouts": [_workout_to_dict(x) for x in w.workouts]} for w in p.weeks],
+        "weeks": [_week_to_dict(w) for w in p.weeks],
+        "horizon": p.horizon,
     }
+
+
+def _week_to_dict(w: Week) -> dict[str, Any]:
+    d = {"index": w.index, "monday": _d(w.monday), "block": w.block, "kind": w.kind,
+         "target_minutes": w.target_minutes, "notes": [_note_to_dict(n) for n in w.notes],
+         "workouts": [_workout_to_dict(x) for x in w.workouts]}
+    if w.sketch is not None:
+        k = w.sketch
+        d["sketch"] = {"minutes": k.minutes, "sessions": k.sessions, "quality": k.quality, "longest": k.longest,
+                       "zones": [[z, m] for z, m in k.zones]}
+    return d
+
+
+def _week_from_dict(w: dict[str, Any]) -> Week:
+    k = w.get("sketch")
+    sketch = WeekSketch(k["minutes"], k["sessions"], k["quality"], k["longest"],
+                        tuple((z, float(m)) for z, m in k.get("zones", []))) if k else None
+    return Week(w["index"], date.fromisoformat(w["monday"]), w["block"], w["kind"], w["target_minutes"],
+                [_workout_from_dict(x) for x in w["workouts"]], [_note_from_dict(n) for n in w.get("notes", [])], sketch)
 
 
 def plan_from_dict(d: dict[str, Any], request: PlanRequest) -> Plan:
     blocks = [Block(b["kind"], b["first_week"], b["weeks"], date.fromisoformat(b["start"]), _note_from_dict(b["reason"]))
               for b in d["blocks"]]
-    weeks = [Week(w["index"], date.fromisoformat(w["monday"]), w["block"], w["kind"], w["target_minutes"],
-                  [_workout_from_dict(x) for x in w["workouts"]], [_note_from_dict(n) for n in w.get("notes", [])])
-             for w in d["weeks"]]
+    weeks = [_week_from_dict(w) for w in d["weeks"]]
     log = tuple((date.fromisoformat(until), capacity_from_dict(c)) for until, c in d.get("capacity_log", []))
     return Plan(d["id"], request, datetime.fromisoformat(d["created"]), d.get("engine_version", ""), blocks, weeks,
                 [_note_from_dict(n) for n in d.get("notes", [])], d.get("zone_system", DEFAULT_SYSTEM),
-                {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log)
+                {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log,
+                d.get("horizon"))
 
 
 __all__ = ["FORMAT", "capacity_from_dict", "capacity_to_dict", "plan_from_dict", "plan_to_dict", "request_from_dict",

@@ -27,6 +27,7 @@ from .charts import INK, MUTED, RULE, fmt_num
 # Blocks are phases in order, so they share one hue from light to dark; the taper is neutral.
 BLOCK_FILL = {"base": "#CDEBE7", "build": "#8FD3CB", "peak": "#3DB5A9", "taper": "#DDE3E9"}
 UNZONED = "#C3CBD3"          # the test itself: no zone
+SKETCH_OPACITY = 0.38        # a week beyond the detail horizon: only its time is known
 # The progression panel under the bars: the long run in the colour of its zone (Z2), the hard minutes in Z5's.
 LINE_LONGEST, LINE_HARD = zone_color(1), zone_color(4)
 GUIDE_ORDER = ("easy", "recovery", "long", "long_progressive", "fartlek", "hills", "threshold", "vo2max", "opener", "test")
@@ -121,8 +122,9 @@ def overview_svg(plan: Plan) -> str:
         y_top = y(total)
         if segs:
             rx = min(10, bar_w / 3)
+            faded = "" if wk.detailed else f' opacity="{SKETCH_OPACITY}" class="sketch"'
             o.append(f'<clipPath id="pw{i}"><rect x="{x0:.1f}" y="{y_top:.1f}" width="{bar_w:.1f}" '
-                     f'height="{bottom - y_top + rx:.1f}" rx="{rx:.1f}"/></clipPath><g clip-path="url(#pw{i})">')
+                     f'height="{bottom - y_top + rx:.1f}" rx="{rx:.1f}"/></clipPath><g clip-path="url(#pw{i})"{faded}>')
             acc = 0.0
             for z, mm in segs:
                 y1, y0 = y(acc + mm), y(acc)
@@ -209,7 +211,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     goal = plan.goal
     slots = core_slots(req)
     load = [wk.minutes for wk in plan.weeks if wk.kind == "load"] or [wk.minutes for wk in plan.weeks]
-    sessions = [len([w for w in wk.workouts if not w.goal]) for wk in plan.weeks if wk.kind == "load"]
+    sessions = [wk.sessions for wk in plan.weeks if wk.kind == "load"]
     business = branding.business_name or branding.coach_name or t("report.app_name")
 
     # ---- cover
@@ -245,7 +247,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         {"label": t("plan.pdf.tile.weeks"), "value": str(len(plan.weeks)), "unit": t("plan.pdf.unit.weeks"),
          "sub": _span(plan.start, plan.end)},
         {"label": t("plan.pdf.tile.sessions"), "value": (str(max(sessions)) if sessions else "–"),
-         "unit": t("plan.pdf.unit.sessions"), "sub": t("plan.pdf.tile.sessions_sub", n=len(plan.workouts))},
+         "unit": t("plan.pdf.unit.sessions"), "sub": t("plan.pdf.tile.sessions_sub", n=sum(wk.sessions for wk in plan.weeks))},
         {"label": t("plan.pdf.tile.volume"), "value": f"{hours(min(load))}–{hours(max(load))}", "unit": t("plan.pdf.unit.hours"),
          "sub": t("plan.pdf.tile.volume_sub")},
         {"label": t("plan.pdf.tile.easy"), "value": str(round(100 * plan.easy_share)), "unit": "%",
@@ -274,7 +276,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     # ---- one page per week
     weeks = []
     block_names = {b.kind: b.name for b in plan.blocks}
-    for wk in plan.weeks:
+    for wk in plan.detailed_weeks:
         by_day: dict[date, list] = {}
         for w in wk.workouts:
             by_day.setdefault(w.date, []).append(w)
@@ -297,9 +299,15 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         weeks.append({"index": wk.index, "dates": f"{date_long(wk.monday)} – {date_long(wk.sunday)}",
                       "block": block_names.get(wk.block, ""), "kind": t(f"plan.week.kind.{wk.kind}"),
                       "notes": [n.text for n in wk.notes], "total": hours(wk.minutes),
-                      "sessions": len([w for w in wk.workouts if not w.goal]),
+                      "sessions": wk.sessions,
                       "easy_pct": round(100 * wk.easy_share), "days": days, "zone_bar": _zone_bar(wk.zone_minutes())})
 
+    # ---- the weeks after the detail horizon: one row each, without workouts
+    sketch = [{"index": wk.index, "dates": _span(wk.monday, wk.sunday), "block": block_names.get(wk.block, ""),
+               "kind": t(f"plan.week.kind.{wk.kind}"), "total": hours(wk.minutes), "sessions": wk.sessions,
+               "quality": wk.quality_sessions, "marker": _week_marker(wk, goal.date if goal else None)}
+              for wk in plan.sketch_weeks]
+    last = plan.detailed_until
     title = t("plan.pdf.title")
     return {
         "lang": language(), "title": title, "athlete_name": req.athlete_name,
@@ -314,7 +322,9 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         "zones_sub": t("plan.pdf.zones.estimated_hr" if cap.anchors is not None and cap.speed_from_hr else
                        "plan.pdf.zones.estimated" if cap.anchors is not None and cap.estimated else
                        "plan.pdf.zones.sub" if zt else "plan.pdf.zones.none"),
-        "overview": Markup(overview_svg(plan)), "has_unzoned": any(w.template_id == "test" for w in plan.workouts),
+        "overview": Markup(overview_svg(plan)), "has_unzoned": any(wk.minutes - sum(wk.zone_minutes().values()) >= 1 for wk in plan.weeks),
+        "has_sketch": bool(sketch), "sketch_opacity": SKETCH_OPACITY,
+        "sketch": sketch, "sketch_lead": t("plan.pdf.sketch.lead", week=last.index, date=date_long(last.sunday)),
         "unzoned": UNZONED, "rule": RULE,
         "blocks": blocks, "guide": guide, "notes": [n.text for n in plan.notes], "weeks": weeks,
         "rules": [t(f"plan.pdf.rule.{i}") for i in range(1, 7)],

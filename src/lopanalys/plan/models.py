@@ -188,6 +188,17 @@ class Workout:
         return out
 
 
+@dataclass(frozen=True)
+class WeekSketch:
+    """A week beyond the detail horizon: what the engine filled it with, as sums, without the workouts.
+    The workouts are made when the plan rolls forward to the week (plan.rolling.roll_forward)."""
+    minutes: int
+    sessions: int                    # workouts, races not counted
+    quality: int                     # of them hard days (quality sessions and tests)
+    longest: int                     # the longest run, minutes
+    zones: tuple[tuple[str, float], ...] = ()    # minutes per zone
+
+
 @dataclass
 class Week:
     index: int                       # 1-based
@@ -195,8 +206,13 @@ class Week:
     block: str                       # BLOCK_KINDS
     kind: str                        # WEEK_KINDS
     target_minutes: int              # the ceiling the week was filled under
-    workouts: list[Workout] = field(default_factory=list)
+    workouts: list[Workout] = field(default_factory=list)   # a sketched week: only its races
     notes: list[Note] = field(default_factory=list)
+    sketch: WeekSketch | None = None  # None: the week is detailed, every workout is in ``workouts``
+
+    @property
+    def detailed(self) -> bool:
+        return self.sketch is None
 
     @property
     def sunday(self) -> date:
@@ -205,9 +221,27 @@ class Week:
     @property
     def minutes(self) -> int:
         """Planned minutes. A race has no planned length and counts as zero."""
+        if self.sketch is not None:
+            return self.sketch.minutes
         return sum(w.minutes for w in self.workouts)
 
+    @property
+    def sessions(self) -> int:
+        """Workouts in the week, races not counted."""
+        if self.sketch is not None:
+            return self.sketch.sessions
+        return len([w for w in self.workouts if w.goal is None])
+
+    @property
+    def quality_sessions(self) -> int:
+        """Hard days in the week (quality sessions and tests), races not counted."""
+        if self.sketch is not None:
+            return self.sketch.quality
+        return len([w for w in self.workouts if w.goal is None and w.quality])
+
     def zone_minutes(self) -> dict[str, float]:
+        if self.sketch is not None:
+            return dict(self.sketch.zones)
         out: dict[str, float] = {}
         for w in self.workouts:
             for z, s in w.zone_seconds().items():
@@ -217,6 +251,8 @@ class Week:
     @property
     def longest_minutes(self) -> int:
         """The longest planned run of the week, in minutes. A race has no planned length and is left out."""
+        if self.sketch is not None:
+            return self.sketch.longest
         return max((w.minutes for w in self.workouts if w.goal is None), default=0)
 
     @property
@@ -265,6 +301,9 @@ class Plan:
     # Earlier tests, after a retest: (first day of the newer test's targets, the capacity before it).
     # Workouts dated before that day keep the targets they were handed out with (resolve.retest).
     capacity_log: tuple[tuple[date, Capacity], ...] = ()
+    # The last week with workouts (1-based); the weeks after it are sketches (Week.sketch). None: every
+    # week is detailed, as in plans saved before the rolling plan and plans built without a day.
+    horizon: int | None = None
 
     def capacity_on(self, sport: str, day: date) -> Capacity:
         """The capacity a workout on ``day`` is shown with: the test that applied on that day."""
@@ -283,7 +322,21 @@ class Plan:
 
     @property
     def workouts(self) -> list[Workout]:
-        return [w for wk in self.weeks for w in wk.workouts]
+        """The workouts of the detailed weeks (a sketched week's races are left out: they are in no calendar yet)."""
+        return [w for wk in self.weeks if wk.detailed for w in wk.workouts]
+
+    @property
+    def detailed_weeks(self) -> list[Week]:
+        return [wk for wk in self.weeks if wk.detailed]
+
+    @property
+    def sketch_weeks(self) -> list[Week]:
+        return [wk for wk in self.weeks if not wk.detailed]
+
+    @property
+    def detailed_until(self) -> Week:
+        """The last detailed week."""
+        return self.detailed_weeks[-1] if self.detailed_weeks else self.weeks[0]
 
     @property
     def goal(self) -> Goal | None:

@@ -16,6 +16,7 @@ Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
   - [Flera idrotter](#flera-idrotter)
   - [Delmål och planer utan mål](#delmål-och-planer-utan-mål)
   - [Omtest och omläggning](#omtest-och-omläggning)
+  - [Det rullande schemat](#det-rullande-schemat)
   - [Passbiblioteket](#passbiblioteket)
   - [Var en språkmodell kan hjälpa senare](#var-en-språkmodell-kan-hjälpa-senare)
 - [3. Säkerhet och ansvar](#3-säkerhet-och-ansvar)
@@ -48,6 +49,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Ett omtest flyttar målen i puls och fart från en dag och framåt, utan att något pass byter dag | Byggt (`resolve.retest`), och erbjuds i programmet efter ett nytt test, se [Omtest och omläggning](#omtest-och-omläggning) |
 | Utskrift: översikt, läsanvisning och ett blad per vecka | Byggt. Utskriften på Windows är inte provad ([PROV.md](PROV.md)) |
 | Kalenderfil (`.ics`) | Byggt. Importen i en telefon är inte provad |
+| Rullande schema: pass fyra veckor fram, skiss för resten, *Förnya* utan att fylla i något | Byggt, se [Det rullande schemat](#det-rullande-schemat) |
 | Lagring i databasen: ett schema per idrottare, med det som angavs, testet, schemat som det byggdes och en logg | Byggt (migrering 9, se [Datamodellen](#1-datamodellen)) |
 | Sidan *Träningsschema*: formulär, förhandsvisning, spara, skriv ut, PDF, kalenderfil och e-post till idrottaren | Byggt |
 | Hälsodeklarationen som tre rutor som krävs före utskrift, PDF, kalenderfil och e-post | Byggt i enkel form, se [Säkerhet och ansvar](#3-säkerhet-och-ansvar) |
@@ -89,6 +91,7 @@ Plan
   based_on: {sport: datum}       testerna planen bygger på
   blocks: [Block], weeks: [Week], notes: [Note]
   status: "draft" | "active" | "replaced"
+  horizon: int | None            sista veckan med pass; None = alla veckor har pass (scheman före det rullande schemat)
 
 Block
   kind: "base" | "build" | "peak" | "taper"
@@ -99,6 +102,8 @@ Week
   kind: "load" | "easy" | "test" | "taper" | "race"
   target_minutes                 taket veckan fylldes under
   workouts: [Workout], notes: [Note]
+  sketch: WeekSketch | None      None = veckan har pass; annars bara summorna (tid, pass, hårda dagar,
+                                 längsta passet, tid per zon) och veckans lopp
 
 Workout
   key: str                       fast nyckel "<plan>-<åå><vv>-<dag>", överlever ändringar och export
@@ -131,9 +136,9 @@ Note                             en text som nyckel och värden, så att planen 
 | Tabell | Innehåll |
 |---|---|
 | `plans` | En rad per idrottare (`athlete_id` är unik): `session_id` (testet schemat bygger på), `request_json` (tillgänglighet, mål, delmål, längd, nivå, veckovolym och testets trösklar), `plan_json` (schemat som det byggdes: block, veckor, pass och loggen över tidigare tester), `health_json` (hälsodeklarationens rutor och datum), `engine_version`, `created`, `updated` |
-| `plan_events` | Loggen: tid, händelse (`saved`, `changed`, `retest`) och detaljer, till exempel vilka två tester ett omtest gick mellan |
+| `plan_events` | Loggen: tid, händelse (`saved`, `changed`, `retest`, `renewed`) och detaljer, till exempel vilka två tester ett omtest gick mellan |
 
-- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det.
+- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass.
 - **Namnet sparas inte i schemat.** Det läses från idrottarens rad när schemat öppnas.
 - **Målen följer testet.** När schemat öppnas räknas trösklarna om ur testet det bygger på, så att ett rättat laktatvärde slår igenom. Är testet borttaget gäller trösklarna som sparades med schemat.
 - **Radering:** raderna följer idrottaren (`ON DELETE CASCADE`) och skrivs över som övriga uppgifter. Tas testet bort ligger schemat kvar utan test. Schemat är med i utdraget (*Exportera allt*). PDF:en och kalenderfilen registreras som sparade filer, så att raderingen hittar dem.
@@ -150,6 +155,7 @@ Modulen `src/lopanalys/plan/`:
 | `engine.py` | `build_plan()`: passen läggs i platserna |
 | `resolve.py` | Zon till puls och fart, och `retest()` |
 | `text.py` | Passen som text på aktuellt språk, för utskrift och kalender, och översiktens rad om var tiden börjar |
+| `rolling.py` | Det rullande schemat: `roll_forward` ger nästa veckor pass ur den sparade skissen |
 | `ics.py` | Kalenderfilen |
 | `codec.py` | Schemat och det som angavs som JSON och tillbaka, för lagringen |
 | `demo.py` | Exempelkommandot |
@@ -207,6 +213,17 @@ Inte byggt. Motorn fyller bara löpning, och platser för andra sporter lämnas 
 - **Inte byggt:** motorn bygger om resten av planen från testveckan (nya pass och ny volym), med samma mål och samma tillgänglighet, och visar skillnaden mot den gamla planen innan coachen godkänner. Gjorda veckor ändras aldrig.
 - **Flyttade trösklarna sig mindre än mätfelet** behålls planen som den är. Gränsen sätts i steg P4.
 
+### Det rullande schemat
+
+Ett långt schema behöver följa tiden som går, utvecklingen och nya tester. Därför har bara de närmaste veckorna pass, och resten är en skiss som fylls i efter hand (`plan/rolling.py`).
+
+- **Skissen:** hela schemat byggs som förut. Blocken, veckotyperna, veckotiden och målet ligger fast. Men bara veckan för dagen schemat byggs och de tre veckorna efter har pass (`engine.DETAIL_WEEKS`, `build_plan(…, today=)`). Veckorna efter sparas utan pass, med summorna motorn fyllde dem med: tid, antal pass, antal hårda dagar, längsta passet och tid per zon (`Week.sketch`). Loppen som idrottaren angett ligger kvar i skissveckorna, men kommer inte med i kalenderfilen förrän veckan har pass.
+- **Förnya (`roll_forward(plan, today)`):** ger pass till och med tre veckor efter den vecka dagen faller i, ur det som är sparat: samma underlag, samma skiss och samma schema-id. Inget fylls i. Motorn fyller veckorna i ordning från vecka 1 på den sparade skissen och tar passen för de nya veckorna. Fyllningen tittar inte på testet, så samma schema och samma dag ger alltid samma pass. En vecka får alltså samma pass oavsett om den fick dem när schemat byggdes eller vid en förnyelse.
+- **Veckor som redan har pass ändras aldrig:** de passerade veckorna och de som lämnats ut ligger kvar som de sparades, med sin status. Skissen efter den nya gränsen ligger också kvar.
+- **Ett nytt test** flyttar målen i puls och fart (`resolve.retest`) och förnyar sedan samma väg (`services.apply_retest`).
+- **Rena funktioner:** `roll_forward`, `skeleton_of`, `due` och `renew_soon` har inget Qt, ingen klocka (dagen kommer in som argument) och ingen slump, så att de kan flyttas till en mobilapp som de är.
+- **I programmet:** sidan *Träningsschema* säger hur långt passen går, med knappen *Förnya*. När passen tar slut inom 7 dagar erbjuds *Förnya* överst på sidan och i idrottarens formulär (`services.renew_plan`, `services.plan_renew_due`). PDF:en har ett veckoblad per vecka med pass och en sida med skissen. Kalenderfilen har bara passen.
+
 ### Passbiblioteket
 
 Passen är data i `plan/library.py`, inte kod. Varje mall har familj, hårdaste zon och antingen en stegring (fasta upplägg, lättast först) eller en längd som motorn sätter. Texterna (namn, syfte och hur passet ska kännas) ligger i `i18n/plan.sv.json` och `plan.en.json`.
@@ -256,8 +273,9 @@ Utskriften byggs i rapportmotorn (`report/plan_builder.py` och mallen `plan.html
 |---|---|
 | **Översikten** (sida 1) | Målet och delmålen, perioden, testet schemat bygger på, tillgänglig tid, fyra nyckeltal, blocken som ett band över en stapel per vecka (tid per zon, med lätt vecka, test och lopp utmärkta) och zonerna med puls och fart |
 | **Så läser du schemat** (1–2 sidor) | Blocken med skälen, zontabellen, passen som schemat använder med syfte och känsla, reglerna bakom schemat och ansvarstexten |
-| **Veckoblad** (en sida per vecka) | Sju dagar: tid, passets namn och syfte, delarna med zon, puls och fart, en ruta att bocka av och rader att anteckna på. Veckans syfte överst och veckans tid per zon nederst |
+| **Veckoblad** (en sida per vecka med pass) | Sju dagar: tid, passets namn och syfte, delarna med zon, puls och fart, en ruta att bocka av och rader att anteckna på. Veckans syfte överst och veckans tid per zon nederst |
 
-- **Kalenderfilen** (`plan/ics.py`) har en händelse per pass, med passets delar och mål i beskrivningen. En plats med klockslag ger en händelse vid den tiden, annars en heldagshändelse. Händelsens id är passets fasta nyckel, så att en ny import skriver över i stället för att dubblera.
+- **Skissen** (sist, bara i ett rullande schema): veckorna utan pass, en rad var med block, typ av vecka, tid och antal pass. I översikten är skissveckornas staplar bleka.
+- **Kalenderfilen** (`plan/ics.py`) har en händelse per pass i veckorna med pass, med passets delar och mål i beskrivningen. En plats med klockslag ger en händelse vid den tiden, annars en heldagshändelse. Händelsens id är passets fasta nyckel, så att en ny import skriver över i stället för att dubblera.
 - **Inte byggt:** passkort (ett pass per halvsida) och utskrift av ett block i taget.
 - Utskriften på Windows är inte provad än ([PROV.md](PROV.md)). Sidbrytningarna i veckobladen väntar på det provet.

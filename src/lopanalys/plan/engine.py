@@ -11,18 +11,22 @@ The rules (docs/TRANINGSPLAN.md):
   - At most a quarter of a week's time above LT1; the engine steps the quality down, never up, to hold it.
   - A week never holds more than 10 % above the biggest week before it.
   - The same request always gives the same plan: no randomness anywhere.
+  - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
+    (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
+    block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them
+    later, with the same filling, so a week gets the same workouts whenever it is detailed.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta, timezone
 from itertools import combinations
 
 from . import library
-from .models import EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, Week, Workout
+from .models import EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, Week, WeekSketch, Workout
 from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, periodize, round5
 
-ENGINE_VERSION = "2"           # 2: the volume starts below the full week and grows towards it
+ENGINE_VERSION = "3"           # 2: the volume grows from what the athlete trains; 3: the rolling plan
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -34,6 +38,7 @@ RACE_WEEK_MAX = 45            # the longest easy run in the week of the goal
 BEGINNER_EARLY_WEEKS = 4
 PROGRESSIVE_FROM_KM = 20.0    # goals from here get race-pace minutes in the long run of the peak
 STEP_BACK = 2                 # steps an easy or taper week goes back in a progression
+DETAIL_WEEKS = 4              # weeks with workouts in a rolling plan: the week of the day and three more
 
 
 def floor5(minutes: float) -> int:
@@ -328,15 +333,49 @@ class _Filler:
         return workouts, used, long_minutes
 
 
-def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime | None = None) -> Plan:
+def week_of(start: date, day: date) -> int:
+    """The plan week (1-based) a day falls in; 0 or less before the plan's first Monday."""
+    return (day - start).days // 7 + 1
+
+
+def horizon_for(start: date, n_weeks: int, today: date) -> int:
+    """The last detailed week on ``today``: the week of the day and the three after it, within the plan.
+    Before the plan begins, its first four weeks."""
+    return max(1, min(n_weeks, max(1, week_of(start, today)) + DETAIL_WEEKS - 1))
+
+
+def sketch_of(week: Week) -> Week:
+    """The week without its workouts: the sums stay (Week.sketch), and so do its races, which the
+    athlete gave and which mark the week in the overview."""
+    if week.sketch is not None:
+        return week
+    zm = week.zone_minutes()
+    sketch = WeekSketch(week.minutes, week.sessions, week.quality_sessions, week.longest_minutes,
+                        tuple((z, round(m, 2)) for z, m in sorted(zm.items())))
+    return replace(week, workouts=[w for w in week.workouts if w.goal is not None], sketch=sketch)
+
+
+def fill_weeks(request: PlanRequest, skeleton: Skeleton, plan_id: str) -> list[Week]:
+    """Every week of the skeleton with its workouts, in order: each week's filling depends on the ones before."""
+    filler = _Filler(request, skeleton, plan_id)
+    return [filler.fill(spec) for spec in skeleton.weeks]
+
+
+def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime | None = None,
+               today: date | None = None) -> Plan:
     """The plan for a request. Raises ValueError with a user-facing text when no plan can be made.
 
     ``created`` defaults to midnight (UTC) of the request's start date, so that the same request
     gives the same plan and the same calendar file.
+    ``today``: the day the plan is built. The weeks up to ``horizon_for`` that day keep their
+    workouts and the rest become sketches. None: every week is detailed.
     """
     skeleton = periodize(request)
-    filler = _Filler(request, skeleton, plan_id)
-    weeks = [filler.fill(spec) for spec in skeleton.weeks]
+    weeks = fill_weeks(request, skeleton, plan_id)
+    horizon = None
+    if today is not None:
+        horizon = horizon_for(weeks[0].monday, len(weeks), today)
+        weeks = [wk if wk.index <= horizon else sketch_of(wk) for wk in weeks]
     notes = list(skeleton.notes)
     cap = request.capacity_for(RUNNING)
     if cap.anchors is None:
@@ -347,4 +386,4 @@ def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime
         notes.append(Note.of("plan.note.estimated"))
     created = created or datetime.combine(request.start, time(0), tzinfo=timezone.utc)
     return Plan(plan_id, request, created, ENGINE_VERSION, skeleton.blocks, weeks, notes,
-                based_on={c.sport: c.tested for c in request.capacity})
+                based_on={c.sport: c.tested for c in request.capacity}, horizon=horizon)

@@ -246,3 +246,58 @@ def test_overview_shows_the_start_and_draws_the_progression_lines(demo_window, e
                 found[name] += 1
     assert all(n > 20 for n in found.values()), found
     assert v.save()        # leave nothing unsaved for the window to ask about
+
+
+def test_rolling_plan_shows_its_horizon_and_renews_without_the_form(demo_window, erik):
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v, start=date.today())
+    assert v.preview() and v.plan.horizon == 4 and len(v.plan.weeks) > 4
+    last = v.plan.detailed_until
+    assert v.horizon.isVisible() and v.horizon.text() == \
+        f"Detaljerat till och med vecka 4 ({last.sunday.isoformat()}). Veckorna efter är en skiss."
+    assert not v.renew_btn.isVisible()                      # not saved yet: nothing to renew
+    assert v.save() and v.renew_btn.isVisible()
+    before = v.stored.plan
+    # four weeks on: the banner offers Förnya, and Förnya details the next weeks on what was saved
+    later = before.start + timedelta(weeks=3)                # Monday of week 4
+    stored = services.renew_plan(win.ctx.store, erik, later)
+    assert stored.plan.horizon == 7 and stored.plan.weeks[:4] == before.weeks[:4]
+    assert stored.plan.request == before.request and stored.session_id == v.stored.session_id
+    events = win.ctx.store.db.plan_events(stored.row_id)
+    assert events[-1]["kind"] == "renewed"
+    again = services.renew_plan(win.ctx.store, erik, later)  # nothing more is due: the plan stays
+    assert again.plan == stored.plan
+    win._plan_back()
+    win.open_plan(erik)
+    assert v.plan.horizon == 7 and not v.dirty()
+
+
+def test_renew_is_offered_when_the_workouts_end_within_a_week(demo_window, erik, monkeypatch):
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v, start=date.today())
+    assert v.preview() and v.save()
+    assert v.stored.plan.horizon == 4                       # built today: this week and three more
+    assert services.plan_renew_due(win.ctx.store, erik) is None
+    soon = v.stored.plan.detailed_until.sunday - timedelta(days=3)    # Thursday of week 4
+    assert services.plan_renew_due(win.ctx.store, erik, soon) is not None
+    # the plan page and the athlete's form offer Förnya on that day
+    import lopanalys.ui.views.plan as plan_view
+    import lopanalys.ui.services as svc
+
+    class Day(date):
+        @classmethod
+        def today(cls):
+            return soon
+    monkeypatch.setattr(plan_view, "date", Day)
+    monkeypatch.setattr(svc, "date", Day)
+    v._fill_banner()
+    assert v.banner.isVisible() and v.banner_renew.isVisible() and "Passen tar slut" in v.banner_text.text()
+    assert v.renew() and v.stored.plan.horizon == 7 and not v.banner.isVisible()
+    win.go("athletes")
+    win.athletes.form.load(erik)
+    win.athletes._show_reminder()
+    assert not win.athletes.form.renew_btn.isVisible()      # renewed: nothing due

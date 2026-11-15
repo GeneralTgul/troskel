@@ -1,6 +1,6 @@
 # Träningsschema
 
-*Bygga ett träningsschema på ett test, spara det på idrottaren, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
+*Bygga ett träningsschema på ett test, spara det på idrottaren, förnya det fyra veckor i taget, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
 
 <!-- toc -->
 ## Innehåll
@@ -9,6 +9,7 @@
 - [Fyll i formuläret](#fyll-i-formuläret)
   - [Vad testet ger schemat](#vad-testet-ger-schemat)
 - [Förhandsvisa schemat](#förhandsvisa-schemat)
+- [Förnya schemat](#förnya-schemat)
 - [Hälsodeklarationen](#hälsodeklarationen)
 - [Spara och lämna ut](#spara-och-lämna-ut)
   - [Skicka schemat med e-post](#skicka-schemat-med-e-post)
@@ -60,17 +61,31 @@ Maxpulsen är den högsta pulsen som medel över 5 sekunder. Har idrottaren en s
 Tryck *Förhandsvisa*. Översikten till höger visar:
 
 - målet eller längden, perioden och testet schemat bygger på,
+- hur långt passen går: *Detaljerat till och med vecka 4 (2026-12-13). Veckorna efter är en skiss.* Ett sparat schema har knappen *Förnya* på samma rad, se [Förnya schemat](#förnya-schemat),
 - var tiden i veckan börjar och vart den växer, till exempel *Börjar på 3 h 20 min i veckan, det du tränar nu. Tiden växer till 6 h 15 min i vecka 24.* Med *Tränar nu* tomt står det att schemat utgår från nivåns förval,
 - fyra rutor: *Längd*, *Pass i veckan*, *Tid i veckan* (i belastningsveckorna, från den första till den största) och *Lugn träning* (andelen av tiden i zon 1–2),
-- blocken som ett band över en stapel per vecka, med tiden per zon i klockans färger. *lätt*, *test*, *lopp* och *mål* står under veckorna,
+- blocken som ett band över en stapel per vecka, med tiden per zon i klockans färger. *lätt*, *test*, *lopp* och *mål* står under veckorna. Veckorna i skissen har bleka staplar,
 - under staplarna två linjer med en egen axel i minuter: **det längsta passet** varje vecka (blå) och **de hårda minuterna**, tiden i zon 3–5 (röd). Siffran står vid den första veckan och vid den största. Linjerna visar ökningen även när staplarna är lika höga, till exempel när dagarna inte rymmer mer tid och schemat i stället gör passen längre och hårdare,
 - zonerna med puls och fart ur testet.
 
 Schemat börjar på det idrottaren tränar nu och växer mot den tillgängliga tiden, högst nivåns takt (5, 7 eller 8 %) per belastningsvecka. Ligger starten nära den tillgängliga tiden växer det långsammare, så att hela tiden nås först i slutet av uppbyggnaden. Tränar idrottaren mer än dagarna rymmer börjar schemat på all tillgänglig tid och står still i tid; ökningen ligger då i passen. Samma diagram med linjerna finns på utskriftens första sida.
 
-Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen och ett blad per vecka.
+Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter.
 
 Hur schemat räknas fram (block, lätta veckor, andelen lugn träning) står i [Träningsplanen](../../TRANINGSPLAN.md#2-planmotorn).
+
+## Förnya schemat
+
+Bara de närmaste fyra veckorna har pass: veckan schemat byggs och de tre veckorna efter. Resten av schemat är en skiss. Block, typ av vecka (belastning, lätt, test, lopp), tid och antal pass ligger fast ända fram till målet, men de enskilda passen kommer först när veckan närmar sig. Då kan schemat följa tiden som går och nya tester, utan att du fyller i något igen.
+
+- **Förnya** ger passen till och med tre veckor efter den vecka du står i. Formuläret, testet och hälsodeklarationen är desamma som när schemat sparades. Veckor som redan har pass ändras inte, varken de som har gått eller de som är utlämnade.
+- **När passen tar slut inom en vecka** erbjuder programmet *Förnya* överst på sidan *Träningsschema* och i idrottarens formulär under *Idrottare*, bredvid knappen *Träningsschema*.
+- **Samma underlag ger samma pass.** En förnyelse gör om ingenting: en vecka får samma pass som den skulle ha fått om hela schemat hade haft pass från början.
+- **Ett nytt test** förnyar också, se [Efter ett nytt test](#efter-ett-nytt-test).
+
+Efter en förnyelse: skriv ut schemat igen eller spara en ny kalenderfil, så får idrottaren de nya veckorna. Kalenderfilen och veckobladen har bara veckorna med pass. Skissen står som en tabell sist i utskriften.
+
+Scheman som sparades innan schemat blev rullande har pass i alla veckor och behöver aldrig förnyas.
 
 ## Hälsodeklarationen
 
@@ -122,6 +137,7 @@ När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest erbjude
 - **Passen från och med i dag** får mål i puls och fart ur det nya testet.
 - **Passen före i dag** har kvar målen från testet de lämnades ut med.
 - **Inget pass byter dag,** varken bakåt eller framåt. Veckorna, blocken och passens innehåll är desamma.
+- **Schemat förnyas,** så att passen går till och med tre veckor efter den vecka du står i (som [*Förnya*](#förnya-schemat)).
 
 Skriv ut schemat igen eller spara en ny kalenderfil efteråt, så får idrottaren de nya målen. Vill du i stället ha ett helt nytt schema från i dag: välj det nya testet under *Bygger på testet*, ändra startdatumet och spara.
 

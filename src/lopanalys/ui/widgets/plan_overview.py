@@ -5,6 +5,7 @@ the program's own colours so that it reads on the dark surface and can be photog
 web view. Minutes per zone in the watch's colours; test, race and easy weeks are marked below.
 Under the bars a panel of its own, with its own minute axis, draws the longest run and the minutes in
 zones 3-5 per week, so the progression shows even when the bars are as tall as each other.
+The weeks after the detail horizon (a rolling plan's sketch) are drawn faded.
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from lopanalys.plan.models import ZONES
 from lopanalys.plan.text import hours, progress_axis
 from lopanalys.ui import theme
 
+SKETCH_OPACITY = 0.38           # as report.plan_builder.SKETCH_OPACITY
 BLOCK_ALPHA = {"base": 60, "build": 110, "peak": 170, "taper": 40}
 
 
@@ -105,6 +107,8 @@ class PlanChart(QWidget):
                 clip = QPainterPath()
                 clip.addRoundedRect(QRectF(cx - bar_w / 2, y(total), bar_w, bottom - y(total) + 6), 5, 5)
                 p.save()
+                if not wk.detailed:          # a sketch: only the time is known, the workouts come later
+                    p.setOpacity(SKETCH_OPACITY)
                 p.setClipPath(clip)
                 p.setClipRect(QRectF(0, 0, self.width(), bottom), Qt.ClipOperation.IntersectClip)
                 acc = 0.0
