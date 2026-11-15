@@ -33,7 +33,7 @@ import urllib.request
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Iterator, Sequence
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 import cv2
 import numpy as np
@@ -120,6 +120,33 @@ def normalize_address(text: str) -> list[str]:
     return [f"http://{tail}", f"rtsp://{tail}"]
 
 
+def split_credentials(text: str) -> tuple[str, str, str]:
+    """``user:password@`` out of an address (a URL or what the coach typed): (address, user, password).
+    The user and password come back decoded; the address has no credentials left."""
+    text = text.strip()
+    scheme, sep, rest = text.partition("://")
+    if not sep:
+        scheme, rest = "", text
+    hostpart, slash, tail = rest.partition("/")
+    if "@" not in hostpart:
+        return text, "", ""
+    creds, _, host = hostpart.rpartition("@")
+    user, _, password = creds.partition(":")
+    bare = f"{scheme}://" if sep else ""
+    return f"{bare}{host}{slash}{tail}", unquote(user), unquote(password)
+
+
+def with_credentials(text: str, user: str, password: str) -> str:
+    """The address with ``user:password@`` put in (any earlier ones replaced). They are
+    percent-encoded, so a password with ``@``, ``:`` or ``/`` stays one password. No user: no login."""
+    bare, _, _ = split_credentials(text)
+    if not user:
+        return bare
+    creds = quote(user, safe="") + (":" + quote(password, safe="") if password else "") + "@"
+    scheme, sep, rest = bare.partition("://")
+    return f"{scheme}://{creds}{rest}" if sep else f"{creds}{bare}"
+
+
 # =============================================================================================
 # Statistics
 # =============================================================================================
@@ -196,6 +223,8 @@ def _request(url: str) -> urllib.request.Request:
     netloc = parts.netloc
     if "@" in netloc:
         creds, _, netloc = netloc.rpartition("@")
+        user, _, password = creds.partition(":")
+        creds = f"{unquote(user)}:{unquote(password)}"
         headers["Authorization"] = "Basic " + base64.b64encode(creds.encode()).decode()
     return urllib.request.Request(urlunsplit((parts.scheme, netloc, parts.path, parts.query, "")), headers=headers)
 

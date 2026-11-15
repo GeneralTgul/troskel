@@ -4,6 +4,12 @@ The coach types what the phone app shows (an IP address is enough) and presses *
 the program asks the usual ports and paths of the phone apps and lists the streams that answer.
 *Sök på nätverket* lists the cameras that announce themselves (Bonjour/mDNS). Nothing is opened
 here; the chosen address goes back to the wizard, which shows its preview like any other camera.
+
+A stream that answers *login needed* (HTTP 401/403, RTSP 401) shows the fields *Användarnamn* and
+*Lösenord*, and is not added without them. They go into the address as ``user:password@`` (percent-
+encoded), which is how a camera's login has always been kept (the setting ``camera.recent``); labels
+and log lines show the address without them (``camera.base.safe_url``). With ``url`` the dialog edits
+a saved camera: the address and its login are filled in.
 """
 from __future__ import annotations
 
@@ -19,18 +25,20 @@ from lopanalys.ui.widgets.common import StatusPill, button, label
 
 
 class AddStreamDialog(QDialog):
-    """``exec()`` and read ``url`` (None when cancelled)."""
+    """``exec()`` and read ``url`` (None when cancelled). ``url`` given: edit that saved camera."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, url: str | None = None) -> None:
         super().__init__(parent)
+        from lopanalys.camera import network
         self.url: str | None = None
         self._busy = False
-        self.setWindowTitle(t("ui.stream.title"))
+        self.editing = url
+        self.setWindowTitle(t("ui.stream.title_edit") if url else t("ui.stream.title"))
         self.setMinimumWidth(620)
         v = QVBoxLayout(self)
         v.setContentsMargins(22, 20, 22, 18)
         v.setSpacing(12)
-        v.addWidget(label(t("ui.stream.title"), "SectionTitle"))
+        v.addWidget(label(t("ui.stream.title_edit") if url else t("ui.stream.title"), "SectionTitle"))
         v.addWidget(label(t("ui.stream.intro"), "Hint", wrap=True))
         row = QHBoxLayout()
         self.address = QLineEdit()
@@ -41,6 +49,21 @@ class AddStreamDialog(QDialog):
         self.probe_btn.clicked.connect(self.probe)
         row.addWidget(self.probe_btn)
         v.addLayout(row)
+        # The login: shown when a stream answers that it needs one (or the saved camera has one).
+        self.login_row = QWidget()
+        lr = QHBoxLayout(self.login_row)
+        lr.setContentsMargins(0, 0, 0, 0)
+        self.user = QLineEdit()
+        self.user.setPlaceholderText(t("ui.stream.user"))
+        self.user.returnPressed.connect(self.probe)
+        lr.addWidget(self.user, 1)
+        self.password = QLineEdit()
+        self.password.setPlaceholderText(t("ui.stream.password"))
+        self.password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password.returnPressed.connect(self.probe)
+        lr.addWidget(self.password, 1)
+        self.login_row.hide()
+        v.addWidget(self.login_row)
         row = QHBoxLayout()
         self.status = StatusPill(t("ui.stream.idle"), "idle")
         row.addWidget(self.status)
@@ -60,10 +83,18 @@ class AddStreamDialog(QDialog):
         cancel = button(t("ui.common.cancel"), kind="ghost")
         cancel.clicked.connect(self.reject)
         row.addWidget(cancel)
-        self.ok = button(t("ui.stream.add"), "check", kind="primary")
+        self.ok = button(t("ui.common.save") if url else t("ui.stream.add"), "check", kind="primary")
         self.ok.clicked.connect(self.accept)
         row.addWidget(self.ok)
         v.addLayout(row)
+        if url:
+            bare, user, password = network.split_credentials(url)
+            self.address.setText(bare)
+            self.user.setText(user)
+            self.password.setText(password)
+            self.login_row.setVisible(bool(user))
+            self._add(url, services.stream_source_info(url).label, select=True)
+            self.status.set(t("ui.stream.saved"), "idle")
         self._update()
 
     # ------------------------------------------------------------------ actions
@@ -74,18 +105,30 @@ class AddStreamDialog(QDialog):
         if busy:
             self.status.set(text, "busy")
 
-    def _add(self, url: str, text: str, select: bool = False) -> None:
+    def show_login(self) -> None:
+        self.login_row.show()
+        (self.password if self.user.text() else self.user).setFocus()
+
+    def _typed(self) -> str:
+        """The address as typed, with the login from the fields when a user name is filled in."""
+        from lopanalys.camera import network
+        text = self.address.text().strip()
+        user = self.user.text().strip()
+        return network.with_credentials(text, user, self.password.text()) if user and text else text
+
+    def _add(self, url: str, text: str, select: bool = False, login: bool = False) -> None:
         for i in range(self.found.count()):
             if self.found.item(i).data(Qt.ItemDataRole.UserRole) == url:
                 return
         it = QListWidgetItem(theme.icon("camera", "accent"), text)
         it.setData(Qt.ItemDataRole.UserRole, url)
+        it.setData(Qt.ItemDataRole.UserRole + 1, login)
         self.found.addItem(it)
         if select or self.found.count() == 1:
             self.found.setCurrentItem(it)
 
     def probe(self) -> None:
-        text = self.address.text().strip()
+        text = self._typed()
         if not text or self._busy:
             return
         self._set_busy(True, t("ui.stream.probing"))
@@ -94,15 +137,30 @@ class AddStreamDialog(QDialog):
 
     def _probed(self, text: str, results: list[Any]) -> None:
         self._set_busy(False)
+        from lopanalys.camera import network
         self.found.clear()
+        given = bool(network.split_credentials(text)[1])
         for r in results:
             info = services.stream_source_info(r.url)
-            note = t("ui.stream.needs_login") if r.needs_login else t(f"ui.stream.proto.{r.protocol}")
-            self._add(r.url, f"{info.label}   ({note})")
+            # An HTTP stream is asked with the login, so 401 with one filled in is a wrong login. RTSP
+            # is asked without it (OPTIONS): its 401 is checked in the preview instead.
+            wrong = given and r.needs_login and network.is_http(r.url)
+            if r.needs_login:
+                note = t("ui.stream.wrong_login") if wrong else (
+                    t("ui.stream.login_given") if given else t("ui.stream.needs_login"))
+            else:
+                note = t(f"ui.stream.proto.{r.protocol}")
+            self._add(r.url, f"{info.label}   ({note})", login=r.needs_login and not given)
         if results:
-            login = all(r.needs_login for r in results)
-            self.status.set(t("ui.stream.login") if login else t("ui.stream.found", n=len(results)),
-                            "watch" if login else "ok")
+            if not all(r.needs_login for r in results):
+                self.status.set(t("ui.stream.found", n=len(results)), "ok")
+            elif not given:
+                self.show_login()
+                self.status.set(t("ui.stream.login"), "watch")
+            elif any(network.is_http(r.url) for r in results):
+                self.status.set(t("ui.stream.wrong_login"), "fix")
+            else:
+                self.status.set(t("ui.stream.login_given"), "watch")
         elif services.looks_like_url(text):
             # A full address that did not answer the quick question may still open (some cameras only
             # answer a real player): the coach may add it and see in the preview.
@@ -130,8 +188,18 @@ class AddStreamDialog(QDialog):
         self.ok.setEnabled(self.found.currentItem() is not None)
 
     def accept(self) -> None:
+        from lopanalys.camera import network
         it = self.found.currentItem()
         if it is None:
             return
-        self.url = str(it.data(Qt.ItemDataRole.UserRole))
+        url = str(it.data(Qt.ItemDataRole.UserRole))
+        user = self.user.text().strip()
+        if not self.login_row.isHidden():   # what the fields say now, also when not probed again
+            url = network.with_credentials(url, user, self.password.text())
+        if it.data(Qt.ItemDataRole.UserRole + 1) and not user:
+            # It answered that it needs a login: not saved without one (it would never open).
+            self.show_login()
+            self.status.set(t("ui.stream.login_first"), "fix")
+            return
+        self.url = url
         super().accept()

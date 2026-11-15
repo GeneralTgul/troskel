@@ -392,6 +392,73 @@ def test_the_phone_becomes_the_second_camera_and_shows_its_picture(demo_window, 
         nt._stop_preview()
 
 
+def test_a_phone_that_needs_a_login_asks_for_it(qapp, qtbot, caplog):
+    """IP Camera Lite answers 401: the dialog shows the login fields and does not save the address
+    without them (it was saved without a password, and could not be corrected afterwards)."""
+    import logging
+    caplog.set_level(logging.DEBUG)
+    with FakePhoneCamera(fps=10, login=("admin", "p@ss")) as cam:
+        dlg = AddStreamDialog()
+        assert not dlg.login_row.isVisibleTo(dlg)
+        dlg.address.setText(f"127.0.0.1:{cam.port}")
+        dlg.probe()
+        qtbot.waitUntil(lambda: not dlg._busy, timeout=8000)
+        assert dlg.found.count() == 1 and dlg.login_row.isVisibleTo(dlg)
+        dlg.accept()
+        assert dlg.url is None and dlg.result() == 0                   # not saved without the login
+        dlg.user.setText("admin")
+        dlg.password.setText("fel")
+        dlg.probe()
+        qtbot.waitUntil(lambda: not dlg._busy, timeout=8000)
+        assert "fel användarnamn" in dlg.found.item(0).text()
+        dlg.password.setText("p@ss")
+        dlg.probe()
+        qtbot.waitUntil(lambda: not dlg._busy, timeout=8000)
+        assert "MJPEG" in dlg.found.item(0).text() and "p@ss" not in dlg.found.item(0).text()
+        dlg.accept()
+        assert dlg.url == cam.url.replace("://", "://admin:p%40ss@")
+        # editing the saved camera: the address and the login are filled in
+        dlg = AddStreamDialog(url=dlg.url)
+        assert dlg.address.text() == cam.url and dlg.user.text() == "admin" and dlg.password.text() == "p@ss"
+        dlg.password.setText("nytt")
+        dlg.accept()                                                  # saved without trying again
+        assert dlg.url == cam.url.replace("://", "://admin:nytt@")
+    assert "p@ss" not in caplog.text and "p%40ss" not in caplog.text and "nytt" not in caplog.text
+
+
+def test_saved_cameras_can_be_edited_and_removed(demo_window, qtbot, monkeypatch):
+    w = demo_window
+    old, new = "http://192.0.2.50:8081/video", "http://admin:admin@192.0.2.50:8081/video"
+    w.ctx.set_setting("camera.recent", [old, "/x/film.mp4"])
+    w.ctx.set_setting("camera.default", old)
+    nt = to_check_page(w, qtbot, "gait")
+    row = next(i for i in range(nt.cam_list.count())
+               if getattr(nt.cam_list.item(i).data(0x0100), "id", None) == old)
+    nt.cam_list.setCurrentRow(row)
+    assert nt.cam_edit_btn.isVisibleTo(nt) and nt.cam_remove_btn.isVisibleTo(nt)
+
+    class Dlg:
+        def __init__(self, parent=None, url=None):
+            assert url == old
+            self.url = new
+
+        def exec(self):
+            return 1
+    import lopanalys.ui.views.add_stream as add_stream
+    monkeypatch.setattr(add_stream, "AddStreamDialog", Dlg)
+    nt.cam_edit_btn.click()
+    assert nt.ctx.setting("camera.recent") == [new, "/x/film.mp4"]
+    assert nt.ctx.setting("camera.default") == new and nt.camera.id == new
+    qtbot.waitUntil(lambda: any(getattr(nt.cam_list.item(i).data(0x0100), "id", None) == new
+                                for i in range(nt.cam_list.count())), timeout=5000)
+    nt._stop_preview()
+    nt.cam_remove_btn.click()                                         # the question is answered Yes
+    assert nt.ctx.setting("camera.recent") == ["/x/film.mp4"] and nt.ctx.setting("camera.default") == ""
+    assert nt.camera is None or nt.camera.id != new
+    nt.cam_list.setCurrentRow(0)                                      # Ingen kamera: nothing to edit
+    assert not nt.cam_edit_btn.isVisibleTo(nt) and not nt.cam_remove_btn.isVisibleTo(nt)
+
+
 def test_passwords_never_reach_the_log_key():
     info = services.stream_source_info("rtsp://admin:hemligt@10.0.0.5:8554/live")
     assert "hemligt" not in services._source_key(info) and "hemligt" not in services.safe_source_id(info)

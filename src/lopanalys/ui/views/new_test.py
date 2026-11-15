@@ -813,6 +813,17 @@ class NewTestView(QWidget):
         self.cam_list = QListWidget()
         self.cam_list.currentItemChanged.connect(self._camera_chosen)
         c.body.addWidget(self.cam_list, 1)
+        sr = QHBoxLayout()                      # a saved phone or file: change or forget it
+        sr.addStretch(1)
+        self.cam_edit_btn = button(t("ui.wiz.cam_edit"), "edit", kind="ghost")
+        self.cam_edit_btn.clicked.connect(self._edit_saved_camera)
+        sr.addWidget(self.cam_edit_btn)
+        self.cam_remove_btn = button(t("ui.wiz.cam_remove"), "trash", kind="ghost")
+        self.cam_remove_btn.clicked.connect(self._remove_saved_camera)
+        sr.addWidget(self.cam_remove_btn)
+        c.body.addLayout(sr)
+        self.cam_edit_btn.hide()
+        self.cam_remove_btn.hide()
         self.cam_hint = label("", "Hint", wrap=True)   # what to do when a camera is connected but unusable
         self.cam_hint.hide()
         c.body.addWidget(self.cam_hint)
@@ -899,6 +910,57 @@ class NewTestView(QWidget):
             self.camera2 = info
         else:
             self.camera = info
+        self._discover()
+
+    def _saved_id(self, info: Any = None) -> str | None:
+        """The chosen camera's entry in the saved cameras (``camera.recent``), or None."""
+        info = self.camera if info is None else info
+        sid = getattr(info, "id", None)
+        return sid if isinstance(sid, str) and sid in self._recent() else None
+
+    def _sync_saved_buttons(self, info: Any = None) -> None:
+        sid = self._saved_id(info)
+        self.cam_edit_btn.setVisible(sid is not None and services.looks_like_url(sid))
+        self.cam_remove_btn.setVisible(sid is not None)
+
+    def _replace_saved(self, old: str, new: str | None) -> None:
+        """Change (``new``) or forget (None) a saved camera, and the remembered choices that pointed at it."""
+        recent = [x for x in self._recent() if x != old or new is not None]
+        recent = [new if x == old else x for x in recent]
+        self.ctx.set_setting("camera.recent", list(dict.fromkeys(recent))[:8])
+        for key in ("camera.default", "camera.second"):
+            if self.ctx.setting(key) == old:
+                self.ctx.set_setting(key, new or "")
+        for attr in ("camera", "camera2"):
+            if getattr(getattr(self, attr), "id", None) == old:
+                setattr(self, attr, services.stream_source_info(new) if new else None)
+
+    def _edit_saved_camera(self) -> None:
+        """A saved phone: the dialog with its address and login filled in (e.g. a password added afterwards)."""
+        from lopanalys.ui.views.add_stream import AddStreamDialog
+        old = self._saved_id()
+        if old is None:
+            return
+        dlg = AddStreamDialog(self, url=old)
+        if not dlg.exec() or not dlg.url:
+            return
+        if dlg.url != old:
+            self._stop_preview(first_only=True)
+            self._replace_saved(old, dlg.url)
+        self._discover()
+
+    def _remove_saved_camera(self) -> None:
+        old = self._saved_id()
+        if old is None:
+            return
+        name = self.camera.label if self.camera is not None else old
+        r = QMessageBox.question(self, t("ui.wiz.cam_remove"), t("ui.wiz.cam_remove_ask", name=name),
+                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                 QMessageBox.StandardButton.No)
+        if r != QMessageBox.StandardButton.Yes:
+            return
+        self._stop_preview(first_only=True)
+        self._replace_saved(old, None)
         self._discover()
 
     def _discover(self) -> None:
@@ -1049,6 +1111,7 @@ class NewTestView(QWidget):
 
     def _camera_chosen(self, it: QListWidgetItem | None, *_: Any) -> None:
         chosen = it.data(Qt.ItemDataRole.UserRole) if it else None
+        self._sync_saved_buttons(chosen)
         if chosen is not None and self.preview is not None and self.preview.running and \
                 self.preview.key == getattr(chosen, "id", None):
             # A new search found the camera that is already shown: keep its preview.

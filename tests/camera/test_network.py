@@ -11,7 +11,7 @@ from lopanalys.camera.discovery import _recent_infos, make_source
 from lopanalys.camera.network import (HttpStreamSource, MjpegParser, MjpegSource, NotMjpeg, StreamStats,
                                       candidate_urls, find_network_cameras, format_stats, mdns_browse,
                                       mdns_query, normalize_address, parse_mdns, probe_address, probe_url,
-                                      safe_url, stream_info)
+                                      safe_url, split_credentials, stream_info, with_credentials)
 from lopanalys.camera.network_sim import FakeMdns, FakePhoneCamera, FakeRtspPort
 from lopanalys.camera.opencv_source import CameraError, SourceState
 
@@ -46,6 +46,19 @@ def test_safe_url_and_labels_hide_the_password():
     info = stream_info("http://admin:hemligt@10.0.0.5:8081/video")
     assert "hemligt" not in info.label and info.kind == SourceKind.RTSP
     assert "hemligt" not in _recent_infos(["http://admin:hemligt@10.0.0.5:8081/video"])[0].label
+
+
+def test_credentials_in_and_out_of_an_address():
+    assert split_credentials("rtsp://admin:hemligt@10.0.0.5:8554/live") == ("rtsp://10.0.0.5:8554/live", "admin", "hemligt")
+    assert split_credentials("admin:x@10.0.0.5") == ("10.0.0.5", "admin", "x")
+    assert split_credentials("http://10.0.0.5:8081/video") == ("http://10.0.0.5:8081/video", "", "")
+    assert with_credentials("http://old:pw@10.0.0.5:8081/video", "admin", "a@b:c/d") == \
+        "http://admin:a%40b%3Ac%2Fd@10.0.0.5:8081/video"
+    assert with_credentials("10.0.0.5", "admin", "admin") == "admin:admin@10.0.0.5"
+    assert with_credentials("http://u:p@10.0.0.5/video", "", "") == "http://10.0.0.5/video"
+    u = with_credentials("rtsp://10.0.0.5/live", "admin", "a@b:c")
+    assert split_credentials(u) == ("rtsp://10.0.0.5/live", "admin", "a@b:c")
+    assert "a%40b" not in safe_url(u) and "admin" not in safe_url(u)
 
 
 # ---------------------------------------------------------------- the parser
@@ -157,6 +170,9 @@ def test_login_and_wrong_address():
         url = cam.url.replace("://", "://admin:admin@")
         with MjpegSource(stream_info(url)) as src:
             assert len(take(src, 3)) == 3
+    with FakePhoneCamera(login=("admin", "p@ss:1")) as cam:     # a password with @ and : (percent-encoded)
+        assert probe_url(with_credentials(cam.url, "admin", "p@ss:1")).needs_login is False
+        assert probe_url(with_credentials(cam.url, "admin", "fel")).needs_login
     with FakePhoneCamera() as cam:
         with pytest.raises(NotMjpeg):
             MjpegSource(stream_info(f"http://127.0.0.1:{cam.port}/")).open()

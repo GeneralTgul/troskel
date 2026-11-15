@@ -122,7 +122,8 @@ En iPhone blir en kamera med en app som sänder bilden över wifi. Telefonen och
 Telefonen står sedan i kameralistan som *Nätverkskamera* och är kvar där nästa gång. Är en riktig kamera redan vald blir telefonen den andra kameran, annars den första.
 
 - ***Sök på nätverket*** listar kameror som själva talar om att de finns på nätverket. Alla appar gör inte det, och då skriver du adressen.
-- **Inloggning:** har appen användarnamn och lösenord skrivs de före adressen: `användare:lösenord@192.0.2.50`. Lösenordet sparas med adressen i programmets inställningar på datorn, men visas inte i listan och skrivs inte i loggen.
+- **Inloggning:** svarar strömmen att den kräver inloggning visas fälten *Användarnamn* och *Lösenord*. Fyll i dem och tryck på *Prova adressen* igen. Utan dem läggs strömmen inte till. Lösenordet sparas med adressen i programmets inställningar på datorn, men visas inte i listan och skrivs inte i loggen.
+- **Ändra och ta bort:** välj en sparad telefon i kameralistan. *Ändra* öppnar rutan med adressen och inloggningen ifyllda, till exempel för att lägga till ett lösenord i efterhand. *Ta bort* tar bort den ur listan, och adressen och lösenordet glöms. En sparad videofil går också att ta bort.
 - **Appen:** *IP Camera Lite* är den som programmet provar först. Appar som gör telefonen till en vanlig webbkamera i Windows (till exempel Camo och iVCam) syns direkt i kameralistan och behöver ingen adress.
 - **Ställ telefonen** på ett stativ med laddaren i, stäng av skärmlåset och håll appen öppen. En telefon som somnar slutar sända.
 - **Tappar telefonen nätet** under testet försöker programmet ansluta igen av sig självt. Den andra kameran och testet fortsätter under tiden.
