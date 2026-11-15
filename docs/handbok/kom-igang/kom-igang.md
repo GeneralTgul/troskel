@@ -66,7 +66,9 @@ Alla fält utom *Förnamn* får vara tomma. Sifferfälten är tomma tills något
 
 ### Samtycke
 
-Under uppgifterna står *Samtycke*. Fyll i det efter den underskrivna blanketten: datumet och de fyra rutorna. Kryssar du i en ruta utan datum sätts dagens datum.
+Under uppgifterna står *Samtycke*. Fyll i det efter den underskrivna blanketten: datumet och de fyra rutorna. Kryssar du i en ruta utan datum sätts dagens datum, och *I dag* bredvid datumet sätter det direkt.
+
+Sparar du samtycket medan *Nytt test* står öppet gäller det när testet startar. Du behöver inte välja idrottaren igen.
 
 | Ruta | Vad den styr |
 |---|---|

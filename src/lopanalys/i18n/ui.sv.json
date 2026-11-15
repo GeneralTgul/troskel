@@ -477,6 +477,7 @@
   "ui.consent.title": "Samtycke",
   "ui.consent.hint": "Fyll i efter den underskrivna blanketten. Rutorna styr vad programmet gör: utan film spelas ingen film in, utan spara raderas allt när rapporten har lämnats, och utan kontakt mejlas inget. Rapporten och FIT-filen skickas med vanlig e-post, som inte är krypterad.",
   "ui.consent.date": "Samtycke lämnat (datum)",
+  "ui.consent.today": "I dag",
   "ui.consent.date_placeholder": "ÅÅÅÅ-MM-DD",
   "ui.consent.test": "Test och mätvärden",
   "ui.consent.film": "Film under testet",

@@ -134,8 +134,9 @@ class DateField(QWidget):
     """
 
     def __init__(self, parent: QWidget | None = None, placeholder: str | None = None, *,
-                 plan: bool = False) -> None:
-        """``plan``: a date in a training plan (today and ahead) instead of a date of birth."""
+                 plan: bool = False, today: bool = False) -> None:
+        """``plan``: a date in a training plan (today and ahead) instead of a date of birth.
+        ``today``: a button *I dag* beside the calendar (the consent is mostly signed the same day)."""
         super().__init__(parent)
         self._plan = plan
         h = QHBoxLayout(self)
@@ -155,6 +156,15 @@ class DateField(QWidget):
         self.cal_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cal_btn.clicked.connect(self._pick)
         h.addWidget(self.cal_btn)
+        self.today_btn: QToolButton | None = None
+        if today:
+            self.today_btn = QToolButton()
+            self.today_btn.setText(t("ui.consent.today"))
+            self.today_btn.setMinimumHeight(38)
+            self.today_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.today_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.today_btn.clicked.connect(lambda: self.set_date(date.today()))
+            h.addWidget(self.today_btn)
         self.menu = QMenu(self)
         self.calendar = QCalendarWidget()
         if plan:
@@ -317,7 +327,7 @@ class AthleteForm(Card):
         cg = QGridLayout()
         cg.setHorizontalSpacing(18)
         cg.setVerticalSpacing(8)
-        self.consent_date = DateField(placeholder=t("ui.consent.date_placeholder"))
+        self.consent_date = DateField(placeholder=t("ui.consent.date_placeholder"), today=True)
         cg.addWidget(field(t("ui.consent.date"), self.consent_date), 0, 0, 2, 1, Qt.AlignmentFlag.AlignTop)
         self.consent_boxes: dict[str, QCheckBox] = {}
         for i, key in enumerate(CONSENT_KEYS):

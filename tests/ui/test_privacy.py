@@ -195,6 +195,9 @@ def test_consent_form_saves_date_and_boxes(demo_window):
     assert not form.withdraw_btn.isVisibleTo(form.actions)
     form.consent_boxes["test"].setChecked(True)
     assert form.consent_date.text() == date.today().isoformat()          # ticking a box dates the consent
+    form.consent_date.edit.setText("")
+    form.consent_date.today_btn.click()                                   # the button I dag
+    assert form.consent_date.text() == date.today().isoformat()
     form.consent_date.edit.setText("2026-11-02")
     form.save_btn.click()
     nils = next(a for a in win.ctx.store.athletes() if a.first_name == "Nils")

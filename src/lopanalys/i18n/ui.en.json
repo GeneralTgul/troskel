@@ -477,6 +477,7 @@
   "ui.consent.title": "Consent",
   "ui.consent.hint": "Fill in from the signed form. The boxes decide what the program does: without film nothing is recorded, without keep everything is erased when the report has been handed over, and without contact nothing is mailed. The report and the FIT file are sent by ordinary e-mail, which is not encrypted.",
   "ui.consent.date": "Consent given (date)",
+  "ui.consent.today": "Today",
   "ui.consent.date_placeholder": "YYYY-MM-DD",
   "ui.consent.test": "Test and measurements",
   "ui.consent.film": "Film during the test",
