@@ -827,6 +827,13 @@ class NewTestView(QWidget):
         self.cam_hint = label("", "Hint", wrap=True)   # what to do when a camera is connected but unusable
         self.cam_hint.hide()
         c.body.addWidget(self.cam_hint)
+        hr = QHBoxLayout()
+        self.cam_hint_retry = button(t("ui.common.search_again"), "refresh", kind="ghost")
+        self.cam_hint_retry.clicked.connect(self._discover)
+        self.cam_hint_retry.hide()
+        hr.addWidget(self.cam_hint_retry)
+        hr.addStretch(1)
+        c.body.addLayout(hr)
         self.fps_hint = label("", "Hint", wrap=True)   # bike fit and double poling: the camera's frame rate is too low
         self.fps_hint.setStyleSheet(f"color: {theme.TOKENS['watch']};")
         self.fps_hint.hide()
@@ -1098,16 +1105,28 @@ class NewTestView(QWidget):
         self.fps_hint.setVisible(bool(text) and self.kind in TECHNIQUE_KINDS)
 
     def _show_camera_hint(self, found: list[Any]) -> None:
-        """No GoPro in the list although one is plugged in: say what is wrong (Windows driver)."""
+        """No GoPro in the list: say what to check. Windows bound to the wrong driver is said when it
+        is seen; otherwise, when a GoPro was found here before or no camera at all was found, the
+        camera itself (on, USB mode GoPro Connect, the cable, the USB icon). On the real test the log
+        said "GoPro search: no USB network link": the camera was off or in the wrong USB mode.
+        Not in the demo, which has no camera of its own."""
         hint = None
-        if not any(getattr(getattr(s, "kind", None), "value", "") == "gopro_usb" for s in found):
+        gopro = any(getattr(getattr(s, "kind", None), "value", "") == "gopro_usb" for s in found)
+        if gopro:
+            self.ctx.set_setting("camera.gopro_seen", True)
+        else:
             try:
                 from lopanalys.camera.gopro import windows_driver_hint
                 hint = windows_driver_hint()
             except Exception:  # noqa: BLE001
                 hint = None
+            live = [s for s in found if getattr(s, "live", True) and not demo.is_demo_source(s)
+                    and getattr(getattr(s, "kind", None), "value", "") != "file"]
+            if hint is None and not self.ctx.demo and (self.ctx.setting("camera.gopro_seen") or not live):
+                hint = t("ui.wiz.gopro_check")
         self.cam_hint.setText(hint or "")
         self.cam_hint.setVisible(bool(hint))
+        self.cam_hint_retry.setVisible(bool(hint))
 
     def _camera_chosen(self, it: QListWidgetItem | None, *_: Any) -> None:
         chosen = it.data(Qt.ItemDataRole.UserRole) if it else None

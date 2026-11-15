@@ -102,6 +102,7 @@
   "ui.wiz.cam_searching": "Letar efter kameror …",
   "ui.wiz.cam_found": "{n} kameror hittades",
   "ui.wiz.cam_none_found": "Ingen kamera hittades",
+  "ui.wiz.gopro_check": "Syns inte GoPron? Kontrollera att den är påslagen, att USB-läget är GoPro Connect och inte MTP (under Anslutningar i kamerans inställningar), att kabeln sitter i ordentligt i båda ändar och att kameran visar USB-ikonen på skärmen. Tryck sedan på Sök igen.",
   "ui.wiz.no_camera": "Ingen kamera (bara band och puls)",
   "ui.wiz.demo_camera": "Demolöpare (ingen kamera behövs)",
   "ui.wiz.choose_camera": "Välj en kamera i listan",

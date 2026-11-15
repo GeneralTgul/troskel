@@ -136,3 +136,44 @@ def test_failed_start_shows_the_reason_in_the_preview(demo_window, qtbot, monkey
     assert nt.cam_view.placeholder == t("ui.wiz.preview_failed", detail="no stream")
     nt.go(4)                                       # nothing to hand over
     assert services._take_parked(info) is None
+
+
+def test_no_gopro_says_what_to_check(demo_window, qtbot, monkeypatch):
+    """The GoPro was in the cable but not in the list (log: "GoPro search: no USB network link"):
+    the camera step says what to check, with Sök igen beside it."""
+    from lopanalys.camera import gopro
+    from lopanalys.camera.base import SourceInfo, SourceKind
+    monkeypatch.setattr(gopro, "windows_driver_hint", lambda: None)
+    monkeypatch.setattr(services, "discover_sources", lambda *a, **k: [])
+    nt = demo_window.new_test
+    demo_window.go("new_test")
+    nt.go(0)
+    nt.a_list.setCurrentRow(0)
+    nt._next()
+    nt.kind_group.button(3).click()
+    nt._next()
+    nt._next()
+    nt._show_camera_hint([])                        # the demo has no camera of its own: no hint there
+    assert not nt.cam_hint.isVisibleTo(nt)
+    monkeypatch.setattr(nt.ctx, "demo", False)
+    cam = SourceInfo(SourceKind.GOPRO_USB, "C3000000000000", "GoPro HERO12", 1920, 1080, 30.0)
+    web = SourceInfo(SourceKind.SYSTEM, "0", "Webbkamera")
+    nt._show_camera_hint([web])                     # a webcam and never a GoPro here: no hint
+    assert not nt.cam_hint.isVisibleTo(nt)
+    nt._show_camera_hint([])                        # no camera at all: what to check
+    assert nt.cam_hint.isVisibleTo(nt) and "GoPro Connect" in nt.cam_hint.text() and "USB-ikonen" in nt.cam_hint.text()
+    assert nt.cam_hint_retry.isVisibleTo(nt)
+    nt._show_camera_hint([cam, web])                # found: no hint, and the GoPro is remembered
+    assert not nt.cam_hint.isVisibleTo(nt) and not nt.cam_hint_retry.isVisibleTo(nt)
+    nt._show_camera_hint([web])                     # gone again with a webcam in the list: the hint
+    assert nt.cam_hint.isVisibleTo(nt) and "påslagen" in nt.cam_hint.text()
+    calls = []
+    monkeypatch.setattr(nt, "_discover", lambda: calls.append(1))
+    nt.cam_hint_retry.clicked.disconnect()
+    nt.cam_hint_retry.clicked.connect(nt._discover)
+    nt.cam_hint_retry.click()
+    assert calls == [1]
+    monkeypatch.setattr(gopro, "windows_driver_hint", lambda: "Drivrutinen")
+    nt._show_camera_hint([])                        # the Windows driver is said first when seen
+    assert nt.cam_hint.text() == "Drivrutinen"
+    nt._stop_preview()

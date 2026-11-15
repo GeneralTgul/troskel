@@ -86,7 +86,7 @@ Programmet letar efter kameror och visar dem i listan. Välj en, så syns bilden
 - ***Ingen kamera (bara band och puls)*** går att välja i *Kombinerat* och de andra kombinationerna. Löpteknik kräver en kamera.
 - ***Demolöpare (ingen kamera behövs)*** är den ritade löparen i bilden ovan. Den finns alltid i listan.
 - **Kameran står:** välj *Från vänster*, *Från höger* eller *Bakifrån*. Från sidan ger översteg, underbenets vinkel och bålen. Bakifrån ger höftfall och knäns inåtvridning.
-- **En GoPro som är inkopplad men inte syns:** då visas en rad under listan som säger vad som är fel med drivrutinen i Windows och vad du ska göra.
+- **En GoPro som är inkopplad men inte syns:** då visas en rad under listan som säger vad du ska kontrollera: att kameran är påslagen, att USB-läget är *GoPro Connect* och inte MTP, att kabeln sitter i och att kameran visar USB-ikonen. *Sök igen* bredvid raden letar på nytt. Har Windows valt fel drivrutin för GoPron säger raden det i stället, och vad du ska göra. Raden visas när ingen kamera alls hittas, och när en GoPro har hittats förut men inte nu.
 
 Kamerorna och hållen du valde är förvalda nästa gång.
 

@@ -102,6 +102,7 @@
   "ui.wiz.cam_searching": "Looking for cameras …",
   "ui.wiz.cam_found": "{n} cameras found",
   "ui.wiz.cam_none_found": "No camera found",
+  "ui.wiz.gopro_check": "No GoPro? Check that it is switched on, that the USB mode is GoPro Connect, not MTP (under Connections in the camera's preferences), that the cable is firmly in at both ends and that the camera shows the USB icon on its screen. Then press Search again.",
   "ui.wiz.no_camera": "No camera (treadmill and HR only)",
   "ui.wiz.demo_camera": "Demo runner (no camera needed)",
   "ui.wiz.choose_camera": "Pick a camera in the list",
