@@ -59,3 +59,25 @@ def test_shift_start_stays_within_the_belt():
     run(r, clock, 30)
     assert r.shift_start(-5.5) == 0.0                    # below the belt's lowest speed: not made
     assert r.stages[1].speed_kmh == 6.0
+
+
+def test_the_tv_says_when_the_ramp_begins():
+    r, clock, tm, states, cues = make(library.hr_zones(9.0, 1.0, 3, stage_s=180, warmup_s=60))
+    r.start()
+    run_until(r, clock, lambda: r.state.stage_index == 3 and r.phase == Phase.RUNNING)
+    assert r.state.prompt == ""                                   # an ordinary step says nothing
+    run_until(r, clock, lambda: r.state.stage_index == 4)          # the ramp's first step
+    assert r.state.prompt == "Trappan: +0,5 km/h varje minut"
+    assert any(c.kind == "pre_announce" and c.text == "Trappan: +0,5 km/h varje minut" for c in cues)
+    run(r, clock, 25)
+    assert r.state.prompt == ""                                   # shown for 20 s
+    run_until(r, clock, lambda: r.state.stage_index == 5)
+    assert r.state.prompt == ""                                   # once, not at every ramp step
+
+
+def test_the_combined_test_says_its_incline_ramp():
+    p = library.lactate_to_max(10.0, 1.0, 2, stage_s=120, pause_s=0, warmup_s=0)
+    r, clock, tm, states, cues = make(p)
+    r.start()
+    run_until(r, clock, lambda: r.state.stage_index == 2 and r.phase == Phase.RUNNING)
+    assert r.state.prompt == "Ta laktatprov · Trappan: +1 % varje minut"   # the sample on the move is still said

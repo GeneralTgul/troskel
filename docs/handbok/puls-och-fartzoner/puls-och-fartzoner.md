@@ -60,7 +60,7 @@ Testet går av sig självt, och idrottaren kan köra det ensam.
 
 1. Gå igenom [Nytt test](../nytt-test/nytt-test.md) och tryck på *Starta livevyn* och *Starta testet*.
 2. Bandet kör uppvärmningen och byter sedan fart för varje steg. TV:n säger 15 sekunder i förväg vad som kommer.
-3. Efter sista steget fortsätter bandet direkt med trappan.
+3. Efter sista steget fortsätter bandet direkt med trappan, och TV:n säger *Trappan: +0,5 km/h varje minut*.
 4. **När idrottaren inte orkar mer: stoppa bandet på bandets egen panel.** Programmet ser att bandet står still, avslutar testet som utmattad och mäter pulsen en minut till. Bandet får inga fler kommandon. Sitter du vid datorn går det lika bra att trycka på *Utmattad*.
 5. Resultatet öppnas av sig självt.
 

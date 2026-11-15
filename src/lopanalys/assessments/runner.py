@@ -755,7 +755,8 @@ class TestRunner:
     def _run_stage(self, carry: float = 0.0) -> None:
         """Start (or continue after a pause) the current stage's clock."""
         s = self._cur
-        if self._stage_elapsed == 0.0:
+        fresh = self._stage_elapsed == 0.0
+        if fresh:
             self._stage_start_t = self._now_s() - carry
             self._announced = False
         was_controllable = self._controllable
@@ -770,6 +771,8 @@ class TestRunner:
         self._ticked.clear()
         self._low_cadence_since = None
         self._say_hand_overridden(s)
+        if fresh:
+            self._say_ramp_starts(s)
         if not self._flash_text:
             # self-paced: the target stays on the TV for the whole stage
             self._prompt = self._pt("hold", target=self._target_text(s)) if self._self_paced(s) else ""
@@ -850,6 +853,40 @@ class TestRunner:
                  end_v, fmt_pct(end_i).replace(",", "."), ", set by hand" if hand is not None else "")
         return (v, inc) if not near or hand is not None else (s.speed_kmh, s.incline_pct)
 
+    def _ramp_after_steps(self) -> int | None:
+        """The index of the ramp's first step when an open ramp follows ordinary steps (the zones test,
+        lactate steps to max), else None."""
+        p = self.protocol
+        if not p.open_ended or p.builder == "max_hr_ramp":
+            return None
+        work = [i for i, x in enumerate(self._stages[:self._n_protocol]) if not x.is_warmup]
+        return self._n_protocol - 1 if len(work) > 1 else None
+
+    def _say_ramp_starts(self, s: Stage) -> None:
+        """The TV says how the ramp goes when it begins: "Trappan: +0,5 km/h varje minut"."""
+        if self._idx != self._ramp_after_steps() or not self._run:
+            return
+        p = self.protocol
+        per = (t("assessments.prompt.per_minute") if abs(s.duration_s - 60) < 1e-6
+               else t("assessments.prompt.per_s", s=int(round(s.duration_s))))
+        if p.increment_speed_kmh > 0:
+            text = t("assessments.prompt.ramp_starts_speed", step=fmt_kmh(p.increment_speed_kmh), per=per)
+        elif p.increment_incline_pct > 0:
+            text = t("assessments.prompt.ramp_starts_incline", step=fmt_pct(p.increment_incline_pct), per=per)
+        else:
+            return
+        log.info("stage %d: the ramp begins", self._idx)
+        self._flash(text)
+        self._cue("pre_announce", text)
+
+    def _flash(self, text: str, s: float = 20.0) -> None:
+        """Show ``text`` as the prompt for ``s`` seconds, after a flash still showing (the lactate sample)."""
+        if self._flash_text and self._now_s() < self._flash_until and text not in self._flash_text:
+            text = f"{self._flash_text} · {text}"
+        self._flash_text = text
+        self._flash_until = max(self._flash_until, self._now_s() + s)
+        self._prompt = text
+
     def _say_hand_overridden(self, s: Stage) -> None:
         """The stage before was set by hand and the program now sets the next stage's target: said on
         the TV and in the log, so the change by hand is not overwritten without anyone noticing."""
@@ -860,9 +897,7 @@ class TestRunner:
                  target=self._stage_text(s.speed_kmh, s.incline_pct))
         log.info("stage %d: the target %.1f km/h replaces the speed set by hand (%.1f km/h)", self._idx,
                  s.speed_kmh, hand[0])
-        self._flash_text = text
-        self._flash_until = self._now_s() + 20.0
-        self._prompt = text
+        self._flash(text)
         self.bus.publish(TOPIC_LOG, text)
 
     def _watch_hand(self, el: float, speed: float | None, inc: float | None) -> None:
