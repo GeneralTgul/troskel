@@ -14,3 +14,4 @@ ios/App/App/config.xml
 *.p12
 *.mobileprovision
 android/keystore.properties
+store/screenshots/
