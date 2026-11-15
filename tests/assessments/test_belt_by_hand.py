@@ -28,9 +28,9 @@ def test_a_stage_set_by_hand_is_saved_as_the_belt_ran_it():
     assert r.records[0].speed_kmh == 17.0 and r.records[0].incline_pct == 1.0   # as planned: the plan's numbers
     st = r.belt_stats
     assert st and st[0]["index"] == 1 and st[0]["by_hand"] and st[0]["target_kmh"] == 17.5
-    assert any("för hand till 18,0 km/h · 2 %" in x for x in said)
+    assert any("för hand till" in x and "18,0 km/h" in x and "2 %" in x for x in said)   # pace first, then km/h
     # the next stage's target replaces the change by hand, and the TV says so
-    assert r.state.prompt == "Bandet gick på 18,0 km/h · 2 %, inställt för hand. Nu: 17,5 km/h · 1 %"
+    assert r.state.prompt == "Bandet gick på 3:20 min/km (18,0 km/h) · 2 %, inställt för hand. Nu: 3:26 min/km (17,5 km/h) · 1 %"
     assert tm.speed == 17.5
 
 
