@@ -1,0 +1,16 @@
+node_modules/
+dist/
+# Capacitor copies the built web app into the native projects on every sync.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+# Signing material never goes into the repository.
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+android/keystore.properties
