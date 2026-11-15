@@ -379,8 +379,43 @@ class SettingsView(QWidget):
         self._refresh_mail()
         return True
 
-    def send_test_mail(self) -> Any:
-        """*Skicka ett provmejl*: from the account to the account itself, so the settings are known to work."""
+    def ask_test_address(self, default: str) -> str | None:
+        """The address the test mail goes to (None: cancelled). Gmail files a mail to the account
+        itself under Skickat only, so the coach picks an inbox where it can be seen."""
+        from lopanalys.core.models import valid_email
+        dlg = QDialog(self)
+        dlg.setWindowTitle(t("ui.set.mail_test"))
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(24, 24, 24, 24)
+        v.setSpacing(12)
+        to = QLineEdit(default)
+        to.setMinimumWidth(320)
+        to.selectAll()
+        v.addWidget(field(t("ui.set.mail_test_to"), to, t("ui.set.mail_test_to_hint")))
+        err = label("", wrap=True)
+        err.setStyleSheet(f"color: {theme.TOKENS['fix']}; font-weight: 600;")
+        v.addWidget(err)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        cancel, ok = button(t("ui.common.cancel"), kind="ghost"), button(t("ui.mail.send"), "mail", kind="primary")
+        row.addWidget(cancel)
+        row.addWidget(ok)
+        v.addLayout(row)
+
+        def accept() -> None:
+            if valid_email(to.text().strip()):
+                dlg.accept()
+            else:
+                err.setText(t("share.mail.err.address"))
+
+        cancel.clicked.connect(dlg.reject)
+        ok.clicked.connect(accept)
+        to.returnPressed.connect(accept)
+        return to.text().strip() if dlg.exec() == QDialog.DialogCode.Accepted else None
+
+    def send_test_mail(self, to: str | None = None) -> Any:
+        """*Skicka ett provmejl*: from the account to an address the coach gives (``to``; None asks,
+        with the last one used filled in), so the settings are known to work."""
         if self._mail_test is not None:
             return None
         for e in (self.mail_host, self.mail_user, self.mail_sender_name, self.mail_sender_address):
@@ -393,13 +428,18 @@ class SettingsView(QWidget):
             self._mail_say(problem)
             QMessageBox.warning(self, t("ui.set.mail"), problem)
             return None
+        if to is None:
+            to = self.ask_test_address(str(self.ctx.setting("mail.test_to") or cfg.sender))
+            if not to:
+                return None
+        self.ctx.set_setting("mail.test_to", to)
         self.mail_test_btn.setEnabled(False)
         self._mail_say(t("ui.mail.sending"))
 
         def done(_: Any) -> None:
             self._mail_test = None
             self.mail_test_btn.setEnabled(True)
-            self._mail_say(t("ui.set.mail_test_ok", address=cfg.sender))
+            self._mail_say(t("ui.set.mail_test_ok", address=to))
             log.info("test mail sent")
 
         def fail(msg: str) -> None:
@@ -408,7 +448,7 @@ class SettingsView(QWidget):
             self._mail_say(t("ui.err.mail", detail=msg))
 
         from lopanalys.ui.bridge import run_async
-        self._mail_test = run_async(services.send_test_mail, cfg, on_done=done, on_error=fail)
+        self._mail_test = run_async(services.send_test_mail, cfg, to, on_done=done, on_error=fail)
         return self._mail_test
 
     def _refresh_lock(self) -> None:

@@ -135,7 +135,7 @@ Kortet *E-post* ligger under *Data och säkerhetskopia*. Här står kontot som r
 | *Avsändarens adress* | Lämna tomt när användaren är en e-postadress |
 
 - **Lösenordet sparas krypterat** och går bara att läsa av ditt Windows-konto på den här datorn. Fältet töms när lösenordet är sparat och visar *Sparat. Skriv ett nytt för att byta*. Efter en återställning på en annan dator skriver du lösenordet igen. *Ta bort lösenordet* tar bort det.
-- ***Skicka ett provmejl*** skickar ett mejl från kontot till kontot självt. Raden under knappen säger att det gick, eller vad som är fel: inloggningen, servern eller krypteringen.
+- ***Skicka ett provmejl*** frågar vart mejlet ska gå och skickar det dit från kontot. Ange en inkorg du kan läsa, till exempel din egen. Gmail lägger ett mejl till kontot självt bara under *Skickat*, så det syns inte i inkorgen. Nästa gång står den senaste adressen ifylld. Raden under knappen säger att det gick, eller vad som är fel: inloggningen, servern eller krypteringen.
 - **Vanlig e-post är inte krypterad** hela vägen till mottagaren. Programmet mejlar bara den som har rutan *Kontakt om uppföljning* ikryssad, se [Samtycke](#samtycke).
 
 Provmejlet från en riktig dator och lösenordet i Windows är *(inte provat på riktig hårdvara)*, se [PROV.md](../../PROV.md#fit-filen-och-mejlet).

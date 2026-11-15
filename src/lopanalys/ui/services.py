@@ -1335,10 +1335,11 @@ def send_mail(cfg: Any, to: str, subject: str, body: str, attachments: list[tupl
     mail.send(cfg, msg)
 
 
-def send_test_mail(cfg: Any) -> None:
-    """"Skicka ett provmejl": a mail from the account to itself. Blocks; raises share.mail.MailError."""
+def send_test_mail(cfg: Any, to: str | None = None) -> None:
+    """"Skicka ett provmejl": a mail from the account to ``to`` (default the account itself).
+    Blocks; raises share.mail.MailError."""
     from lopanalys.share import mail
-    mail.send(cfg, mail.probe_message(cfg))
+    mail.send(cfg, mail.probe_message(cfg, to))
 
 
 def mailed_text(session: Session | None) -> str:

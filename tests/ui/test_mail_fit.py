@@ -320,13 +320,21 @@ def test_send_a_test_mail(demo_window, smtp, qtbot, monkeypatch):
     v.mail_port.setText(str(smtp.port))
     v.mail_user.setText(smtp.user)
     v.mail_password.setText(PASSWORD)                 # typed but the field not left: the button saves it first
+    # The coach gives the address (Gmail files a mail to the account itself under Skickat only).
+    asked: list[str] = []
+    monkeypatch.setattr(v, "ask_test_address", lambda default: asked.append(default) or "olle@example.se")
     assert v.send_test_mail() is not None
     qtbot.waitUntil(lambda: v._mail_test is None, timeout=10000)
     (msg,) = smtp.messages
-    assert msg["To"] == smtp.user and msg["Subject"] == "Provmejl från Tröskel"
-    assert smtp.user in v.mail_state.text() and v.mail_test_btn.isEnabled()
+    assert asked == [smtp.user]                       # first time: the account's own address filled in
+    assert msg["To"] == "olle@example.se" and msg["Subject"] == "Provmejl från Tröskel"
+    assert "olle@example.se" in v.mail_state.text() and v.mail_test_btn.isEnabled()
     assert win.ctx.setting("mail.port") == smtp.port and v.mail_password.text() == ""
+    monkeypatch.setattr(v, "ask_test_address", lambda default: None)
+    assert v.send_test_mail() is None and len(smtp.messages) == 1    # cancelled: nothing sent
+    monkeypatch.setattr(v, "ask_test_address", lambda default: asked.append(default) or default)
     v.mail_password.setText("fel")
     v.send_test_mail()
+    assert asked[-1] == "olle@example.se"             # the last address used is filled in
     qtbot.waitUntil(lambda: v._mail_test is None, timeout=10000)
     assert "applösenord" in v.mail_state.text() and len(smtp.messages) == 1

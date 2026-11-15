@@ -161,6 +161,7 @@ def greeting(first_name: str, day: str, coach: str = "", business: str = "", *, 
     return subject, "\n".join(lines) + "\n"
 
 
-def probe_message(cfg: MailConfig) -> EmailMessage:
-    """The mail "Skicka ett provmejl" sends to the account itself."""
-    return build_message(cfg, cfg.sender, t("share.mail.test_subject"), t("share.mail.test_body") + "\n")
+def probe_message(cfg: MailConfig, to: str | None = None) -> EmailMessage:
+    """The mail "Skicka ett provmejl" sends, to ``to`` (default the account itself). Gmail shows a
+    mail to the account itself under Skickat only, so the coach gives another inbox."""
+    return build_message(cfg, to or cfg.sender, t("share.mail.test_subject"), t("share.mail.test_body") + "\n")
