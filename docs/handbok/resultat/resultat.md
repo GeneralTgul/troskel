@@ -33,7 +33,7 @@ Resultatet öppnas av sig självt när ett test är klart. Ett äldre test öppn
 | *LT1* | Den aeroba tröskeln: tempot (min/km), och under det farten i km/h, pulsen och laktatvärdet vid tröskeln |
 | *LT2* | Den anaeroba tröskeln, på samma sätt |
 | *Högsta puls* | Den högsta pulsen under testet: det högsta medelvärdet över 5 sekunder. Skiljer sig den högsta enskilda pulsen står den under, till exempel *högsta enskilda 200* |
-| *Testtid* | Testets längd och antalet steg som blev klara |
+| *Testtid* | Testets längd, antalet steg som blev klara och i ett löptest sträckan på bandet |
 
 I löptester står tempot (min/km) först och km/h efter överallt: i rutorna, i tabellen *Stegen*, i zonerna och i rapporten. Cykel och SkiErg visar effekt och tempo per 500 m som förut.
 

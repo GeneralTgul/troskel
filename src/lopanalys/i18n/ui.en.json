@@ -310,6 +310,7 @@
   "ui.res.max_edit": "Max HR",
   "ui.res.max_edit_tip": "The max HR the zones build on. The test's max HR is the highest 5-second mean. Change it and the zones and the watch values are worked out again, and it is saved as the athlete's max HR.",
   "ui.res.max_set_note": "The max HR {v} was changed by hand in the result.",
+  "ui.res.distance": "{km} on the belt",
   "ui.res.duration": "Test time",
   "ui.res.n_stages": "{n} stages completed",
   "ui.res.thr_sub": "{kmh} km/h · {hr} bpm · {la} mmol/L",

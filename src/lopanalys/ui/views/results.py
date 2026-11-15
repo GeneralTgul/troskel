@@ -23,13 +23,13 @@ from lopanalys.assessments import erg_values
 from lopanalys.assessments.cadence import cadence_label, with_strap_cadence
 from lopanalys.core import paths, simulated
 from lopanalys.core.i18n import t
-from lopanalys.core.models import MAX_KINDS, Athlete, Session, StepRecord, TestKind, TimeSample
+from lopanalys.core.models import MAX_KINDS, Athlete, Session, StepRecord, TestKind, TimeSample, distance_m
 from lopanalys.core.sport import DEFAULT_SPORT, profile, sport_of
 from lopanalys.plan.models import RUNNING
 from lopanalys.ui import services, theme
 from lopanalys.ui.bridge import run_async
 from lopanalys.ui.context import GAIT_KINDS, TECHNIQUE_KINDS, AppContext, TestOutcome
-from lopanalys.ui.fmt import clock, num, pace
+from lopanalys.ui.fmt import clock, km, num, pace
 from lopanalys.ui.live_controller import gait_ref, gait_status
 from lopanalys.ui.widgets.charts import HrSpeedChart, LactateChart
 from lopanalys.ui.widgets.common import Card, PageHeader, StatusPill, button, clear_layout, field_label, label
@@ -926,7 +926,10 @@ class ResultsView(QWidget):
         self.t_max.set_value(str(self.max_hr or "–"), sub, "good" if sub == t("ui.res.likely_max") else None)
         dur = (self.session.ended - self.session.started).total_seconds() if self.session and self.session.ended else \
             sum(r.duration_s for r in self.records)
-        self.t_dur.set_value(clock(dur), t("ui.res.n_stages", n=len(self.records)))
+        # running: the distance on the belt beside the stages
+        dist = distance_m(self.samples) if prof.load_quantity == "speed" and self.samples else None
+        self.t_dur.set_value(clock(dur), t("ui.res.n_stages", n=len(self.records))
+                             + (f" · {t('ui.res.distance', km=km(dist))}" if dist else ""))
         self._fill_vo2()
         self._refresh_zones()
         if self._hr_zones():

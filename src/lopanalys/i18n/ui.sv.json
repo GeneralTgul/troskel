@@ -310,6 +310,7 @@
   "ui.res.max_edit": "Maxpuls",
   "ui.res.max_edit_tip": "Maxpulsen som zonerna bygger på. Testets maxpuls är det högsta 5-sekundersmedlet. Ändrar du den räknas zonerna och klockans värden om, och den sparas som idrottarens maxpuls.",
   "ui.res.max_set_note": "Maxpulsen {v} är ändrad för hand i resultatet.",
+  "ui.res.distance": "{km} på bandet",
   "ui.res.duration": "Testtid",
   "ui.res.n_stages": "{n} steg klara",
   "ui.res.thr_sub": "{kmh} km/h · {hr} slag/min · {la} mmol/L",

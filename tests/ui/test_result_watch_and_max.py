@@ -32,8 +32,8 @@ def _max_session(ctx: AppContext, resting_hr: int | None = None) -> tuple[Athlet
     p = library.max_hr_ramp(12.0, warmup_s=0, start_incline_pct=1.0)
     recs = [StepRecord(i, 12.0, 1.0 + i, 60, hr_end=150 + 4 * i) for i in range(12)]
     end = 12 * 60.0
-    smp = [TimeSample(float(k), int(round(120 + 78 * k / (end - 10)))) for k in range(int(end) - 10)]
-    smp += [TimeSample(float(k), v) for k, v in zip(range(int(end) - 10, int(end) + 1),
+    smp = [TimeSample(float(k), int(round(120 + 78 * k / (end - 10))), 12.0) for k in range(int(end) - 10)]
+    smp += [TimeSample(float(k), v, 12.0) for k, v in zip(range(int(end) - 10, int(end) + 1),
                                                      (198, 199, 199, 200, 199, 198, 199, 199, 198, 198, 197))]
     smp += [TimeSample(end + k, 197 - k // 3) for k in range(1, 70)]
     s = Session(None, a.id, TestKind.MAX_HR, T0, T0 + timedelta(seconds=end + 70), protocol_name=p.name,
@@ -133,6 +133,7 @@ def test_results_show_the_pace_first(qtbot, tmp_path):
     v = ResultsView(ctx)
     qtbot.addWidget(v)
     v.load_session(s.id)
+    assert v.t_dur.sub.endswith("· 2,40 km på bandet")                      # 12 km/h for 12 minutes on the belt
     hh = v.table.horizontalHeader()
     assert hh.visualIndex(2) < hh.visualIndex(1)                   # Tempo before km/h
     z = {"speed_low": 11.0, "speed_high": 12.0}
