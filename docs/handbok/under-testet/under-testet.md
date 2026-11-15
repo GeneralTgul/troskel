@@ -69,7 +69,7 @@ Kortet *Styrning*:
 | *Starta testet* | Bandet startar efter en nedräkning. Knappen försvinner när testet är igång |
 | *Paus* | Fryser klockan. *Fortsätt* tar vid i samma steg efter en kort nedräkning |
 | *Stoppa* | Frågar först. Testet sparas med allt som hunnit mätas och märks *(stoppat i förtid)*. Ett påbörjat steg i ett löptekniktest sparas också om det pågått i minst 20 s. Före start avbryter knappen utan att spara något |
-| *Utmattad* | Idrottaren orkar inte mer. Testet räknas som fullföljt, bandet går ner till gångfart och pulsen mäts en minut till. Under återhämtningen heter *Stoppa* i stället *Avsluta* |
+| *Utmattad* | Idrottaren orkar inte mer. Testet räknas som fullföljt, bandet går ner till gångfart och pulsen mäts en minut till, sedan stannar bandet. Under återhämtningen heter *Stoppa* i stället *Avsluta* |
 
 Kortet *Laktat* finns när protokollet har laktatprov, se [Laktattrappa](../laktattrappa/laktattrappa.md#ta-provet-och-skriv-in-värdet).
 
@@ -82,6 +82,8 @@ När bandet är valt som *Manuellt* ställer du själv farten. Inför varje steg
 Det manuella läget är *(inte provat på riktig hårdvara)*, se [PROV.md](../../PROV.md#testerna-och-databasen).
 
 ## När testet är klart
+
+När sista steget är klart, eller efter *Utmattad*, går bandet i 5 km/h en minut. TV:n och operatörssidan visar *Bandet stannar om 45 s*, och återhämtningspulsen mäts. Sedan stannar bandet helt. *Avsluta* stoppar bandet direkt. Ett manuellt band styr programmet aldrig: där sänker och stoppar du själv.
 
 TV:n visar *Bra jobbat! Testet är klart* en stund till, och programmet öppnar resultatet. Fortsätt på [Resultat](../resultat/resultat.md).
 

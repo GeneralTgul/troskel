@@ -20,7 +20,10 @@ Bus output:
 
 Phases: IDLE -> COUNTDOWN (controllable) or AWAIT_OPERATOR (manual) -> RUNNING <-> LACTATE_PAUSE /
 AWAIT_OPERATOR ... -> FINISHED. ``exhausted()`` -> RECOVERY (walking, recovery HR) -> FINISHED.
-``stop()`` -> ABORTED (belt stopped). In RECOVERY ``stop()`` just ends the recovery early.
+On a belt the program drives, the last stage also ends in RECOVERY: ``recovery_s`` at
+``cooldown_kmh`` with "Bandet stannar om N s" in the announcement, then the belt stops (after
+exhaustion too). ``stop()`` -> ABORTED (belt stopped). In RECOVERY ``stop()`` just ends the
+recovery early (and stops the belt).
 A gait stage stopped after ``PARTIAL_GAIT_MIN_S`` is kept as a partial record (the film and the
 live gait values of a technique test stopped half-way are not lost).
 
@@ -137,7 +140,7 @@ class TestRunner:
 
     def __init__(self, protocol: Protocol, treadmill: Any, heart_rate: Any, bus: Bus | None = None, *,
                  clock: Clock | None = None, threaded: bool = True, countdown_s: float = 10.0,
-                 resume_countdown_s: float = 5.0, announce_s: float = 15.0, recovery_s: float = 65.0,
+                 resume_countdown_s: float = 5.0, announce_s: float = 15.0, recovery_s: float = 60.0,
                  cooldown_kmh: float = 5.0, tick_s: float = 0.25, publish_hz: float = 4.0,
                  time_scale: float = 1.0, limits: TreadmillLimits | None = None) -> None:
         if not protocol.stages:
@@ -202,6 +205,7 @@ class TestRunner:
         self._sprint_ramp_s: float | None = None   # ramp time when the final sprint started
         self._sprint_reason = ""                   # "plateau", "time" or "manual"
         self._exhaustion_t: float | None = None
+        self._cooldown = False            # the test is over and the belt walks for recovery_s, then stops
         self._belt_moved = False          # seen running since the program last stopped it on purpose
         self._still_since: float | None = None
         self._pending: list[int] = []
@@ -378,7 +382,7 @@ class TestRunner:
                 self._prompt = self._pt("recovery")
             else:
                 self._prompt = t("assessments.prompt.recovery_manual", target=self._stage_text(self.cooldown_kmh, 0))
-            self._announcement = t("assessments.prompt.lactate") if self._pending else ""
+            self._announcement = self._recovery_note()
             self._cue("finish")
             self._publish(force=True)
 
@@ -566,6 +570,7 @@ class TestRunner:
                 self._next_stage(carry=0.0, after_pause=True)
         elif ph == Phase.RECOVERY:
             self._timer -= dt
+            self._announcement = self._recovery_note()
             if self._timer <= 0:
                 self._finish()
 
@@ -620,7 +625,7 @@ class TestRunner:
             self._prompt = self._pt("recovery_panel")
             if not self._run and self.cooldown_kmh > 0:      # ERG must not stay on the last watt
                 self._set_belt(self._limits.speed(self.cooldown_kmh), 0.0, force_start=True)
-            self._announcement = t("assessments.prompt.lactate") if self._pending else ""
+            self._announcement = self._recovery_note()
             self._cue("finish")
             self._publish(force=True)
         else:
@@ -870,18 +875,44 @@ class TestRunner:
         if self.done:
             return
         if self._phase != Phase.RECOVERY and self._belt_running:
-            if self._run:
-                self._set_belt(self._limits.speed(self.cooldown_kmh), self._limits.incline(0.0))
-            else:
-                self._belt_stop()            # a trainer is released when the test is over
+            if self._run and self.recovery_s > 0:
+                self._start_cooldown()       # walk a minute, then the belt stops
+                return
+            self._belt_stop()                # a trainer is released when the test is over
+        elif self._phase == Phase.RECOVERY and self._run:
+            self._belt_stop()                # the recovery minute is over: the belt stops (a manual belt: nothing)
         self._phase = Phase.FINISHED
         self._paused = False
         self._prompt = t("assessments.prompt.finished")
         self._announcement = t("assessments.prompt.lactate") if self._pending else ""
-        if self._exhaustion_t is None:
+        if self._exhaustion_t is None and not self._cooldown:
             self._cue("finish")
         self._publish(force=True)
         self._end()
+
+    def _start_cooldown(self) -> None:
+        """The last stage of a test on a belt the program drives is done: the belt walks at
+        ``cooldown_kmh`` for ``recovery_s`` (the TV counts down to the stop, the recovery heart rate
+        is recorded), then stops. Before 2026-11-15 it was left at walking speed."""
+        self._cooldown = True
+        self._phase = Phase.RECOVERY
+        self._paused = False
+        self._timer = self.recovery_s
+        self._set_belt(self._limits.speed(self.cooldown_kmh), self._limits.incline(0.0))
+        self._prompt = self._pt("recovery")
+        self._announcement = self._recovery_note()
+        self._cue("finish")
+        self._publish(force=True)
+
+    def _recovery_note(self) -> str:
+        """The line under the recovery prompt: when the belt stops (when the program drives it), and
+        the lactate sample still to take."""
+        parts = []
+        if self._run and self._controllable and self._belt_running and self._phase == Phase.RECOVERY:
+            parts.append(t("assessments.prompt.belt_stops", s=max(0, math.ceil(self._timer - 1e-6))))
+        if self._pending:
+            parts.append(t("assessments.prompt.lactate"))
+        return " · ".join(parts)
 
     def _end(self) -> None:
         for u in self._unsubs:

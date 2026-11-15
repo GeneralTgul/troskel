@@ -45,6 +45,7 @@
   "assessments.prompt.aborted": "Test aborted. The treadmill is stopping.",
   "assessments.prompt.stop_belt": "Test aborted. Stop the treadmill.",
   "assessments.prompt.recovery": "Well done! Walk easy, heart rate is recorded for one more minute.",
+  "assessments.prompt.belt_stops": "The belt stops in {s} s",
   "assessments.prompt.recovery_manual": "Well done! Lower the treadmill to {target} and walk easy, heart rate is recorded for one more minute.",
   "assessments.prompt.finished": "Test complete",
   "assessments.lactate.method.bsln_0_5": "Baseline + 0.5 mmol/L",

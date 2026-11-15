@@ -45,6 +45,7 @@
   "assessments.prompt.aborted": "Testet avbröts. Bandet stoppas.",
   "assessments.prompt.stop_belt": "Testet avbröts. Stoppa bandet.",
   "assessments.prompt.recovery": "Bra jobbat! Gå lugnt, pulsen mäts en minut till.",
+  "assessments.prompt.belt_stops": "Bandet stannar om {s} s",
   "assessments.prompt.recovery_manual": "Bra jobbat! Sänk bandet till {target} och gå lugnt, pulsen mäts en minut till.",
   "assessments.prompt.finished": "Testet är klart",
   "assessments.lactate.method.bsln_0_5": "Vilovärde + 0,5 mmol/l",
