@@ -470,6 +470,28 @@ class LiveController(QObject):
     def final_sprint(self) -> bool:
         return bool(self.runner.final_sprint()) if self.runner else False
 
+    def in_warmup(self) -> bool:
+        return bool(getattr(self.runner, "in_warmup", False)) if self.runner else False
+
+    def start_now(self) -> bool:
+        """*Börja testet nu*: end the warm-up and start the first stage."""
+        return bool(self.runner.start_now()) if self.runner else False
+
+    def shift_start(self, delta: float) -> float:
+        """Move the start speed (and every stage after the warm-up with it) during the warm-up. The
+        saved protocol gets the moved stages, so a test that is cut off continues at the right speed."""
+        if not self.runner:
+            return 0.0
+        before = self.runner.start_shift
+        shift = self.runner.shift_start(delta)
+        if shift != before:
+            s, p = self.session, self.plan.protocol
+            p.stages[:] = [dataclasses.replace(x) for x in self.runner.stages[:len(p.stages)]]
+            s.protocol = p.to_dict()
+            s.result = dict(s.result or {}, start_shift=shift)
+            self._checkpoint()
+        return shift
+
     def stages(self) -> list[Any]:
         """The runner's stages (with generated open-ended ones), else the protocol's."""
         st = getattr(self.runner, "stages", None) if self.runner else None

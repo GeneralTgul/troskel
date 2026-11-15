@@ -70,6 +70,8 @@ Kortet *Styrning*:
 | *Paus* | Fryser klockan. *Fortsätt* tar vid i samma steg efter en kort nedräkning |
 | *Stoppa* | Frågar först. Testet sparas med allt som hunnit mätas och märks *(stoppat i förtid)*. Ett påbörjat steg i ett löptekniktest sparas också om det pågått i minst 20 s. Före start avbryter knappen utan att spara något |
 | *Utmattad* | Idrottaren orkar inte mer. Testet räknas som fullföljt, bandet går ner till gångfart och pulsen mäts en minut till, sedan stannar bandet. Under återhämtningen heter *Stoppa* i stället *Avsluta* |
+| *Börja testet nu* | Finns under uppvärmningen. Uppvärmningen räcker: första steget börjar direkt. I en laktattrappa tas vilovärdet först |
+| *−0,5 km/h* och *+0,5 km/h* | Finns under uppvärmningen. Flyttar startfarten, och alla steg flyttas lika mycket. Raden mellan knapparna visar första stegets tempo och fart |
 
 Kortet *Laktat* finns när protokollet har laktatprov, se [Laktattrappa](../laktattrappa/laktattrappa.md#ta-provet-och-skriv-in-värdet).
 

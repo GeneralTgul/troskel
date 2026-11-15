@@ -206,6 +206,7 @@ class TestRunner:
         self._sprint_reason = ""                   # "plateau", "time" or "manual"
         self._exhaustion_t: float | None = None
         self._cooldown = False            # the test is over and the belt walks for recovery_s, then stops
+        self._shift = 0.0                 # shift_start: the stages after the warm-up moved by this much
         self._belt_moved = False          # seen running since the program last stopped it on purpose
         self._still_since: float | None = None
         self._pending: list[int] = []
@@ -401,6 +402,54 @@ class TestRunner:
             self._next_stage(carry=0.0)
             self._publish(force=True)
             return True
+
+    @property
+    def in_warmup(self) -> bool:
+        """The warm-up is running (or counting down): *Börja testet nu* and the start speed apply."""
+        with self._lock:
+            return (self._phase in (Phase.RUNNING, Phase.COUNTDOWN, Phase.AWAIT_OPERATOR) and not self.done
+                    and bool(self._stages) and self._cur.is_warmup)
+
+    @property
+    def start_shift(self) -> float:
+        """How much the stages after the warm-up were moved with ``shift_start`` (km/h, or watt)."""
+        return self._shift
+
+    def start_now(self) -> bool:
+        """*Börja testet nu*: the warm-up has been long enough. It is kept as it is (as long as it
+        ran) and the first stage starts at once (a baseline lactate sample still comes first)."""
+        with self._lock:
+            if not self.in_warmup or self._phase != Phase.RUNNING or self._paused:
+                return False
+            log.info("warm-up ended early after %.0f s", self._stage_elapsed)
+            self._complete_stage(partial=True)
+            self._after_stage(carry=0.0)
+            self._publish(force=True)
+            return True
+
+    def shift_start(self, delta: float) -> float:
+        """During the warm-up: move every stage after it by ``delta`` (km/h on the belt, watt in the
+        other sports), so the steps keep their distance. Returns the shift so far; a shift the belt's
+        range cannot take is not made."""
+        with self._lock:
+            if not self.in_warmup or not delta:
+                return self._shift
+            first = next((i for i in range(self._idx + 1, len(self._stages)) if not self._stages[i].is_warmup), None)
+            if first is None:
+                return self._shift
+            moved = [replace(s, speed_kmh=s.speed_kmh + delta) if not s.is_warmup else s
+                     for s in self._stages[first:]]
+            lo, hi = self._limits.min_speed_kmh, self._limits.max_speed_kmh
+            if any(not s.is_warmup and not (lo - 1e-6 <= s.speed_kmh) for s in moved):
+                return self._shift
+            if hi and moved[0].speed_kmh > hi + 1e-6:
+                return self._shift
+            self._stages[first:] = [self._clamp(s) for s in moved]
+            self._shift = round(self._shift + delta, 2)
+            log.info("start speed moved by %+.1f (in all %+.1f): the first stage is now %.1f",
+                     delta, self._shift, self._stages[first].speed_kmh)
+            self._publish(force=True)
+            return self._shift
 
     def _sprint_stage(self) -> Stage:
         p, cur = self.protocol, self._cur
