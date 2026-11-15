@@ -5,7 +5,8 @@ from typing import Any
 
 from lopanalys.core.i18n import t
 
-from .models import Capacity, Part, Workout
+from .models import Capacity, Part, Plan, Workout
+from .periodize import first_week_minutes
 from .resolve import Target, targets
 
 
@@ -54,3 +55,37 @@ def plain(line: dict[str, Any]) -> str:
     if line["rest"]:
         s += ", " + line["rest"]
     return s
+
+
+def volume_start(plan: Plan) -> tuple[int, str]:
+    """The weekly time the plan started from and why: "recent", "default" or "capped" (periodize).
+
+    Read from the plan's first ordinary load week, so a saved plan says what it was built from."""
+    _, source = first_week_minutes(plan.request)
+    first = next((wk for wk in plan.weeks if wk.kind == "load" and not any(w.goal for w in wk.workouts)), plan.weeks[0])
+    return first.target_minutes, source
+
+
+def start_line(plan: Plan) -> str:
+    """'Börjar på 3 h 20 min i veckan, det du tränar nu. Tiden växer till 5 h i vecka 29.'"""
+    if not plan.weeks:
+        return ""
+    start, source = volume_start(plan)
+    text = t(f"plan.start.{source}", start=duration(start * 60))
+    loads = [wk for wk in plan.weeks if wk.kind == "load"]
+    top = max((wk.target_minutes for wk in loads), default=start)
+    if top > start:
+        week = next(wk.index for wk in loads if wk.target_minutes == top)
+        return f"{text} {t('plan.start.grows', top=duration(top * 60), week=week)}"
+    return f"{text} {t('plan.start.flat')}"
+
+
+def progress_axis(values: list[float]) -> tuple[int, int]:
+    """The minute axis of the overview's progression panel (longest run, hard minutes): (top, step).
+    The top leaves room for the value labels above the highest point."""
+    peak = max(values + [30])
+    step = 30 if peak <= 90 else 60
+    top = -(-peak // step) * step
+    if top - peak < 0.12 * top:          # room for the value labels above the highest point
+        top += step // 2
+    return int(top), step

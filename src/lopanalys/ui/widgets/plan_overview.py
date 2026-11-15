@@ -3,18 +3,20 @@
 The same picture as the first page of the printout (report.plan_builder.overview_svg), painted with
 the program's own colours so that it reads on the dark surface and can be photographed without a
 web view. Minutes per zone in the watch's colours; test, race and easy weeks are marked below.
+Under the bars a panel of its own, with its own minute axis, draws the longest run and the minutes in
+zones 3-5 per week, so the progression shows even when the bars are as tall as each other.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from lopanalys.core.i18n import t
 from lopanalys.plan.models import ZONES
-from lopanalys.plan.text import hours
+from lopanalys.plan.text import hours, progress_axis
 from lopanalys.ui import theme
 
 BLOCK_ALPHA = {"base": 60, "build": 110, "peak": 170, "taper": 40}
@@ -24,7 +26,7 @@ class PlanChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.plan: Any = None
-        self.setMinimumSize(360, 260)
+        self.setMinimumSize(360, 360)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def set_plan(self, plan: Any) -> None:
@@ -52,7 +54,10 @@ class PlanChart(QWidget):
         dense = n > 16
         left, right = 44.0, 6.0
         band_h, top = 30.0, 58.0
-        bottom = self.height() - 44.0
+        lines_h = max(64.0, 0.22 * self.height())      # the progression panel under the week numbers
+        lines_bottom = self.height() - 6.0
+        lines_top = lines_bottom - lines_h
+        bottom = lines_top - 72.0
         col = (self.width() - left - right) / n
         bar_w = min(col * 0.6, 46.0)
         peak = max([wk.minutes for wk in weeks] + [60])
@@ -128,4 +133,56 @@ class PlanChart(QWidget):
         p.setPen(theme.color("muted"))
         p.drawText(QRectF(0, bottom + 5, left - 8, 16), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                    t("plan.pdf.week_axis"))
+        self._paint_lines(p, left, self.width() - right, col, lines_top, lines_bottom)
         p.end()
+
+    def series(self) -> list[tuple[str, str, list[float]]]:
+        """The two lines of the progression panel: (name, colour, minutes per week)."""
+        weeks = self.plan.weeks
+        return [(t("plan.pdf.lines.longest"), theme.zone_color(1), [float(wk.longest_minutes) for wk in weeks]),
+                (t("plan.pdf.lines.hard"), theme.zone_color(4), [wk.hard_minutes for wk in weeks])]
+
+    def _paint_lines(self, p: QPainter, x0: float, x1: float, col: float, top: float, bottom: float) -> None:
+        series = self.series()
+        y_max, step = progress_axis([v for _, _, vals in series for v in vals])
+
+        def y(minutes: float) -> float:
+            return bottom - (bottom - top) * minutes / y_max
+
+        small = theme.font(12)
+        p.setFont(small)
+        fm = p.fontMetrics()
+        lx = x0
+        for name, colour, _ in series:          # the legend above the panel
+            cy = top - 14
+            p.setPen(QPen(QColor(colour), 2.5))
+            p.drawLine(QPointF(lx, cy), QPointF(lx + 22, cy))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(colour))
+            p.drawEllipse(QPointF(lx + 11, cy), 3.5, 3.5)
+            p.setPen(theme.color("text"))
+            p.drawText(QRectF(lx + 28, cy - 9, fm.horizontalAdvance(name) + 4, 18), Qt.AlignmentFlag.AlignVCenter, name)
+            lx += 28 + fm.horizontalAdvance(name) + 24
+        m = 0
+        while m <= y_max:
+            p.setPen(theme.color("muted" if m == 0 else "line"))
+            p.drawLine(int(x0), int(y(m)), int(x1), int(y(m)))
+            if m:
+                p.setPen(theme.color("muted"))
+                p.drawText(QRectF(0, y(m) - 9, x0 - 8, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, str(m))
+            m += step
+        r = 3.5 if len(self.plan.weeks) <= 16 else 2.5
+        for _, colour, vals in series:
+            pts = [QPointF(x0 + (i + 0.5) * col, y(v)) for i, v in enumerate(vals)]
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(QColor(colour), 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            p.drawPolyline(pts)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(colour))
+            for pt in pts:
+                p.drawEllipse(pt, r, r)
+            best = max(range(len(vals)), key=lambda i: (vals[i], -i))
+            p.setFont(theme.font(11, QFont.Weight.DemiBold))
+            p.setPen(theme.color("text"))
+            for i in sorted({0, best}):
+                p.drawText(QRectF(pts[i].x() - 20, pts[i].y() - 19, 40, 14), Qt.AlignmentFlag.AlignCenter, str(round(vals[i])))

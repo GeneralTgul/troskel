@@ -51,6 +51,6 @@ def test_no_unused_keys():
     text = "".join(f.read_text(encoding="utf-8") for f in [*(ROOT / "plan").glob("*.py"), ROOT / "report/plan_builder.py",
                                                             *(ROOT / "report/templates").glob("plan*")])
     prefixes = ("plan.workout.", "plan.block", "plan.reason.", "plan.week.", "plan.level.", "plan.weekday.", "plan.month.",
-                "plan.pdf.rule.", "plan.part.", "plan.pdf.fact.goal_")
+                "plan.pdf.rule.", "plan.part.", "plan.pdf.fact.goal_", "plan.start.")
     unused = sorted(k for k in SV if k not in text and not k.startswith(prefixes))
     assert not unused, unused

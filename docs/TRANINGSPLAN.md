@@ -146,10 +146,10 @@ Modulen `src/lopanalys/plan/`:
 |---|---|
 | `models.py` | Dataklasserna i [datamodellen](#1-datamodellen) |
 | `library.py` | Passbiblioteket för löpning som data |
-| `periodize.py` | Block, veckotyper och veckovolym |
+| `periodize.py` | Block, veckotyper och veckovolym: var den börjar, vad veckan rymmer och hur fort den växer |
 | `engine.py` | `build_plan()`: passen läggs i platserna |
 | `resolve.py` | Zon till puls och fart, och `retest()` |
-| `text.py` | Passen som text på aktuellt språk, för utskrift och kalender |
+| `text.py` | Passen som text på aktuellt språk, för utskrift och kalender, och översiktens rad om var tiden börjar |
 | `ics.py` | Kalenderfilen |
 | `codec.py` | Schemat och det som angavs som JSON och tillbaka, för lagringen |
 | `demo.py` | Exempelkommandot |
@@ -168,7 +168,9 @@ Motorn räknar bakåt från A-målet. Finns flera A-mål slutar planen med det s
 | **Grund** | Resten av tiden | Volym i de låga zonerna och ett kvalitetspass i veckan: fartlek, backe och tröskel i tur och ordning |
 
 - **Lätta veckor:** tre belastningsveckor och en lätt vecka (65 % av volymen). Nybörjare får två och en. Veckorna räknas bakåt från nedtrappningen eller testet, så att veckorna närmast målet är belastningsveckor. Planen börjar aldrig med en lätt vecka.
-- **Volymen** börjar på den kända veckovolymen, eller på nivåns förval (2, 3 eller 5 timmar). Den ökar 5, 7 eller 8 % per belastningsvecka efter nivå. En vecka är aldrig mer än 10 % större än den största veckan före, och aldrig större än kärnplatserna rymmer. Tioprocentsregeln är en tumregel med svagt stöd i forskningen *(ej verifierat)*, så den används som ett tak och inte som ett mål.
+- **Volymen** börjar på den kända veckovolymen (*Tränar nu*). Är den okänd börjar den på nivåns förval (2, 3 eller 5 timmar), men högst på 70 % av det veckan rymmer, så att schemat aldrig börjar vid taket. **Det veckan rymmer** är nivåns antal pass i de längsta kärnplatserna, med långpasset inom nivåns längsta långpass och de andra passen inom längden på ett lugnt pass, 75 min (`periodize.week_capacity`).
+- **Ökningen** sprids över grund och uppbyggnad: varje belastningsvecka växer med den takt som når hela veckan vid den sista belastningsveckan före toppen, men aldrig fortare än nivåns 5, 7 eller 8 %. Ett schema som börjar nära taket växer alltså långsamt, och ett som börjar långt under växer i nivåns takt så många veckor som behövs, även om taket aldrig nås. En vecka är aldrig mer än 10 % större än den största veckan före, och aldrig större än kärnplatserna rymmer. Startpunkten och var tiden växer till står i översikten (`plan.text.start_line`).
+- **Översikten visar progressionen:** under staplarna med tid per zon ritas det längsta passet och minuterna i zon 3–5 per vecka, i en egen panel med egen axel i minuter (ingen andra axel på staplarna). Där syns långpassets ökning och kvalitetspassens steg även när veckotiden står still. Tioprocentsregeln är en tumregel med svagt stöd i forskningen *(ej verifierat)*, så den används som ett tak och inte som ett mål.
 - **Långpasset** ligger i veckans längsta plats, är ungefär en tredjedel av veckan och växer högst 15 minuter från en belastningsvecka till nästa.
 - **För kort tid till målet:** blocken kortas i ordningen grund, uppbyggnad, topp. Är det mindre än 6 veckor kvar säger planen det i klartext och bygger ingen topp.
 - **Inte byggt:** återhämtningsblocket efter ett A-mål, och två och en för idrottare över 50 år.

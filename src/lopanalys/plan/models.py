@@ -27,6 +27,7 @@ WEEK_KINDS = ("load", "easy", "test", "taper", "race")
 WEEKDAY_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 ZONES = ("Z1", "Z2", "Z3", "Z4", "Z5")            # the plan speaks the default system: the watch's five zones
 EASY_ZONES = ("Z1", "Z2")                         # below LT1
+HARD_ZONES = ("Z3", "Z4", "Z5")                   # from LT1 up: the minutes the overview counts as hard
 
 
 @dataclass(frozen=True)
@@ -212,6 +213,17 @@ class Week:
             for z, s in w.zone_seconds().items():
                 out[z] = out.get(z, 0.0) + s / 60
         return out
+
+    @property
+    def longest_minutes(self) -> int:
+        """The longest planned run of the week, in minutes. A race has no planned length and is left out."""
+        return max((w.minutes for w in self.workouts if w.goal is None), default=0)
+
+    @property
+    def hard_minutes(self) -> float:
+        """Minutes in zones 3-5: the hard part of the quality sessions (and of a progressive long run)."""
+        zm = self.zone_minutes()
+        return sum(zm.get(z, 0.0) for z in HARD_ZONES)
 
     @property
     def easy_share(self) -> float:

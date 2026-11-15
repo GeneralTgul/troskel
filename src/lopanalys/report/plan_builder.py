@@ -17,9 +17,9 @@ from lopanalys.core.i18n import language, set_language, t
 from lopanalys.core.zone_colors import zone_color
 from lopanalys.plan import library
 from lopanalys.plan.models import WEEKDAY_KEYS, ZONES, Plan, Week
-from lopanalys.plan.periodize import LEVEL, core_slots
+from lopanalys.plan.periodize import core_slots
 from lopanalys.plan.resolve import targets
-from lopanalys.plan.text import duration, hours, workout_lines
+from lopanalys.plan.text import duration, hours, progress_axis, volume_start, workout_lines
 
 from .builder import ASSETS, Branding, _css_str, _data_uri_image, _env, _footer_line, _safe_color, date_long
 from .charts import INK, MUTED, RULE, fmt_num
@@ -27,6 +27,8 @@ from .charts import INK, MUTED, RULE, fmt_num
 # Blocks are phases in order, so they share one hue from light to dark; the taper is neutral.
 BLOCK_FILL = {"base": "#CDEBE7", "build": "#8FD3CB", "peak": "#3DB5A9", "taper": "#DDE3E9"}
 UNZONED = "#C3CBD3"          # the test itself: no zone
+# The progression panel under the bars: the long run in the colour of its zone (Z2), the hard minutes in Z5's.
+LINE_LONGEST, LINE_HARD = zone_color(1), zone_color(4)
 GUIDE_ORDER = ("easy", "recovery", "long", "long_progressive", "fartlek", "hills", "threshold", "vo2max", "opener", "test")
 
 
@@ -53,17 +55,20 @@ def _week_marker(week: Week, goal_date: date | None) -> str:
 
 def overview_svg(plan: Plan) -> str:
     """Blocks as a band and under it one stacked bar per week: minutes per zone in the watch's colours.
+    Below the bars a panel of its own (its own minute axis, not a second axis on the bars) with two lines:
+    the longest run of each week and the minutes in zones 3-5, so the progression shows even when the
+    bars are as tall as each other.
 
-    One time axis for both, so the eye reads which block a week belongs to. Units are 0.1 mm.
+    One time axis for all, so the eye reads which block a week belongs to. Units are 0.1 mm.
     """
     weeks, n = plan.weeks, len(plan.weeks)
     W, left, right = 1780, 78, 4
     col = (W - left - right) / n
     bar_w = min(col * 0.56, 84)
     band_y, band_h = 0, 62
-    top, H = 122, 330
-    bottom = top + H
     dense = n > 16
+    top, H = (100 if dense else 122), 220     # dense: no totals above the bars
+    bottom = top + H
     goal_date = plan.goal.date if plan.goal else None
 
     stacks = []
@@ -81,7 +86,10 @@ def overview_svg(plan: Plan) -> str:
     def y(minutes: float) -> float:
         return bottom - H * minutes / y_max
 
-    o: list[str] = [f'<svg class="plan-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {bottom + 96}" '
+    lines_top = bottom + 150                 # the progression panel: legend above, plot below
+    lines_h = 120
+    lines_bottom = lines_top + lines_h
+    o: list[str] = [f'<svg class="plan-chart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {lines_bottom + 6}" '
                     f'role="img" aria-label="{escape(t("plan.pdf.overview.title"))}">']
     # ---- block band
     for b in plan.blocks:
@@ -137,8 +145,50 @@ def overview_svg(plan: Plan) -> str:
                      f'{escape(mark[:1] if dense else mark)}</text>')
     o.append(f'<text x="{left - 14}" y="{bottom + 36}" text-anchor="end" font-size="22" fill="{MUTED}">'
              f'{escape(t("plan.pdf.week_axis"))}</text>')
+    o += _progress_panel(plan, left, W - right, col, lines_top, lines_bottom)
     o.append("</svg>")
     return "".join(o)
+
+
+def _progress_panel(plan: Plan, x0: float, x1: float, col: float, top: float, bottom: float) -> list[str]:
+    """The longest run and the hard minutes per week as two lines with markers, each named in the
+    legend above and labelled with its value at its first and its highest week."""
+    weeks = plan.weeks
+    series = [(t("plan.pdf.lines.longest"), LINE_LONGEST, [float(wk.longest_minutes) for wk in weeks]),
+              (t("plan.pdf.lines.hard"), LINE_HARD, [wk.hard_minutes for wk in weeks])]
+    y_max, step = progress_axis([v for _, _, vals in series for v in vals])
+
+    def y(minutes: float) -> float:
+        return bottom - (bottom - top) * minutes / y_max
+
+    o: list[str] = [f'<g class="plan-lines" aria-label="{escape(t("plan.pdf.lines.title"))}">']
+    lx = x0
+    for name, colour, _ in series:          # the legend: a short line with its marker, then the name
+        o.append(f'<line x1="{lx:.1f}" y1="{top - 40}" x2="{lx + 44:.1f}" y2="{top - 40}" stroke="{colour}" stroke-width="5"/>'
+                 f'<circle cx="{lx + 22:.1f}" cy="{top - 40}" r="7" fill="{colour}" stroke="#fff" stroke-width="2.5"/>'
+                 f'<text x="{lx + 56:.1f}" y="{top - 32}" font-size="24" fill="{INK}">{escape(name)}</text>')
+        lx += 56 + len(name) * 13 + 60
+    m = 0
+    while m <= y_max:
+        yy = y(m)
+        o.append(f'<line x1="{x0}" y1="{yy:.1f}" x2="{x1}" y2="{yy:.1f}" stroke="{INK if m == 0 else "#E8EDF1"}" '
+                 f'stroke-width="{2.5 if m == 0 else 2}"/>')
+        if m:
+            o.append(f'<text x="{x0 - 14}" y="{yy + 8:.1f}" text-anchor="end" font-size="22" fill="{MUTED}">{m}</text>')
+        m += step
+    r = 6 if len(weeks) <= 16 else 4.5
+    for _, colour, vals in series:
+        pts = [(x0 + (i + 0.5) * col, y(v)) for i, v in enumerate(vals)]
+        o.append(f'<polyline points="{" ".join(f"{x:.1f},{yy:.1f}" for x, yy in pts)}" fill="none" stroke="{colour}" '
+                 f'stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>')
+        o += [f'<circle cx="{x:.1f}" cy="{yy:.1f}" r="{r}" fill="{colour}" stroke="#fff" stroke-width="2"/>' for x, yy in pts]
+        best = max(range(len(vals)), key=lambda i: (vals[i], -i))
+        for i in sorted({0, best}):
+            x, yy = pts[i]
+            o.append(f'<text x="{x:.1f}" y="{yy - 14:.1f}" text-anchor="middle" font-size="21" font-weight="600" '
+                     f'fill="{INK}">{round(vals[i])}</text>')
+    o.append("</g>")
+    return o
 
 
 def _zone_bar(zm: dict[str, float]) -> list[dict[str, Any]]:
@@ -172,11 +222,13 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
             basis += " · " + t("assessments.zones.estimated").lower()
         if cap.speed_from_hr:
             basis += " · " + t("assessments.hrzones.speed_from_hr").lower()
-    start_minutes = req.recent_weekly_minutes or LEVEL[req.level].start_minutes
+    start_minutes, source = volume_start(plan)
     # Three columns: a wide field (two columns) is always followed by a narrow one.
     narrow = [period, {"k": t("plan.pdf.fact.based_on"), "v": basis},
-              {"k": t("plan.pdf.fact.level"), "v": t("plan.pdf.fact.level_value", level=t(f"plan.level.{req.level}"),
-                                                    hours=hours(start_minutes))},
+              {"k": t("plan.pdf.fact.level"), "v": t("plan.pdf.fact.level_default" if source == "default"
+                                                   else "plan.pdf.fact.level_value", level=t(f"plan.level.{req.level}"),
+                                                    hours=hours(req.recent_weekly_minutes if source == "capped"
+                                                                else start_minutes))},
               {"k": t("plan.pdf.fact.days"), "v": ", ".join(
                   t("plan.pdf.fact.slot", day=_weekday(s.weekday), minutes=s.max_minutes) for s in slots)}]
     wide = [{"k": t("plan.pdf.fact.goal"), "v": _goal_line(goal) if goal else t("plan.pdf.fact.no_goal"), "wide": True}]
