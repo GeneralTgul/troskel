@@ -27,7 +27,7 @@ from lopanalys.core.models import Athlete
 from lopanalys.plan import RUNNING, Goal, Plan, PlanRequest, Slot, build_plan
 from lopanalys.plan.models import LEVELS, WEEKDAY_KEYS, ZONES
 from lopanalys.plan.resolve import targets
-from lopanalys.plan.text import hours
+from lopanalys.plan.text import hours, start_line
 from lopanalys.ui import services, theme
 from lopanalys.ui.context import AppContext
 from lopanalys.ui.views.athletes import DateField, NumberEdit, SelectAllEdit
@@ -314,8 +314,11 @@ class PlanView(QWidget):
         self.headline = label("", "PageTitle")
         self.headline.setStyleSheet("font-size: 22px;")
         self.subline = label("", "Hint", wrap=True)
+        # Where the weekly time starts and where it grows to (plan.text.start_line).
+        self.startline = label("", "Hint", wrap=True)
         col.addWidget(self.headline)
         col.addWidget(self.subline)
+        col.addWidget(self.startline)
         top.addLayout(col, 1)
         self.full_btn = button(t("ui.plan.print_preview"), "eye", kind="ghost")
         self.full_btn.clicked.connect(lambda: self.show_printout())
@@ -535,6 +538,7 @@ class PlanView(QWidget):
                 or t("ui.plan.basis_max_hr")
         self.subline.setText(f"{_day(plan.start)} – {_day(plan.end)} {plan.end.year}   ·   "
                              + t("ui.plan.based_on", basis=basis))
+        self.startline.setText(start_line(plan))
         load = [wk.minutes for wk in plan.weeks if wk.kind == "load"] or [wk.minutes for wk in plan.weeks]
         sessions = [len([w for w in wk.workouts if not w.goal]) for wk in plan.weeks if wk.kind == "load"]
         self.t_weeks.set_value(str(len(plan.weeks)), f"{_day(plan.start)} – {_day(plan.end)}")

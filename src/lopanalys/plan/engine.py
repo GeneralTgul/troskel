@@ -22,7 +22,7 @@ from . import library
 from .models import EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, Week, Workout
 from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, periodize, round5
 
-ENGINE_VERSION = "1"
+ENGINE_VERSION = "2"           # 2: the volume starts below the full week and grows towards it
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week

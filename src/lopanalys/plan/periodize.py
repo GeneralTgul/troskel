@@ -9,8 +9,11 @@ The rules (docs/TRANINGSPLAN.md, "Planmotorn"):
     The plan never opens with an easy week: when the count does not come out even, the first run of load
     weeks is one week longer, and its first week is the volume the athlete already trains.
   - A retest in an easy week once 8 weeks have passed since the last test, at least 4 weeks before the goal.
-  - Volume starts at the known weekly volume (or the level's default), grows by the level's rate in
-    base and build, stands still in the peak, and never passes what the core slots hold.
+  - Volume starts at what the athlete trains now (or the level's default, kept below what the week
+    holds), stands still in the peak and never passes what the core slots hold. It grows in base and
+    build by the rate that reaches the full week at the last load week before the peak, never faster
+    than the level's rate: a plan that starts near the full week grows slowly, one that starts far
+    below grows at the level's rate for as many weeks as it needs.
 """
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from datetime import date, timedelta
 
 from lopanalys.core.i18n import t
 
+from . import library
 from .models import LEVELS, RUNNING, Block, Goal, Note, PlanRequest
 
 DEFAULT_WEEKS = 12
@@ -32,6 +36,7 @@ LONG_RACE_KM = 25.0           # from here the taper is two weeks
 RETEST_MIN_GAP = 8            # weeks between tests
 RETEST_BEFORE_GOAL = 4        # no retest closer to the goal than this
 CYCLE_MAX = 12                # weeks in a cycle without a goal
+DEFAULT_SHARE = 0.70          # with nothing known, the plan starts at most at this share of the full week
 
 
 @dataclass(frozen=True)
@@ -87,6 +92,39 @@ def core_slots(request: PlanRequest, sport: str = RUNNING) -> list:
         if s.weekday not in best or s.max_minutes > best[s.weekday].max_minutes:
             best[s.weekday] = s
     return [best[d] for d in sorted(best)]
+
+
+def week_capacity(request: PlanRequest, sport: str = RUNNING) -> int:
+    """The minutes a week can really hold: the level's number of sessions in the longest core slots,
+    the long run within the level's longest long run and every other run within an easy run's length."""
+    level = LEVEL[request.level]
+    slots = core_slots(request, sport)
+    if not slots:
+        return 0
+    long_slot = max(slots, key=lambda s: (s.max_minutes, s.weekday))
+    easy_max = library.get("easy").max_minutes
+    held = sorted((min(s.max_minutes, level.long_cap) if s is long_slot else min(s.max_minutes, easy_max)
+                   for s in slots), reverse=True)
+    return sum(held[:level.max_sessions])
+
+
+def first_week_minutes(request: PlanRequest, sport: str = RUNNING) -> tuple[int, str]:
+    """The weekly volume of the plan's first week and where it comes from:
+    "recent" (what the athlete trains now), "capped" (more than the week holds: the full week) or
+    "default" (nothing known: the level's default, at most ``DEFAULT_SHARE`` of the full week)."""
+    cap = week_capacity(request, sport)
+    recent = request.recent_weekly_minutes
+    if recent:
+        return (cap, "capped") if recent > cap else (int(recent), "recent")
+    return min(LEVEL[request.level].start_minutes, round5(DEFAULT_SHARE * cap)), "default"
+
+
+def growth_rate(start: float, cap: float, increments: int, level_rate: float) -> float:
+    """The growth per load week: the rate that reaches ``cap`` after ``increments`` steps, never above
+    the level's rate (nor the ten percent ceiling), and none when the plan already starts at the cap."""
+    if start >= cap or increments <= 0 or start <= 0:
+        return 0.0
+    return min(level_rate, MAX_WEEKLY_INCREASE, (cap / start) ** (1 / increments) - 1)
 
 
 def _cycles(n: int) -> list[int]:
@@ -179,10 +217,13 @@ def periodize(request: PlanRequest) -> Skeleton:
             prev_end = end
 
     # ---- weekly volume
-    cap = sum(s.max_minutes for s in slots)
-    start_minutes = min(request.recent_weekly_minutes or level.start_minutes, cap)
-    if (request.recent_weekly_minutes or 0) > cap:
+    cap = week_capacity(request)
+    first_minutes, source = first_week_minutes(request)
+    if source == "capped":
         notes.append(Note.of("plan.note.capped", minutes=cap))
+    # Every load week after the first grows, except in the peak: the full week comes with the last of them.
+    steps = sum(1 for k, b in zip(kinds, block_of) if k == "load" and b != "peak") - 1
+    rate = growth_rate(first_minutes, cap, steps, level.growth)
     by_week: dict[int, list[Goal]] = {}
     for g in sorted(request.goals, key=lambda g: g.date):
         idx = (g.date - start).days // 7 + 1 if g.date >= start else 0
@@ -198,14 +239,14 @@ def periodize(request: PlanRequest) -> Skeleton:
     for i, (kind, block) in enumerate(zip(kinds, block_of), start=1):
         if kind == "load":
             if load is None:
-                load = float(start_minutes)
+                load = float(first_minutes)
             elif block != "peak":
-                load = min(float(cap), load * (1 + level.growth))
+                load = min(float(cap), load * (1 + rate))
             minutes = load
         elif kind in ("easy", "test"):
-            minutes = EASY_FACTOR * (load if load is not None else start_minutes)
+            minutes = EASY_FACTOR * (load if load is not None else first_minutes)
         else:
-            minutes = TAPER_FACTORS[min(taper_len, 2)][min(taper_i, 1)] * (load if load is not None else start_minutes)
+            minutes = TAPER_FACTORS[min(taper_len, 2)][min(taper_i, 1)] * (load if load is not None else first_minutes)
             taper_i += 1
         goals = by_week.get(i, [])
         if kind == "load" and any(g.priority in ("A", "B") for g in goals):

@@ -33,7 +33,7 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 |---|---|---|
 | *Underlag* | *Bygger på testet* | Testet som zonerna räknas ur. Välj *Inget test* för ett schema med zon och ansträngning, utan puls och fart. Har idrottaren en maxpuls men inget test blir zonerna uppskattade |
 | | *Nivå* | *Nybörjare*, *Motionär* eller *Vältränad*. Styr var schemat börjar och hur många hårda pass en vecka får |
-| | *Tränar nu* | Minuter löpning i veckan i snitt de senaste 4–6 veckorna. Tomt betyder nivåns förval |
+| | *Tränar nu* | Minuter löpning i veckan i snitt de senaste 4–6 veckorna. Schemat börjar där. Tomt betyder nivåns förval (2, 3 eller 5 timmar), men aldrig mer än 70 % av den tillgängliga tiden |
 | *Tillgänglig tid* | Minuter per veckodag | Så länge idrottaren kan träna den dagen, 20–480 minuter. En tom dag får inget pass |
 | | Klockslag | Valfritt. Passet får den tiden i kalenderfilen, annars blir det en heldagshändelse |
 | *Mål* | *Schemat slutar med ett mål (lopp)* | Namn, datum, distans och måltid. Schemat räknas bakåt från loppet |
@@ -60,9 +60,13 @@ Maxpulsen är den högsta pulsen som medel över 5 sekunder. Har idrottaren en s
 Tryck *Förhandsvisa*. Översikten till höger visar:
 
 - målet eller längden, perioden och testet schemat bygger på,
-- fyra rutor: *Längd*, *Pass i veckan*, *Tid i veckan* och *Lugn träning* (andelen av tiden i zon 1–2),
+- var tiden i veckan börjar och vart den växer, till exempel *Börjar på 3 h 20 min i veckan, det du tränar nu. Tiden växer till 6 h 15 min i vecka 24.* Med *Tränar nu* tomt står det att schemat utgår från nivåns förval,
+- fyra rutor: *Längd*, *Pass i veckan*, *Tid i veckan* (i belastningsveckorna, från den första till den största) och *Lugn träning* (andelen av tiden i zon 1–2),
 - blocken som ett band över en stapel per vecka, med tiden per zon i klockans färger. *lätt*, *test*, *lopp* och *mål* står under veckorna,
+- under staplarna två linjer med en egen axel i minuter: **det längsta passet** varje vecka (blå) och **de hårda minuterna**, tiden i zon 3–5 (röd). Siffran står vid den första veckan och vid den största. Linjerna visar ökningen även när staplarna är lika höga, till exempel när dagarna inte rymmer mer tid och schemat i stället gör passen längre och hårdare,
 - zonerna med puls och fart ur testet.
+
+Schemat börjar på det idrottaren tränar nu och växer mot den tillgängliga tiden, högst nivåns takt (5, 7 eller 8 %) per belastningsvecka. Ligger starten nära den tillgängliga tiden växer det långsammare, så att hela tiden nås först i slutet av uppbyggnaden. Tränar idrottaren mer än dagarna rymmer börjar schemat på all tillgänglig tid och står still i tid; ökningen ligger då i passen. Samma diagram med linjerna finns på utskriftens första sida.
 
 Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen och ett blad per vecka.
 

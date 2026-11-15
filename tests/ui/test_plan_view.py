@@ -216,3 +216,33 @@ def test_gait_test_has_no_plan_card(demo_window):
                 assert not win.results.plan_card.isVisible()
                 return
     pytest.skip("the demo data has no gait test")
+
+
+def test_overview_shows_the_start_and_draws_the_progression_lines(demo_window, erik):
+    from PySide6.QtGui import QColor
+
+    from lopanalys.ui import theme
+    from lopanalys.ui.widgets.plan_overview import PlanChart
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v)
+    v.recent.setText("")
+    assert v.preview()
+    assert v.startline.text().startswith("Börjar på 3 h i veckan, nivåns förval eftersom Tränar nu är tomt.")
+    chart = PlanChart(v)
+    chart.resize(900, 460)
+    chart.set_plan(v.plan)
+    names = [name for name, _, _ in chart.series()]
+    assert names == ["Längsta passet (min)", "Hårda minuter (zon 3–5)"]
+    img = chart.grab().toImage()
+    # The panel is the lowest fifth or so: both line colours are there, and the bars (above) do not reach it.
+    panel_top = int(img.height() * 0.8)
+    found = {QColor(c).name(): 0 for c in (theme.zone_color(1), theme.zone_color(4))}
+    for y in range(panel_top, img.height()):
+        for x in range(0, img.width(), 2):
+            name = QColor(img.pixel(x, y)).name()
+            if name in found:
+                found[name] += 1
+    assert all(n > 20 for n in found.values()), found
+    assert v.save()        # leave nothing unsaved for the window to ask about

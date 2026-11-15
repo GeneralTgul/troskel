@@ -7,7 +7,7 @@ import pytest
 
 from lopanalys.core.i18n import set_language
 from lopanalys.plan import Goal, Slot, build_plan, library
-from lopanalys.plan.periodize import LEVEL, core_slots, periodize
+from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, periodize
 
 from . import cases as c
 
@@ -71,7 +71,7 @@ def test_never_two_hard_days_in_a_row_and_none_before_the_long_run(plan):
 
 def test_progression_is_careful(plan):
     level = LEVEL[plan.request.level]
-    start = plan.request.recent_weekly_minutes or level.start_minutes
+    start, _ = first_week_minutes(plan.request)
     assert plan.weeks[0].minutes <= start
     biggest = plan.weeks[0].minutes
     for wk in plan.weeks[1:]:
