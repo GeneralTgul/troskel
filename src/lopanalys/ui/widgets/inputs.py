@@ -1,9 +1,10 @@
-"""Touch-friendly inputs for the operator: a big number pad for lactate and the Borg RPE scale."""
+"""Touch-friendly inputs for the operator: a big number pad for lactate and the Borg RPE scale, and a
+number field whose lowest value is a word (SpecialSpinBox)."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QKeyEvent
-from PySide6.QtWidgets import QButtonGroup, QGridLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFocusEvent, QFont, QKeyEvent
+from PySide6.QtWidgets import QButtonGroup, QDoubleSpinBox, QGridLayout, QLabel, QVBoxLayout, QWidget
 
 from lopanalys.core.i18n import t
 from lopanalys.ui import theme
@@ -136,3 +137,25 @@ class RpePicker(QWidget):
             b.setChecked(False)
         self.group.setExclusive(True)
         self.hint.setText(t("ui.rpe.hint"))
+
+
+class SpecialSpinBox(QDoubleSpinBox):
+    """A QDoubleSpinBox whose lowest value shows a word (``setSpecialValueText``), e.g. "Som bandet
+    anger" for 0, and that still takes digits typed over that word.
+
+    A plain QDoubleSpinBox keeps the word in its line edit, so a digit typed after it makes the text
+    invalid and is thrown away: the field could not be changed from the keyboard. Here the whole text
+    is selected when the field gets focus, and before a digit is typed while the word is shown, so the
+    digit replaces it."""
+
+    def _showing_special(self) -> bool:
+        return bool(self.specialValueText()) and self.value() <= self.minimum()
+
+    def focusInEvent(self, e: QFocusEvent) -> None:
+        super().focusInEvent(e)
+        QTimer.singleShot(0, self.selectAll)     # after Qt has placed the cursor for a mouse click
+
+    def keyPressEvent(self, e: QKeyEvent) -> None:
+        if self._showing_special() and e.text() and (e.text().isdigit() or e.text() in ",."):
+            self.lineEdit().selectAll()
+        super().keyPressEvent(e)
