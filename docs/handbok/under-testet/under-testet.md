@@ -9,6 +9,7 @@
 - [Livevyn på TV:n](#livevyn-på-tvn)
   - [Två kameror](#två-kameror)
 - [Operatörssidan](#operatörssidan)
+- [Farten ändras för hand](#farten-ändras-för-hand)
 - [Manuellt band](#manuellt-band)
 - [När testet är klart](#när-testet-är-klart)
 - [Testet sparas hela tiden](#testet-sparas-hela-tiden)
@@ -76,6 +77,14 @@ Kortet *Styrning*:
 Kortet *Laktat* finns när protokollet har laktatprov, se [Laktattrappa](../laktattrappa/laktattrappa.md#ta-provet-och-skriv-in-värdet).
 
 Kortet *Ansträngning (Borg 6–20)*: fråga *Hur ansträngande känns det just nu?* och tryck på siffran. Värdet sparas på samma steg som laktatvärdet: det äldsta steget som väntar på ett laktatvärde, annars det senast avslutade.
+
+## Farten ändras för hand
+
+Ändrar någon farten eller lutningen på bandets panel under ett steg, sparas steget som bandet faktiskt gick: medelvärdet av det bandet rapporterade under steget, inte det planerade. Puls mot fart, zonerna och VO2max räknas på det. Ett band som rapporterar en tiondel fel, till exempel 9,9 km/h i stället för 10,0, räknas som det planerade.
+
+- **Loggen** får raden *Bandet ställdes om för hand till 18,0 km/h · 2 % (planerat 17,5 km/h · 1 %)* efter 5 s.
+- **Vid nästa steg** sätter Tröskel stegets planerade fart igen, och TV:n säger *Bandet gick på 18,0 km/h · 2 %, inställt för hand. Nu: 17,5 km/h · 1 %*.
+- **Testet sparar** för varje sådant steg det planerade, medelvärdet och värdet i slutet av steget, så att en ändring som bara gällde slutet syns.
 
 ## Manuellt band
 

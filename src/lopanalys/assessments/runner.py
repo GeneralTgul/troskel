@@ -80,6 +80,13 @@ SELF_PACED_SETTLE_S = 15.0   # self-paced stage: the first seconds (getting up t
 TARGET_BAND = 0.05           # self-paced: a stage mean more than 5 % from the target is marked
 LOW_CADENCE_WARN_S = 10.0    # bike in ERG: this long below the trainer's cadence limit before the TV says so
 
+# What the belt did, not what was planned: a speed or incline set by hand on the panel is the stage's load.
+BELT_SPEED_TOL_KMH = 0.25    # a reading this close to the target is the target (belts report 9,9 for 10,0)
+BELT_INCLINE_TOL_PCT = 0.4
+BELT_SETTLE_S = 8.0          # the belt needs some seconds to reach a new target: not a hand change, not in the mean
+HAND_CHANGE_S = 5.0          # off the target this long while the stage runs: changed by hand
+BELT_END_S = 20.0            # the stage's end value: the median of its last 20 s
+
 HR_WINDOW_S = 30.0       # stage HR = mean of the last 30 s
 HR_STALE_S = 5.0         # a bus HR reading older than this is ignored
 LACTATE_MIN, LACTATE_MAX = 0.0, 30.0
@@ -121,6 +128,12 @@ class SystemClock:
 
     def sleep(self, dt: float) -> None:
         time.sleep(dt / self.scale)
+
+
+def _median(v: list[float]) -> float:
+    v = sorted(v)
+    n = len(v)
+    return (v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2) if n else 0.0
 
 
 def stage_text(load: float, incline_pct: float, sport: Any = None) -> str:
@@ -207,6 +220,10 @@ class TestRunner:
         self._exhaustion_t: float | None = None
         self._cooldown = False            # the test is over and the belt walks for recovery_s, then stops
         self._shift = 0.0                 # shift_start: the stages after the warm-up moved by this much
+        self._belt: dict[int, dict[str, Any]] = {}   # per stage: target, measured mean and end, by hand
+        self._off_since: float | None = None         # the belt has been off the target since (test time)
+        self._hand_before: tuple[float, float] | None = None  # the stage just ended was set by hand to this
+        self._hand: tuple[float, float] | None = None  # the belt's reading when a hand change was seen in this stage
         self._belt_moved = False          # seen running since the program last stopped it on purpose
         self._still_since: float | None = None
         self._pending: list[int] = []
@@ -246,6 +263,14 @@ class TestRunner:
         self-paced stage stayed within the band around its target. Empty for a treadmill."""
         with self._lock:
             return [dict(v) for _, v in sorted(self._stats.items())]
+
+    @property
+    def belt_stats(self) -> list[dict[str, Any]]:
+        """Running: the stages whose belt readings differ from the plan (a speed or incline set by hand
+        on the panel): index, target, measured time-weighted mean, the value at the stage's end and
+        ``by_hand``. The stage's record has the measured mean. Empty when the belt did as planned."""
+        with self._lock:
+            return [dict(v) for _, v in sorted(self._belt.items())]
 
     @property
     def drag_factor(self) -> int | None:
@@ -744,6 +769,7 @@ class TestRunner:
         self._stage_elapsed += carry
         self._ticked.clear()
         self._low_cadence_since = None
+        self._say_hand_overridden(s)
         if not self._flash_text:
             # self-paced: the target stays on the TV for the whole stage
             self._prompt = self._pt("hold", target=self._target_text(s)) if self._self_paced(s) else ""
@@ -759,13 +785,15 @@ class TestRunner:
         if not hrs_end:
             hr = self._current_hr()
             hrs_end = [hr] if hr else []
-        load = s.speed_kmh
+        load, incline = s.speed_kmh, s.incline_pct
         if not self._run:
             load = self._stage_stats(s, start_t, end_t)
+        else:
+            load, incline = self._belt_load(s, start_t, end_t)
         rec = StepRecord(
             index=self._idx,
             speed_kmh=load,
-            incline_pct=s.incline_pct,
+            incline_pct=incline,
             duration_s=round(min(self._stage_elapsed, s.duration_s) if not partial else self._stage_elapsed, 1),
             hr_end=round(sum(hrs_end) / len(hrs_end)) if hrs_end else None,
             hr_mean=round(sum(hrs_all) / len(hrs_all)) if hrs_all else None,
@@ -780,6 +808,85 @@ class TestRunner:
             self._pending.append(self._idx)
         if not s.is_warmup and self._idx >= self._n_protocol - 1 and self.protocol.open_ended:
             self._open_ended_s += rec.duration_s
+
+    def _readings_real(self) -> bool:
+        """The samples' speed is what the belt reports (FTMS, QZ), not the target of a manual belt."""
+        return bool(self.treadmill is not None and getattr(self.treadmill, "controllable", False))
+
+    def _belt_load(self, s: Stage, start_t: float, end_t: float) -> tuple[float, float]:
+        """The stage's speed and incline as the belt reported them: the target while the belt kept
+        to it, else the time-weighted mean of the readings (1 Hz, the first seconds after the change
+        and a standing belt left out). A stage whose end differs from its mean, or that was changed
+        by hand, is kept in ``belt_stats`` with the end value, so a change at the end is not lost.
+        Before 2026-11-15 the planned values were saved even when the speed was set by hand."""
+        hand = self._hand
+        self._hand, self._off_since = None, None
+        self._hand_before = hand
+        if not self._readings_real():
+            return s.speed_kmh, s.incline_pct
+        settle = min(BELT_SETTLE_S, (end_t - start_t) / 4)
+        win = [x for x in self._samples if start_t + settle <= x.t_s <= end_t
+               and x.speed_kmh is not None and x.speed_kmh >= PANEL_MOVING_KMH]
+        if not win:
+            return s.speed_kmh, s.incline_pct
+        v = sum(x.speed_kmh for x in win) / len(win)
+        incs = [x.incline_pct for x in win if x.incline_pct is not None]
+        inc = sum(incs) / len(incs) if incs else s.incline_pct
+        tail = [x for x in win if x.t_s >= end_t - BELT_END_S] or win[-1:]
+        end_v = _median([x.speed_kmh for x in tail])
+        end_i = _median([x.incline_pct for x in tail if x.incline_pct is not None]) if incs else inc
+        near = abs(v - s.speed_kmh) <= BELT_SPEED_TOL_KMH and abs(inc - s.incline_pct) <= BELT_INCLINE_TOL_PCT
+        end_near = (abs(end_v - s.speed_kmh) <= BELT_SPEED_TOL_KMH
+                    and abs(end_i - s.incline_pct) <= BELT_INCLINE_TOL_PCT)
+        if near and end_near and hand is None:
+            return s.speed_kmh, s.incline_pct
+        v, inc = round(v, 1), round(inc, 1)
+        stat = {"index": self._idx, "target_kmh": s.speed_kmh, "target_incline_pct": s.incline_pct,
+                "speed_kmh": v, "incline_pct": inc, "end_kmh": round(end_v, 1), "end_incline_pct": round(end_i, 1),
+                "by_hand": hand is not None}
+        self._belt[self._idx] = stat
+        log.info("stage %d: the belt ran %.1f km/h, %s %% (planned %.1f km/h, %s %%; at the end %.1f km/h, %s %%)%s",
+                 self._idx, v, fmt_pct(inc).replace(",", "."), s.speed_kmh, fmt_pct(s.incline_pct).replace(",", "."),
+                 end_v, fmt_pct(end_i).replace(",", "."), ", set by hand" if hand is not None else "")
+        return (v, inc) if not near or hand is not None else (s.speed_kmh, s.incline_pct)
+
+    def _say_hand_overridden(self, s: Stage) -> None:
+        """The stage before was set by hand and the program now sets the next stage's target: said on
+        the TV and in the log, so the change by hand is not overwritten without anyone noticing."""
+        hand, self._hand_before = self._hand_before, None
+        if hand is None or not self._controllable or s.is_warmup:
+            return
+        text = t("assessments.prompt.hand_overridden", was=self._stage_text(*hand),
+                 target=self._stage_text(s.speed_kmh, s.incline_pct))
+        log.info("stage %d: the target %.1f km/h replaces the speed set by hand (%.1f km/h)", self._idx,
+                 s.speed_kmh, hand[0])
+        self._flash_text = text
+        self._flash_until = self._now_s() + 20.0
+        self._prompt = text
+        self.bus.publish(TOPIC_LOG, text)
+
+    def _watch_hand(self, el: float, speed: float | None, inc: float | None) -> None:
+        """A belt the program drives that is off its target for HAND_CHANGE_S while a stage runs was
+        changed on the panel. Said once per stage (log and the log topic)."""
+        if (not self._run or not self._controllable or self._phase != Phase.RUNNING or speed is None
+                or self._prev_set is None or self._stage_elapsed < BELT_SETTLE_S or speed < PANEL_MOVING_KMH):
+            self._off_since = None
+            return
+        tv, ti = self._prev_set
+        off = abs(speed - tv) > BELT_SPEED_TOL_KMH or (inc is not None and abs(inc - ti) > BELT_INCLINE_TOL_PCT)
+        if not off:
+            self._off_since = None
+            return
+        if self._off_since is None:
+            self._off_since = el
+            return
+        if el - self._off_since >= HAND_CHANGE_S and self._hand is None:
+            self._hand = (speed, inc if inc is not None else ti)
+            text = t("assessments.prompt.hand_change", target=self._stage_text(*self._hand),
+                     planned=self._stage_text(tv, ti))
+            log.info("stage %d: the belt was set by hand to %.1f km/h, %s %% (planned %.1f km/h, %s %%)",
+                     self._idx, speed, fmt_pct(self._hand[1]).replace(",", "."), tv, fmt_pct(ti).replace(",", "."))
+            self.bus.publish(TOPIC_LOG, text)
 
     def _stage_stats(self, s: Stage, start_t: float, end_t: float) -> float:
         """Note what the ergometer measured in the stage, and return the stage's load: the target
@@ -1146,6 +1253,7 @@ class TestRunner:
             df = getattr(st, "drag_factor", None) if st is not None else None
             if isinstance(df, (int, float)) and df > 0:
                 self._drag.append((el, int(df)))
+        self._watch_hand(el, speed, inc)
         while self._next_sample <= el + 1e-9:
             self._samples.append(TimeSample(t_s=round(self._next_sample, 3), hr=hr, speed_kmh=speed,
                                             incline_pct=inc, cadence_spm=cad, cadence_source=cad_src))

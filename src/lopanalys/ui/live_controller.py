@@ -754,6 +754,11 @@ class LiveController(QObject):
             merged = {int(x["index"]): x for x in s.result.get("stage_stats") or [] if x.get("index") is not None}
             merged.update({int(x["index"]): x for x in stats})
             s.result["stage_stats"] = [merged[k] for k in sorted(merged)]
+        belt = getattr(self.runner, "belt_stats", None)
+        if isinstance(belt, list) and belt:   # stages where the belt did not run as planned (set by hand)
+            merged = {int(x["index"]): x for x in s.result.get("belt_stats") or [] if x.get("index") is not None}
+            merged.update({int(x["index"]): x for x in belt})
+            s.result["belt_stats"] = [merged[k] for k in sorted(merged)]
         drag = getattr(self.runner, "drag_factor", None)
         if isinstance(drag, int) and ((s.result.get("drag_factor") or {}).get("source") != "manual"):
             s.result["drag_factor"] = {"value": drag, "source": "pm5"}      # what the monitor measured
