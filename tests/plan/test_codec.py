@@ -86,3 +86,16 @@ def test_the_sport_key_is_core_sports_and_old_plans_read_running_as_run():
     assert "running" in json.dumps(old_body)                     # a plan saved before core.sport
     back = codec.plan_from_dict(old_body, codec.request_from_dict(old_req, plan.request.athlete_name))
     assert back == plan and {w.sport for wk in back.weeks for w in wk.workouts} == {"run"}
+
+
+def test_a_zones_test_keeps_its_speed_line_in_json():
+    from lopanalys.plan.models import SpeedLine
+    line = SpeedLine(8.0, 60.0, 8.0, 12.0, 15.0)
+    cap = Capacity(RUNNING, Anchors(max_hr=190), date(2026, 11, 13), "Puls- och fartzoner", line)
+    plan = build_plan(c.request(weeks=12, capacity=(cap,)))
+    back = _roundtrip(plan)
+    assert back == plan and back.request.capacity_for(RUNNING).speed_line == line
+    assert resolve.targets(back.request.capacity_for(RUNNING))["Z3"].pace_text == "6:36–5:13 min/km"
+    # a capacity without a line is stored as before, and an old plan without the key reads back
+    d = codec.capacity_to_dict(BETTER)
+    assert "speed_line" not in d and codec.capacity_from_dict(d) == BETTER

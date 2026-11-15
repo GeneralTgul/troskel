@@ -2,8 +2,9 @@
 
 The form on the left states what the plan engine needs (the test, the level, the time per weekday,
 the goal and milestones or a length); the overview on the right shows the plan it gives. The plan
-is saved per athlete, printed, saved as PDF and as a calendar file. Nothing leaves the program
-before every box of the health declaration is ticked.
+is saved per athlete, printed, saved as PDF and as a calendar file, and mailed to the athlete (both
+files, views/send_mail.py). Nothing leaves the program before every box of the health declaration
+is ticked.
 
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
@@ -128,6 +129,7 @@ class PlanView(QWidget):
         self._retest: Any = None               # the newer test the plan can be laid on
         self._filling = False
         self.milestones: list[MilestoneRow] = []
+        self._mailing: Any = None              # the mail on its way
         ctx.athlete_erased.connect(self._forget)
 
         outer = QVBoxLayout(self)
@@ -172,7 +174,8 @@ class PlanView(QWidget):
         self.del_btn = button(t("ui.plan.delete"), "trash", kind="ghost")
         self.del_btn.clicked.connect(self.delete)
         row.addWidget(self.del_btn)
-        row.addStretch(1)
+        self.mail_note = label("", "Hint", wrap=True)     # when it was mailed, or why it cannot be
+        row.addWidget(self.mail_note, 1)
         self.cancel_btn = button(t("ui.common.cancel"), "x", kind="ghost")
         self.cancel_btn.clicked.connect(self.revert)
         self.preview_btn = button(t("ui.plan.preview"), "eye")
@@ -183,9 +186,12 @@ class PlanView(QWidget):
         self.print_btn.clicked.connect(lambda: self.print_plan())
         self.pdf_btn = button(t("ui.res.pdf"), "pdf")
         self.pdf_btn.clicked.connect(lambda: self.save_pdf())
+        self.mail_btn = button(t("ui.res.mail"), "mail")
+        self.mail_btn.clicked.connect(lambda: self.send_to_athlete())
         self.save_btn = button(t("ui.common.save"), "save", kind="primary")
         self.save_btn.clicked.connect(lambda: self.save())
-        for w in (self.cancel_btn, self.preview_btn, self.ics_btn, self.print_btn, self.pdf_btn, self.save_btn):
+        for w in (self.cancel_btn, self.preview_btn, self.ics_btn, self.print_btn, self.pdf_btn, self.mail_btn,
+                  self.save_btn):
             row.addWidget(w)
         outer.addLayout(row)
 
@@ -474,7 +480,26 @@ class PlanView(QWidget):
         self.del_btn.setVisible(st is not None)
         self._show()
         self._fill_banner()
+        self._refresh_mail()
         self._changed()
+
+    def _refresh_mail(self) -> None:
+        """*Skicka till idrottaren*: grey with the reason when nothing can be mailed, and when it was last sent."""
+        a = self.athlete
+        try:
+            reason = services.mail_block_reason(self.ctx.store, a)
+            sent = services.plan_mailed_text(self.ctx.store, self.stored)
+        except Exception:
+            log.exception("mail check failed")
+            reason, sent = t("ui.mail.block.not_set_up"), ""
+        self.mail_btn.setEnabled(reason is None and self._mailing is None)
+        self.mail_btn.setToolTip(reason or "")
+        self.mail_note.setText(sent or (t("ui.mail.blocked", reason=reason) if reason else ""))
+
+    def showEvent(self, e: Any) -> None:   # back from Idrottare or Inställningar: the button follows
+        super().showEvent(e)
+        if self.athlete is not None:
+            self._refresh_mail()
 
     def _fill_banner(self) -> None:
         self._retest = None
@@ -763,6 +788,30 @@ class PlanView(QWidget):
         services.register_report(self.ctx.store, Path(fn), self.athlete)   # so erasing the person finds it
         QMessageBox.information(self, t("ui.plan.ics"), t("ui.plan.file_saved", path=fn))
         return True
+
+    def send_to_athlete(self) -> bool:
+        """*Skicka till idrottaren*: the printout as PDF and the calendar file by mail, after the question.
+        The same rules as the other ways out: the health declaration first, and the plan is saved."""
+        from lopanalys.ui.views.send_mail import send_plan_to_athlete
+        if self._mailing is not None:
+            return False
+        plan = self._for_output()
+        if plan is None or self.stored is None:
+            return False
+        branding = self.ctx.branding()
+
+        def end() -> None:
+            self._mailing = None
+            if self.athlete is not None:
+                self._refresh_mail()
+
+        self._mailing = True
+        self.mail_btn.setEnabled(False)
+        w = send_plan_to_athlete(self, self.ctx, self.athlete, plan, self.stored.row_id,
+                                 lambda p: services.html_to_pdf(services.render_plan(plan, branding), p), on_end=end)
+        if w is not None:
+            self._mailing = w
+        return w is not None
 
     def print_plan(self) -> bool:
         plan = self._for_output()

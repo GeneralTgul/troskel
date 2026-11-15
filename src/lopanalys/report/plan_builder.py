@@ -170,6 +170,8 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         basis = " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x) or "–"
         if cap.estimated:
             basis += " · " + t("assessments.zones.estimated").lower()
+        if cap.speed_from_hr:
+            basis += " · " + t("assessments.hrzones.speed_from_hr").lower()
     start_minutes = req.recent_weekly_minutes or LEVEL[req.level].start_minutes
     # Three columns: a wide field (two columns) is always followed by a narrow one.
     narrow = [period, {"k": t("plan.pdf.fact.based_on"), "v": basis},
@@ -257,6 +259,9 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         "accent": _safe_color(branding.accent_color), "font_dir": (ASSETS / "fonts").as_uri(),
         "created": date_long(plan.created), "facts": facts, "tiles": tiles, "zones": zones,
         "zones_estimated": cap.anchors is not None and cap.estimated, "has_targets": bool(zt),
+        "zones_sub": t("plan.pdf.zones.estimated_hr" if cap.anchors is not None and cap.speed_from_hr else
+                       "plan.pdf.zones.estimated" if cap.anchors is not None and cap.estimated else
+                       "plan.pdf.zones.sub" if zt else "plan.pdf.zones.none"),
         "overview": Markup(overview_svg(plan)), "has_unzoned": any(w.template_id == "test" for w in plan.workouts),
         "unzoned": UNZONED, "rule": RULE,
         "blocks": blocks, "guide": guide, "notes": [n.text for n in plan.notes], "weeks": weeks,

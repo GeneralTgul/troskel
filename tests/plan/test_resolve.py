@@ -9,6 +9,7 @@ import pytest
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language
 from lopanalys.plan import RUNNING, Capacity, build_plan, resolve
+from lopanalys.plan.models import SpeedLine
 from lopanalys.plan.text import duration, plain, workout_lines
 
 from . import cases as c
@@ -87,3 +88,38 @@ def test_texts():
     assert lines[1].startswith("Intervaller: ") and "× 3 min i Z5 (174–192 slag/min · 4:10 min/km eller snabbare), vila 2 min" in lines[1]
     set_language("en")
     assert plain(workout_lines(w, c.TESTED, plan.zone_system)[0]) == "Warm-up: 15 min in Z2 (115–165 bpm · 4:33 min/km or slower)"
+
+
+# ------------------------------------------------------------------ a zones test: pace from heart rate
+# HR = 60 + 8 * speed, measured from 8 to 12 km/h, ramp run to 15 km/h; max HR 190 (Garmin's % of max).
+LINE = SpeedLine(slope=8.0, intercept=60.0, speed_min=8.0, speed_max=12.0, ramp_top_kmh=15.0)
+ZONES_TEST = Capacity(RUNNING, Anchors(max_hr=190), date(2026, 11, 13), "Puls- och fartzoner", LINE)
+
+
+def test_a_zones_test_gives_the_estimated_zones_a_pace_from_heart_rate():
+    assert ZONES_TEST.estimated and ZONES_TEST.speed_from_hr
+    zt = resolve.targets(ZONES_TEST)
+    z3, z4, z5 = zt["Z3"], zt["Z4"], zt["Z5"]
+    # the heart rates are those of max HR alone: the line only adds the pace
+    assert [(z.hr_low, z.hr_high) for z in (z3, z4)] == [(133, 152), (152, 171)]
+    assert z3.speed_from_hr and z3.estimated
+    assert (z3.speed_low_kmh, z3.speed_high_kmh) == (9.1, 11.5)               # inside the steps: no ≈
+    assert z3.pace_text == "6:36–5:13 min/km" and "≈" not in z3.pace_text
+    assert z4.speed_high_kmh == 13.9 and z4.speed_high_approx and not z4.speed_low_approx
+    assert z4.pace_text == "5:13–≈4:19 min/km"                                 # a little above the steps: ≈
+    assert z5.speed_high_kmh is None and z5.pace_text == "≈4:19 min/km eller snabbare"   # never past what was run
+    plan = build_plan(c.request(weeks=12, capacity=(ZONES_TEST,)))
+    assert [n.key for n in plan.notes] == ["plan.note.speed_from_hr"]
+
+
+def test_the_lactate_thresholds_win_over_the_speed_line():
+    cap = Capacity(RUNNING, c.TESTED.anchors, c.TESTED.tested, "Laktattrappa", LINE)
+    assert not cap.speed_from_hr
+    assert resolve.targets(cap) == resolve.targets(c.TESTED)
+
+
+def test_speed_line_from_an_unusable_relation_is_none():
+    from lopanalys.assessments.hr_zones import HrSpeedResult
+    assert resolve.speed_line(None) is None and resolve.speed_line(HrSpeedResult()) is None
+    rel = HrSpeedResult(slope=8.0, intercept=60.0, speed_min=8.0, speed_max=12.0, ramp_top_kmh=15.0)
+    assert resolve.speed_line(rel) == LINE

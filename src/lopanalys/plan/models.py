@@ -45,16 +45,37 @@ class Note:
 
 
 @dataclass(frozen=True)
+class SpeedLine:
+    """The relation heart rate -> speed of a zones test without lactate (assessments.hr_zones):
+    HR = intercept + slope * speed, measured between ``speed_min`` and ``speed_max``. Only what the
+    plan needs to turn a zone's heart rates into speeds; resolve.targets does that."""
+    slope: float
+    intercept: float
+    speed_min: float
+    speed_max: float
+    ramp_top_kmh: float | None = None     # the fastest ramp stage run: no speed is given above it
+    extrapolate_kmh: float = 2.0          # hr_zones.EXTRAPOLATE_KMH when the test was analysed
+
+
+@dataclass(frozen=True)
 class Capacity:
     """What the athlete can do in one sport right now: the anchors of the latest test.
 
     ``anchors`` None: nothing is known, the plan shows zone names and effort only. Without measured
-    thresholds the zones come from max HR and are marked as estimated.
+    thresholds the zones come from max HR and are marked as estimated. ``speed_line``: a zones test
+    gave the relation heart rate -> speed, so the estimated zones get a pace too (speed from heart
+    rate, not from lactate).
     """
     sport: str = RUNNING
     anchors: Anchors | None = None
     tested: date | None = None
     source: str = ""                 # test name for the printout, e.g. "Laktattrappa"
+    speed_line: SpeedLine | None = None
+
+    @property
+    def speed_from_hr(self) -> bool:
+        """True when the zones' paces come from the heart rate -> speed relation of a zones test."""
+        return self.speed_line is not None and self.estimated
 
     @property
     def estimated(self) -> bool:

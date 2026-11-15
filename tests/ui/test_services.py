@@ -80,12 +80,12 @@ def test_no_fallbacks_and_no_heavy_imports_at_startup():
 
 
 def test_a_training_plan_is_built_on_running_tests_only():
-    """The plan is for running: a lactate or max HR test in another sport never carries one."""
+    """The plan is for running: a lactate, max HR or zones test in another sport never carries one."""
     from datetime import datetime, timezone
 
     from lopanalys.core.models import Session, TestKind
     from lopanalys.ui import services as sv
-    for sport, kind, ok in (("run", "lactate", True), ("run", "max_hr", True), ("bike", "lactate", False),
+    for sport, kind, ok in (("run", "lactate", True), ("run", "max_hr", True), ("run", "hr_zones", True), ("bike", "lactate", False),
                             ("skierg", "max_hr", False), ("run", "gait", False), ("bike", "bikefit", False)):
         s = Session(None, 1, TestKind(kind), datetime.now(timezone.utc), sport=sport)
         assert sv.plan_test_ok(s) is ok, (sport, kind)

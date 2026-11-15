@@ -4,6 +4,10 @@ The plan stores zone codes. Heart rate and pace are looked up here, from the ath
 every time the plan is shown, printed or exported. A retest therefore moves every target and leaves
 the plan itself untouched (``retest``). Pace is given only where the test measured it: at the
 thresholds and between them. Nothing is extrapolated.
+
+A zones test without lactate (``Capacity.speed_line``) gives the estimated zones a pace from the
+relation heart rate -> speed of its steps, the same way the result page does (hr_zones.zone_speeds):
+a border a little outside the steps is marked ``≈``, further out it has no pace.
 """
 from __future__ import annotations
 
@@ -11,11 +15,14 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
+from lopanalys.assessments import hr_zones
 from lopanalys.assessments.lactate import pace_str
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, convert
 from lopanalys.core.i18n import t
 
-from .models import Capacity, Plan
+from .models import Capacity, Plan, SpeedLine
+
+APPROX = "≈"     # before a pace outside the measured steps of a zones test (report.builder.EXTRAPOLATED_MARK)
 
 
 def _field(obj: Any, *names: str) -> Any:
@@ -35,6 +42,9 @@ class Target:
     speed_low_kmh: float | None = None     # the slower end
     speed_high_kmh: float | None = None
     estimated: bool = False                # no thresholds were measured: the borders come from max HR
+    speed_low_approx: bool = False         # the pace is followed a little outside the measured steps
+    speed_high_approx: bool = False
+    speed_from_hr: bool = False            # the pace comes from heart rate (a zones test), not from lactate
 
     @property
     def hr_text(self) -> str:
@@ -47,6 +57,8 @@ class Target:
     @property
     def pace_text(self) -> str:
         lo, hi = pace_str(self.speed_low_kmh), pace_str(self.speed_high_kmh)
+        lo = (APPROX if lo and self.speed_low_approx else "") + lo
+        hi = (APPROX if hi and self.speed_high_approx else "") + hi
         if lo and hi:
             return t("plan.target.pace", lo=lo, hi=hi)
         if hi:
@@ -63,12 +75,32 @@ def targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM) -> dict[str
     """Every zone of the system with its targets. {} when the athlete has no test and no max HR."""
     if capacity is None or capacity.anchors is None:
         return {}
+    zones = convert(capacity.anchors, system)
+    line = capacity.speed_line if capacity.speed_from_hr else None
+    if line is not None:
+        zones = hr_zones.zone_speeds(zones, _relation(line))
     out = {}
-    for z in convert(capacity.anchors, system):
+    for z in zones:
         out[z.code] = Target(z.code, z.name, z.hr_low, z.hr_high,
                              _field(z, "speed_low_kmh", "load_low"), _field(z, "speed_high_kmh", "load_high"),
-                             bool(z.estimated))
+                             bool(z.estimated), bool(_field(z, "speed_low_extrapolated", "load_low_extrapolated")),
+                             bool(_field(z, "speed_high_extrapolated", "load_high_extrapolated")),
+                             _field(z, "speed_basis", "load_basis") == "hr")
     return out
+
+
+def _relation(line: SpeedLine) -> "hr_zones.HrSpeedResult":
+    return hr_zones.HrSpeedResult(slope=line.slope, intercept=line.intercept, speed_min=line.speed_min,
+                                  speed_max=line.speed_max, ramp_top_kmh=line.ramp_top_kmh,
+                                  extrapolate_kmh=line.extrapolate_kmh)
+
+
+def speed_line(relation: Any) -> SpeedLine | None:
+    """The part of an hr_zones.HrSpeedResult the plan keeps, or None when the relation is not usable."""
+    if relation is None or not getattr(relation, "ok", False) or relation.speed_min is None:
+        return None
+    return SpeedLine(float(relation.slope), float(relation.intercept), float(relation.speed_min),
+                     float(relation.speed_max), relation.ramp_top_kmh, float(relation.extrapolate_kmh))
 
 
 def target(capacity: Capacity | None, zone: str | None, system: str = DEFAULT_SYSTEM) -> Target | None:

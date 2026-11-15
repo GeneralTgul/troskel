@@ -49,8 +49,8 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Utskrift: översikt, läsanvisning och ett blad per vecka | Byggt. Utskriften på Windows är inte provad ([PROV.md](PROV.md)) |
 | Kalenderfil (`.ics`) | Byggt. Importen i en telefon är inte provad |
 | Lagring i databasen: ett schema per idrottare, med det som angavs, testet, schemat som det byggdes och en logg | Byggt (migrering 9, se [Datamodellen](#1-datamodellen)) |
-| Sidan *Träningsschema*: formulär, förhandsvisning, spara, skriv ut, PDF och kalenderfil | Byggt |
-| Hälsodeklarationen som tre rutor som krävs före utskrift, PDF och kalenderfil | Byggt i enkel form, se [Säkerhet och ansvar](#3-säkerhet-och-ansvar) |
+| Sidan *Träningsschema*: formulär, förhandsvisning, spara, skriv ut, PDF, kalenderfil och e-post till idrottaren | Byggt |
+| Hälsodeklarationen som tre rutor som krävs före utskrift, PDF, kalenderfil och e-post | Byggt i enkel form, se [Säkerhet och ansvar](#3-säkerhet-och-ansvar) |
 | Ombyggnad av resten av planen (nya pass och ny volym) efter ett omtest, sjukdom och missade pass | Inte byggt (resten av steg P4) |
 | Flera idrotter, styrka, återhämtningsblock efter ett mål, passkort | Inte byggt |
 
@@ -81,6 +81,7 @@ Goal
 Capacity                         nuvarande nivå i en sport
   anchors: Anchors | None        maxpuls, LT1 och LT2 som puls och fart (assessments/zone_systems.py)
   tested: date, source: str      testets datum och namn
+  speed_line: SpeedLine | None   zontestets samband puls -> fart (lutning, skärning, uppmätt fartspann)
   estimated                      sant utan uppmätta trösklar
 
 Plan
@@ -121,7 +122,7 @@ Note                             en text som nyckel och värden, så att planen 
 
 **Tre regler i modellen:**
 
-1. **Passdelen har en zon, inte en puls.** Målpuls och målfart räknas ur `Capacity` när passet visas, skrivs ut eller exporteras (`plan/resolve.py`). Fart anges bara där testet mätte den, alltså vid trösklarna och mellan dem. Saknar idrottaren ett test visas bara zonens namn och ansträngningen, och med bara maxpuls märks zonerna som uppskattade.
+1. **Passdelen har en zon, inte en puls.** Målpuls och målfart räknas ur `Capacity` när passet visas, skrivs ut eller exporteras (`plan/resolve.py`). Fart anges bara där testet mätte den, alltså vid trösklarna och mellan dem. Saknar idrottaren ett test visas bara zonens namn och ansträngningen, och med bara maxpuls märks zonerna som uppskattade. Efter testet *Puls- och fartzoner* är zonerna uppskattade ur maxpulsen från trappan, och varje gräns får en fart ur sambandet mellan puls och fart i stegen (`hr_zones.zone_speeds`, samma som resultatsidan): lite utanför stegen märkt *≈*, längre ut ingen fart. Ett zontest som stoppades innan trappan nådde en minut ger ingen maxpuls (`services.plan_capacity`).
 2. **Planen pekar på testerna den bygger på** (`based_on`). `resolve.retest()` ger samma plan på ett nytt test: zonerna ligger kvar och målen följer de nya trösklarna, från en angiven dag eller i hela planen.
 3. **Varje block och varje ändring har ett skäl i klartext** (`reason`). Det är det som gör planen förklarlig.
 
@@ -200,7 +201,7 @@ Inte byggt. Motorn fyller bara löpning, och platser för andra sporter lämnas 
 ### Omtest och omläggning
 
 - **Var 8–12:e vecka, i en lätt vecka,** läggs ett test hos coachen i planen. Planer utan mål får ett test i slutet av varje cykel. Planer med mål får ett test i den första lätta veckan när minst 8 veckor gått sedan förra testet, dock inte närmare målet än 4 veckor. Ett fälttest för den som inte kan komma till coachen finns inte än.
-- **Efter testet (byggt):** programmet ser att idrottarens schema bygger på ett äldre laktat- eller maxpulstest och erbjuder *Lägg om schemat*, på resultatet av det nya testet och på sidan *Träningsschema* (`services.retest_candidate` och `services.apply_retest`). Passen från och med den dagen får mål ur det nya testet. Passen före har kvar målen de lämnades ut med (`Plan.capacity_log`). Inget pass byter dag, och veckor, block och passens innehåll är desamma. Omläggningen skrivs i loggen.
+- **Efter testet (byggt):** programmet ser att idrottarens schema bygger på ett äldre laktat-, maxpuls- eller zontest och erbjuder *Lägg om schemat*, på resultatet av det nya testet och på sidan *Träningsschema* (`services.retest_candidate` och `services.apply_retest`). Passen från och med den dagen får mål ur det nya testet. Passen före har kvar målen de lämnades ut med (`Plan.capacity_log`). Inget pass byter dag, och veckor, block och passens innehåll är desamma. Omläggningen skrivs i loggen.
 - **Inte byggt:** motorn bygger om resten av planen från testveckan (nya pass och ny volym), med samma mål och samma tillgänglighet, och visar skillnaden mot den gamla planen innan coachen godkänner. Gjorda veckor ändras aldrig.
 - **Flyttade trösklarna sig mindre än mätfelet** behålls planen som den är. Gränsen sätts i steg P4.
 
@@ -237,7 +238,7 @@ Hälsodata till en språkmodell kräver ett eget samtycke och ett biträdesavtal
 
 ## 3. Säkerhet och ansvar
 
-- **Hälsodeklaration före start (byggd i enkel form):** sidan *Träningsschema* har tre rutor som coachen bockar i med idrottaren: frågorna om hjärta, bröstsmärta, yrsel, läkemedel, graviditet och skador är besvarade, inget svar hindrar träningen eller en läkare har sagt ja, och idrottaren vet att schemat är ett träningsråd. Utan alla tre går schemat inte att skriva ut, spara som PDF eller som kalenderfil. Rutorna sparas med datum (`plans.health_json`) och gäller i 12 månader. Inte byggt: svaren fråga för fråga i stil med PAR-Q+ *(namn och innehåll ej verifierat)*, och ett eget formulär som idrottaren skriver under.
+- **Hälsodeklaration före start (byggd i enkel form):** sidan *Träningsschema* har tre rutor som coachen bockar i med idrottaren: frågorna om hjärta, bröstsmärta, yrsel, läkemedel, graviditet och skador är besvarade, inget svar hindrar träningen eller en läkare har sagt ja, och idrottaren vet att schemat är ett träningsråd. Utan alla tre går schemat inte att skriva ut, spara som PDF eller som kalenderfil, eller mejla. Rutorna sparas med datum (`plans.health_json`) och gäller i 12 månader. Inte byggt: svaren fråga för fråga i stil med PAR-Q+ *(namn och innehåll ej verifierat)*, och ett eget formulär som idrottaren skriver under.
 - **Maxtester kräver mer:** samma deklaration före varje maxtest, och coachen ser den i guiden innan testet går att starta.
 - **Försiktig start för nybörjare:** inga pass över LT2 de första fyra veckorna, start på låg volym, 2+1 i stället för 3+1 och gång-löpning i passbiblioteket.
 - **Texten på varje plan och i tjänsten:** planen är ett träningsråd byggt på ett test, inte sjukvård. Den ersätter inte läkare eller fysioterapeut. Vid bröstsmärta, yrsel eller onormal andfåddhet avbryts passet och vård kontaktas. Den exakta texten bör läsas av någon som kan juridiken.

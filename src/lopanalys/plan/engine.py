@@ -341,6 +341,8 @@ def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime
     cap = request.capacity_for(RUNNING)
     if cap.anchors is None:
         notes.append(Note.of("plan.note.no_test"))
+    elif cap.speed_from_hr:
+        notes.append(Note.of("plan.note.speed_from_hr"))
     elif cap.estimated:
         notes.append(Note.of("plan.note.estimated"))
     created = created or datetime.combine(request.start, time(0), tzinfo=timezone.utc)
