@@ -10,6 +10,11 @@ The plan rolls (plan.rolling): only the next four weeks have workouts, the rest 
 under the overview says how far the workouts run, with *Förnya*, which details the next weeks on
 what is saved without filling in anything; the banner offers it when they run out within a week.
 
+Several sports (#666, step 4): the coach ticks the plan's sports, each with a role (main, supporting,
+maintenance) and a share of the weekly time in tens of percent, 60/30/10 by default. Running's zones come
+from the chosen test; every other sport takes its own newest test (services.sport_capacity). A weekday can
+allow some of the sports only: the button beside the day says which, *Alla* by default.
+
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
 """
@@ -23,15 +28,15 @@ from typing import Any
 
 from PySide6.QtCore import QRegularExpression, Qt, Signal
 from PySide6.QtGui import QRegularExpressionValidator
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLineEdit,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLineEdit, QMenu,
                                QMessageBox, QToolButton, QVBoxLayout, QWidget)
 
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Athlete
-from lopanalys.plan import RUNNING, Goal, Plan, PlanRequest, Slot, build_plan
+from lopanalys.plan import RUNNING, Capacity, Goal, Plan, PlanRequest, Slot, SportRole, build_plan
 from lopanalys.plan import rolling
 from lopanalys.plan.engine import horizon_for
-from lopanalys.plan.models import LEVELS, WEEKDAY_KEYS, ZONES
+from lopanalys.plan.models import BORROWS, LEVELS, PLAN_SPORTS, ROLE_SHARE, ROLES, WEEKDAY_KEYS, ZONES
 from lopanalys.plan.resolve import targets
 from lopanalys.plan.text import hours, start_line
 from lopanalys.ui import services, theme
@@ -45,6 +50,7 @@ log = logging.getLogger(__name__)
 
 MIN_SLOT, MAX_SLOT = 20, 480      # minutes in one day
 MAX_WEEKS = 104
+SHARES = tuple(range(10, 101, 10))   # a sport's share of the weekly time, in tens of percent
 _TIME_RE = re.compile(r"^(\d{1,2})(?:[:.]?(\d{2}))?$")
 
 
@@ -98,6 +104,143 @@ class MilestoneRow(QWidget):
 
     def snapshot(self) -> tuple:
         return (self.name.text().strip(), self.date.text().strip(), self.km.value(), self.kind.currentData())
+
+
+def _basis_text(cap: Capacity | None, sport: str) -> str:
+    """What a sport's zones come from, under its row in the form."""
+    if cap is None:
+        return t("ui.plan.sport_basis.effort")
+    if cap.anchors is None:
+        return t("ui.plan.sport_basis.none")
+    if cap.tested:
+        return t("ui.plan.sport_basis.test", test=cap.source, date=cap.tested.isoformat())
+    return t("ui.plan.sport_basis.max_hr")
+
+
+class SportRow(QWidget):
+    """One sport of the plan: ticked or not, its role and its share of the weekly time."""
+
+    changed = Signal()
+    made_main = Signal(object)
+
+    def __init__(self, sport: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.sport = sport
+        g = QGridLayout(self)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setHorizontalSpacing(8)
+        g.setVerticalSpacing(2)
+        self.check = QCheckBox(t(f"plan.sport.{sport}"))
+        self.check.setObjectName(f"sport_{sport}")
+        self.role = QComboBox()
+        for r in ROLES:
+            self.role.addItem(t(f"ui.plan.role.{r}"), r)
+        self.share = QComboBox()
+        for n in SHARES:
+            self.share.addItem(t("ui.plan.share", n=n), n)
+        self.basis = label("", "Hint", wrap=True)      # what the sport's zones come from
+        self.basis.hide()
+        g.addWidget(self.check, 0, 0)
+        g.addWidget(self.role, 0, 1)
+        g.addWidget(self.share, 0, 2)
+        g.addWidget(self.basis, 1, 0, 1, 3)
+        g.setColumnStretch(0, 3)
+        g.setColumnStretch(1, 3)
+        g.setColumnStretch(2, 2)
+        self.set("support", 0, False)
+        self.check.toggled.connect(self._toggled)
+        self.role.currentIndexChanged.connect(self._role_changed)
+        self.share.currentIndexChanged.connect(self.changed)
+
+    def set(self, role: str, share: int, on: bool) -> None:
+        """Without signals: the role, the share (0: the role's default) and whether the sport is in the plan."""
+        for w in (self.check, self.role, self.share):
+            w.blockSignals(True)
+        self.check.setChecked(on)
+        self.role.setCurrentIndex(max(0, self.role.findData(role)))
+        n = share if share > 0 else ROLE_SHARE.get(role, ROLE_SHARE["support"])
+        self.share.setCurrentIndex(max(0, self.share.findData(min(SHARES, key=lambda x: abs(x - n)))))
+        for w in (self.check, self.role, self.share):
+            w.blockSignals(False)
+        self._enable()
+
+    def _enable(self) -> None:
+        on = self.check.isChecked()
+        self.role.setEnabled(on)
+        self.share.setEnabled(on)
+        self.basis.setVisible(on and bool(self.basis.text()))
+
+    def _toggled(self, *_: Any) -> None:
+        self._enable()
+        self.changed.emit()
+
+    def _role_changed(self, *_: Any) -> None:
+        """A new role takes the role's share (60/30/10); a new main sport makes the old one supporting."""
+        r = self.role.currentData()
+        self.share.blockSignals(True)
+        self.share.setCurrentIndex(max(0, self.share.findData(ROLE_SHARE[r])))
+        self.share.blockSignals(False)
+        if r == "main":
+            self.made_main.emit(self)
+        self.changed.emit()
+
+    @property
+    def on(self) -> bool:
+        return self.check.isChecked()
+
+    def value(self) -> SportRole:
+        return SportRole(self.sport, self.role.currentData(), self.share.currentData())
+
+    def snapshot(self) -> tuple:
+        return (self.on, self.role.currentData(), self.share.currentData())
+
+
+class DaySports(QToolButton):
+    """The sports one weekday allows: *Alla* (every sport of the plan) or the ticked ones."""
+
+    changed = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setToolTip(t("ui.plan.day_sports_tip"))
+        self.menu_ = QMenu(self)
+        self.actions_: dict[str, Any] = {}
+        for sp in PLAN_SPORTS:
+            a = self.menu_.addAction(t(f"plan.sport.{sp}"))
+            a.setCheckable(True)
+            a.toggled.connect(self._toggled)
+            self.actions_[sp] = a
+        self.setMenu(self.menu_)
+        self._offered: tuple[str, ...] = PLAN_SPORTS
+        self._text()
+
+    def offer(self, sports: tuple[str, ...]) -> None:
+        """Only the plan's sports can be ticked."""
+        self._offered = sports
+        for sp, a in self.actions_.items():
+            a.setVisible(sp in sports)
+        self._text()
+
+    def chosen(self) -> tuple[str, ...]:
+        """The ticked sports among the offered ones; () is all of them."""
+        out = tuple(sp for sp in self._offered if self.actions_[sp].isChecked())
+        return () if len(out) == len(self._offered) else out
+
+    def set_chosen(self, sports: tuple[str, ...]) -> None:
+        for sp, a in self.actions_.items():
+            a.blockSignals(True)
+            a.setChecked(sp in sports)
+            a.blockSignals(False)
+        self._text()
+
+    def _toggled(self, *_: Any) -> None:
+        self._text()
+        self.changed.emit()
+
+    def _text(self) -> None:
+        c = self.chosen()
+        self.setText(", ".join(t(f"plan.sport.{sp}") for sp in c) if c else t("ui.plan.day_sports_all"))
 
 
 class PlanPrintDialog(QDialog):
@@ -209,7 +352,8 @@ class PlanView(QWidget):
         v.setSpacing(14)
         v.addWidget(label(t("ui.plan.sec.basis"), "SectionTitle"))
         self.test = QComboBox()
-        v.addWidget(field(t("ui.plan.test"), self.test, t("ui.plan.test_hint")))
+        self.test_box = field(t("ui.plan.test"), self.test, t("ui.plan.test_hint"))
+        v.addWidget(self.test_box)
         g = QGridLayout()
         g.setHorizontalSpacing(14)
         self.level = QComboBox()
@@ -223,6 +367,17 @@ class PlanView(QWidget):
         v.addWidget(label(t("ui.plan.recent_hint"), "Hint", wrap=True))
 
         v.addSpacing(6)
+        v.addWidget(label(t("ui.plan.sec.sports"), "SectionTitle"))
+        v.addWidget(label(t("ui.plan.sports_hint"), "Hint", wrap=True))
+        self.sport_rows: dict[str, SportRow] = {}
+        for sp in PLAN_SPORTS:
+            r = SportRow(sp)
+            r.changed.connect(self._sports_changed)
+            r.made_main.connect(self._new_main)
+            self.sport_rows[sp] = r
+            v.addWidget(r)
+
+        v.addSpacing(6)
         v.addWidget(label(t("ui.plan.sec.time"), "SectionTitle"))
         v.addWidget(label(t("ui.plan.time_hint"), "Hint", wrap=True))
         dg = QGridLayout()
@@ -230,6 +385,7 @@ class PlanView(QWidget):
         dg.setVerticalSpacing(8)
         self.minutes: list[NumberEdit] = []
         self.clocks: list[QLineEdit] = []
+        self.day_sports: list[DaySports] = []
         for i, key in enumerate(WEEKDAY_KEYS):
             dg.addWidget(label(t(f"ui.plan.day.{key}")), i, 0)
             m = NumberEdit("min")
@@ -237,13 +393,19 @@ class PlanView(QWidget):
             c = SelectAllEdit()
             c.setPlaceholderText(t("ui.plan.clock_placeholder"))
             c.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9:.]{0,5}"), c))
+            ds = DaySports()
+            ds.setObjectName(f"sports_{key}")
+            ds.changed.connect(self._changed)
             dg.addWidget(m, i, 1)
             dg.addWidget(c, i, 2)
+            dg.addWidget(ds, i, 3)
             self.minutes.append(m)
             self.clocks.append(c)
+            self.day_sports.append(ds)
         dg.setColumnStretch(0, 2)
         dg.setColumnStretch(1, 3)
         dg.setColumnStretch(2, 3)
+        dg.setColumnStretch(3, 3)
         v.addLayout(dg)
 
         v.addSpacing(6)
@@ -371,7 +533,9 @@ class PlanView(QWidget):
     def _inputs(self) -> tuple:
         """Everything the plan is built from. Two equal tuples give the same plan."""
         return (self.test.currentData(), self.level.currentData(), self.recent.value(),
-                tuple((m.value(), c.text().strip()) for m, c in zip(self.minutes, self.clocks)),
+                tuple(r.snapshot() for r in self.sport_rows.values()),
+                tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
+                                                                                  self.day_sports)),
                 self.mode.currentData(), self.goal_name.text().strip(), self.goal_date.text().strip(),
                 self.goal_km.value(), self.goal_target.text().strip(), tuple(r.snapshot() for r in self.milestones),
                 self.weeks.value(), self.start.text().strip())
@@ -388,6 +552,46 @@ class PlanView(QWidget):
         self.cancel_btn.setEnabled(self.dirty())
         self.stale.setVisible(self.plan is not None and self._inputs() != self._plan_snap)
         self._health_text()
+
+    def chosen_sports(self) -> tuple[str, ...]:
+        """The ticked sports, the main sport first."""
+        on = [r for r in self.sport_rows.values() if r.on]
+        on.sort(key=lambda r: r.role.currentData() != "main")
+        return tuple(r.sport for r in on)
+
+    def _new_main(self, row: SportRow) -> None:
+        """One main sport: the one that was main becomes a supporting sport."""
+        for r in self.sport_rows.values():
+            if r is not row and r.role.currentData() == "main":
+                r.set("support", 0, r.on)
+
+    def _sports_changed(self, *_: Any) -> None:
+        """The days offer the plan's sports, and are asked only when there is more than one;
+        the running test is chosen only when running is in the plan."""
+        sports = self.chosen_sports()
+        for d in self.day_sports:
+            d.offer(sports)
+            d.setVisible(len(sports) > 1)
+        self.test_box.setVisible(RUNNING in sports or not sports)
+        self._changed()
+
+    def _sport_basis(self) -> None:
+        """Under each sport but running: what its zones come from (services.sport_capacity)."""
+        a = self.athlete
+        for sp, r in self.sport_rows.items():
+            text = ""
+            if sp != RUNNING and a is not None:
+                if sp in BORROWS:
+                    text = t("ui.plan.sport_basis.borrow", sport=t(f"plan.sport.{BORROWS[sp]}"))
+                else:
+                    try:
+                        cap = services.sport_capacity(self.ctx.store, a, sp)
+                    except Exception:
+                        log.exception("reading the sport's test failed")
+                        cap = None
+                    text = _basis_text(cap, sp)
+            r.basis.setText(text)
+            r._enable()
 
     def _mode_changed(self, *_: Any) -> None:
         goal = self.mode.currentData() == "goal"
@@ -466,6 +670,13 @@ class PlanView(QWidget):
                   self.start.edit, *self.minutes, *self.clocks):
             w.clear()
         req = st.plan.request if st else None
+        roles = {r.sport: r for r in req.plan_roles()} if req else {RUNNING: SportRole(RUNNING, "main")}
+        for sp, row in self.sport_rows.items():
+            r = roles.get(sp)
+            row.set(r.role if r else "support", r.share if r else 0, r is not None)
+        for d in self.day_sports:
+            d.set_chosen(())
+        self._sport_basis()
         if req is None:
             self.test.setCurrentIndex(max(0, self.test.findData(session_id)) if session_id else 0)
             self.level.setCurrentIndex(0)
@@ -477,6 +688,8 @@ class PlanView(QWidget):
             for s in req.availability:
                 self.minutes[s.weekday].setValue(s.max_minutes)
                 self.clocks[s.weekday].setText(f"{s.start:%H:%M}" if s.start else "")
+                if set(roles) - set(s.sports):           # not every sport of the plan: the day's own
+                    self.day_sports[s.weekday].set_chosen(tuple(s.sports))
             main = st.plan.goal
             self.mode.setCurrentIndex(0 if main else 1)
             if main:
@@ -493,6 +706,7 @@ class PlanView(QWidget):
         for cb in self.health.values():
             cb.setChecked(ok)
         self._filling = False
+        self._sports_changed()
         self._mode_changed()
         self._loaded = (self._inputs(), self._health())
         self.plan = st.plan if st else None
@@ -567,7 +781,8 @@ class PlanView(QWidget):
         if plan is None:
             return
         req = plan.request
-        cap = req.capacity_for(RUNNING)
+        main = req.main_sport
+        cap = req.capacity_for(main)
         goal = plan.goal
         self.headline.setText(goal.name if goal else t("plan.pdf.headline_weeks", weeks=len(plan.weeks)))
         if cap.anchors is None:
@@ -588,7 +803,7 @@ class PlanView(QWidget):
         self.t_easy.set_value(str(round(100 * plan.easy_share)), t("ui.plan.tile.easy_sub"))
         self.chart.set_plan(plan)
         clear_layout(self.zone_lay)
-        zt = targets(cap, plan.zone_system)
+        zt = targets(cap, plan.zone_system, main)
         for i, z in enumerate(ZONES):
             sw = label("  ")
             sw.setFixedSize(14, 14)
@@ -599,7 +814,8 @@ class PlanView(QWidget):
             self.zone_lay.addWidget(sw, i, 0)
             self.zone_lay.addWidget(nm, i, 1)
             self.zone_lay.addWidget(label(zt[z].hr_text if z in zt else "–"), i, 2)
-            self.zone_lay.addWidget(label(zt[z].pace_text if z in zt else "", "Hint"), i, 3)
+            self.zone_lay.addWidget(label(" · ".join(x for x in (zt[z].power_text, zt[z].pace_text) if x)
+                                          if z in zt else "", "Hint"), i, 3)
         self.zone_lay.setColumnStretch(3, 1)
         notes = [n.text for n in plan.notes]
         if plan.capacity_log:
@@ -622,6 +838,9 @@ class PlanView(QWidget):
         level = self.level.currentData()
         if not level:
             return self._fail(t("ui.plan.err_level"))
+        sports = self.chosen_sports()
+        if not sports:
+            return self._fail(t("ui.plan.err_no_sport"))
         slots = []
         for i, (m, c) in enumerate(zip(self.minutes, self.clocks)):
             day = t(f"ui.plan.day.{WEEKDAY_KEYS[i]}")
@@ -636,7 +855,7 @@ class PlanView(QWidget):
                 start = parse_clock(c.text())
             except ValueError:
                 return self._fail(t("ui.plan.err_clock", day=day))
-            slots.append(Slot(i, int(v), start=start))
+            slots.append(Slot(i, int(v), self.day_sports[i].chosen() or sports, start=start))
         if not slots:
             return self._fail(t("plan.error.no_slots"))
         try:
@@ -660,22 +879,33 @@ class PlanView(QWidget):
                     return self._fail(t("ui.plan.err_goal_date", name=name))
                 if prio != "A" and d >= goals[0].date:
                     return self._fail(t("ui.plan.err_milestone_late", name=name))
-                goals.append(Goal(name, d, distance_km=km, priority=prio, target=target))
+                goals.append(Goal(name, d, sports[0], distance_km=km, priority=prio, target=target))
         else:
             w = self.weeks.value()
             if w is None or w > MAX_WEEKS:
                 return self._fail(t("ui.plan.err_weeks", hi=MAX_WEEKS))
             weeks = int(w)
-        sid = self.test.currentData()
+        sid = self._session_id()
         session = self.ctx.store.session(sid) if sid else None
+        caps: list[Capacity] = []
         try:
-            cap = services.plan_capacity(self.ctx.store, a, session)
+            for sp in sports:
+                cap = services.plan_capacity(self.ctx.store, a, session) if sp == RUNNING \
+                    else services.sport_capacity(self.ctx.store, a, sp)
+                if cap is not None:
+                    caps.append(cap)
         except Exception as e:
             log.exception("reading the test failed")
             return self._fail(t("ui.err.db", detail=str(e)))
         recent = self.recent.value()
-        return PlanRequest(a.name, start_day, tuple(slots), (cap,), goals=tuple(goals), duration_weeks=weeks,
-                           level=level, recent_weekly_minutes=int(recent) if recent else None)
+        roles = tuple(self.sport_rows[sp].value() for sp in sports)
+        return PlanRequest(a.name, start_day, tuple(slots), tuple(caps), sports, goals=tuple(goals),
+                           duration_weeks=weeks, level=level, recent_weekly_minutes=int(recent) if recent else None,
+                           roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else ())
+
+    def _session_id(self) -> int | None:
+        """The running test the plan is built on; none when running is not in the plan."""
+        return self.test.currentData() if RUNNING in self.chosen_sports() else None
 
     def _current_plan(self) -> Plan | None:
         """The plan of the form as it stands: the shown one while its inputs are unchanged (a saved plan
@@ -727,7 +957,7 @@ class PlanView(QWidget):
         if a is None or plan is None:
             return False
         health = self._health_dict()
-        sid = self.test.currentData()
+        sid = self._session_id()
         try:
             row = services.save_plan(self.ctx.store, a, plan, sid, health, "saved" if self.stored is None else "changed")
         except Exception as e:

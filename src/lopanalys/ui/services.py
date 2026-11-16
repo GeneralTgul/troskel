@@ -36,7 +36,7 @@ from lopanalys.camera.recorder import Recorder
 from lopanalys.core.bus import Bus
 from lopanalys.core.i18n import t
 from lopanalys.core.models import MAX_KINDS, Athlete, Session, StepRecord, TestKind, TimeSample
-from lopanalys.core.sport import DEFAULT_SPORT, profile, selectable_sports, sport_of
+from lopanalys.core.sport import DEFAULT_SPORT, Sport, profile, selectable_sports, sport_of
 from lopanalys.devices.base import DeviceInfo
 from lopanalys.devices.manager import DeviceManager
 from lopanalys.pose import models as pose_models
@@ -1438,6 +1438,28 @@ def plan_tests(store: Store, athlete_id: int) -> list[Session]:
             if plan_test_ok(s) and getattr(s, "status", "finished") in ("finished", "stopped")]
 
 
+def sport_tests(store: Store, athlete_id: int, sport: str) -> list[Session]:
+    """The lactate, max HR and zones tests of one sport that were not cut off, newest first (#666, step 4)."""
+    return [s for s in store.history(athlete_id)
+            if s.kind in PLAN_TEST_KINDS and sport_of(s.sport).value == sport
+            and getattr(s, "status", "finished") in ("finished", "stopped")]
+
+
+def sport_capacity(store: Store, athlete: Athlete, sport: str) -> Any:
+    """The capacity of a sport in a plan with several sports: its newest test, else the max HR in the sport,
+    else nothing. None for a sport without tests in Tröskel (skis and swimming): the engine borrows for skis
+    (plan.models.BORROWS), and swimming is planned on effort."""
+    from lopanalys.plan.models import Capacity
+    if sport not in {s.value for s in Sport} or athlete.id is None:
+        return None
+    tests = sport_tests(store, athlete.id, sport)
+    if tests:
+        return plan_capacity(store, athlete, tests[0])
+    mx = athlete.max_hr_for(sport)
+    return Capacity(sport, zone_systems.Anchors(max_hr=mx, resting_hr=athlete.resting_hr, sport=sport)) if mx \
+        else Capacity(sport)
+
+
 def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> Any:
     """What the athlete can do, for the plan: the anchors of ``session`` as the result page computes them
     (saved threshold methods; the athlete's known max HR before the test's peak). Without a test: the
@@ -1449,6 +1471,8 @@ def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> An
     test stopped in the steady steps leaves the max HR to the athlete's saved value."""
     from lopanalys.plan import resolve
     from lopanalys.plan.models import RUNNING, Capacity
+    if session is not None and session.id is not None and sport_of(session.sport) is not DEFAULT_SPORT:
+        return _sport_capacity(store, athlete, session)
     if session is None or session.id is None:
         if athlete.max_hr:
             return Capacity(RUNNING, zone_systems.Anchors(max_hr=athlete.max_hr, resting_hr=athlete.resting_hr))
@@ -1474,6 +1498,24 @@ def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> An
         return Capacity(RUNNING, None, tested, session.protocol_name)
     # without the lactate curve: what is stored and read back is the same as what was built on
     return Capacity(RUNNING, dataclass_replace(a, source=None), tested, session.protocol_name, line)
+
+
+def _sport_capacity(store: Store, athlete: Athlete, session: Session) -> Any:
+    """The capacity of a bike or SkiErg test: its thresholds in watt and the max HR in the sport. A zones test
+    in these sports gives no speed line (the plan's targets are watt from lactate)."""
+    from lopanalys.plan.models import Capacity
+    sport = sport_of(session.sport).value
+    res = session.result or {}
+    warm = {i for i, st in enumerate((session.protocol or {}).get("stages", [])) if st.get("is_warmup")}
+    records = [r for r in store.records(session.id) if r.index not in warm]
+    peak = max((r.hr_end or 0 for r in records), default=0) or None
+    mx = athlete.max_hr_for(session.sport) or (peak if res.get("exhaustion_t_s") is not None else None)
+    lv = analyze_lactate(records, res.get("lt1_method"), res.get("lt2_method"), mx, sport)
+    a = _anchors(lv if lv is not None and lv.lt2 else None, mx, athlete.resting_hr, sport)
+    tested = session.started.astimezone().date()
+    if not (a.max_hr or a.has_thresholds):
+        return Capacity(sport, None, tested, session.protocol_name)
+    return Capacity(sport, dataclass_replace(a, source=None), tested, session.protocol_name)
 
 
 def load_plan(store: Store, athlete: Athlete) -> StoredPlan | None:
