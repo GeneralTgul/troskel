@@ -3,7 +3,7 @@
  "format": 1,
  "athlete": "Exempel Löpare",
  "request": {
-  "format": 1,
+  "format": 2,
   "start": "2026-11-16",
   "sports": [
    "run"
@@ -94,10 +94,10 @@
   "recent_weekly_minutes": 200
  },
  "plan": {
-  "format": 1,
+  "format": 2,
   "id": "demo",
   "created": "2026-11-16T00:00:00+00:00",
-  "engine_version": "1",
+  "engine_version": "3",
   "zone_system": "garmin",
   "status": "draft",
   "based_on": {
@@ -1925,7 +1925,8 @@
      }
     ]
    }
-  ]
+  ],
+  "horizon": null
  },
  "targets": {
   "run": {
