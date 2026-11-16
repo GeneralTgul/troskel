@@ -4,17 +4,17 @@
  * docs/TRANINGSPLAN.md). Python's dicts keep their order, so they are Maps here.
  */
 import type {
-  IsoDate, StoredGoal, StoredNote, StoredPlanBody, StoredRequest, StoredSlot, StoredWeek, StoredWorkout,
+  IsoDate, StoredGoal, StoredNote, StoredPlanBody, StoredRequest, StoredRole, StoredSlot, StoredWeek, StoredWorkout,
 } from "../model/types";
 import * as library from "./library";
 import {
-  DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, RUNNING, WEEKDAY_KEYS, capacityFor, estimated, minutes, note, sketchOf,
-  speedFromHr, weekMinutes, zoneSeconds,
+  BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, RUNNING, WEEKDAY_KEYS, capacityFor, estimated, mainSport, minutes,
+  note, ownCapacity, planRoles, roleWeight, sketchOf, speedFromHr, weekMinutes, zoneSeconds,
 } from "./models";
 import { LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5 } from "./periodize";
 import { addDays, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
-export const ENGINE_VERSION = "3";
+export const ENGINE_VERSION = "4";
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -27,6 +27,8 @@ export const BEGINNER_EARLY_WEEKS = 4;
 export const PROGRESSIVE_FROM_KM = 20.0;
 export const STEP_BACK = 2;
 export const DETAIL_WEEKS = 4;
+/** The part of the other sports' share the main sport takes near the goal (engine.SHARE_SHIFT). */
+export const SHARE_SHIFT: Record<string, number> = { peak: 0.5, taper: 0.75 };
 
 export const floor5 = (m: number) => floordiv(m, 5) * 5;
 
@@ -39,6 +41,7 @@ interface State {
   sunday_hard: boolean;
   load_target: number;
   load_actual: number;
+  max_run: number;
 }
 
 /** Smallest distance in days between any two of the weekdays, around the week. */
@@ -128,6 +131,25 @@ function families(spec: WeekSpec, q: number, st: State, goal: StoredGoal | null,
   return fams;
 }
 
+/** engine.shares: each sport's share of a week in a block, shifted towards the main sport (the first) near the goal. */
+export function shares(roles: StoredRole[], block: string): Map<string, number> {
+  const total = sum(roles.map(roleWeight));
+  const k = SHARE_SHIFT[block] ?? 0.0;
+  const out = new Map<string, number>();
+  roles.forEach((r, i) => {
+    const b = roleWeight(r) / total;
+    out.set(r.sport, i === 0 ? b + k * (1 - b) : b * (1 - k));
+  });
+  return out;
+}
+
+/** Planned minutes per sport, races not counted (Week.sport_minutes). */
+function sportMinutes(wk: StoredWeek): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const w of wk.workouts) if (w.goal == null) out.set(w.sport, (out.get(w.sport) ?? 0) + minutes(w));
+  return out;
+}
+
 function hardShare(workouts: StoredWorkout[]): number {
   const zs = new Map<string, number>();
   for (const w of workouts) for (const [z, s] of zoneSeconds(w)) zs.set(z, (zs.get(z) ?? 0) + s);
@@ -141,12 +163,14 @@ type Assembled = [StoredWorkout[], Map<string, number>, number | null];
 
 class Filler {
   readonly level: Level;
+  readonly roles: StoredRole[];
+  readonly main: string;
   readonly slots: StoredSlot[];
   readonly longSlot: StoredSlot;
   readonly goal: StoredGoal | null;
   readonly state: State = {
     steps: new Map(), last_long: null, max_minutes: null, base_i: 0, build_i: 0, sunday_hard: false,
-    load_target: 0, load_actual: 0,
+    load_target: 0, load_actual: 0, max_run: 0,
   };
   readonly blocked = new Set<IsoDate>();
   readonly capped = new Map<IsoDate, number>();
@@ -155,8 +179,10 @@ class Filler {
   constructor(readonly request: StoredRequest, skeleton: Skeleton, readonly planId: string) {
     this.goal = skeleton.goal;
     this.level = LEVEL[request.level];
+    this.roles = planRoles(request);
+    this.main = mainSport(request);
     this.slots = coreSlots(request);
-    this.longSlot = longSlot(this.slots);
+    this.longSlot = longSlot(this.slots, this.main);
     const first = skeleton.weeks[0].monday;
     const last = addDays(skeleton.weeks[skeleton.weeks.length - 1].monday, 6);
     this.raceDates = new Set(request.goals.map((g) => g.date));
@@ -181,7 +207,7 @@ class Filler {
     const t = library.get(templateId);
     const goal = o.goal ?? null;
     return {
-      key: this.key(day, goal ? "-race" : ""), date: day, sport: RUNNING, template_id: templateId, family: t.family,
+      key: this.key(day, goal ? "-race" : ""), date: day, sport: goal ? goal.sport : this.main, template_id: templateId, family: t.family,
       quality: t.quality, start: slot ? slot.start : null, status: "planned", goal: goal ? { ...goal } : null,
       parts: library.build(templateId, { minutes: o.minutes, step: o.step ?? 0 }),
     };
@@ -235,6 +261,7 @@ class Filler {
     }
     const [ws, usedSteps, longMinutes] = result ?? [[], new Map<string, number>(), null];
     let workouts = ws;
+    this.sports(spec, workouts, new Map(chosen.map((s) => [s.weekday, s])));
     for (const g of spec.goals) workouts.push(this.workout(g.date, "race", null, { goal: g }));
     workouts = byDateKey(workouts);
 
@@ -253,8 +280,34 @@ class Filler {
       st.build_i += spec.block === "build" ? 1 : 0;
     }
     st.max_minutes = Math.max(st.max_minutes ?? 0, weekMinutes(week));
+    st.max_run = Math.max(st.max_run, sportMinutes(week).get(RUNNING) ?? 0);
     st.sunday_hard = workouts.some((w) => w.quality && weekday(w.date) === 6);
     return week;
+  }
+
+  /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place. */
+  sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>): void {
+    if (this.roles.length < 2) return;
+    const share = shares(this.roles, spec.block);
+    const total = sum(workouts.map(minutes));
+    const done = new Map(this.roles.map((r) => [r.sport, 0]));
+    const count = new Map(this.roles.map((r) => [r.sport, 0]));
+    const runCap = this.state.max_run ? floor5((1 + MAX_WEEKLY_INCREASE) * this.state.max_run) : null;
+    const mainFirst = (w: StoredWorkout) => w.family === "long" || w.template_id === "test";
+    const order = sortedBy(workouts, (w) => [mainFirst(w) ? 0 : w.quality ? 1 : 2,
+      mainFirst(w) || w.quality ? 0 : -minutes(w), w.date]);
+    const or = <T>(xs: T[], els: T[]) => (xs.length ? xs : els);
+    for (const w of order) {
+      const allowed = this.roles.filter((r) => slotOf.get(weekday(w.date))!.sports.includes(r.sport));
+      let cands = or(w.quality ? allowed.filter((r) => r.role !== "maintenance") : allowed, allowed);
+      cands = or(cands.filter((r) => r.role !== "maintenance" || count.get(r.sport) === 0), cands);
+      cands = or(cands.filter((r) => r.sport !== RUNNING || runCap === null || done.get(RUNNING)! + minutes(w) <= runCap), cands);
+      const pick = mainFirst(w) && cands.some((r) => r.sport === this.main) ? this.main
+        : maxBy(cands, (r) => [share.get(r.sport)! * total - done.get(r.sport)!, -this.roles.indexOf(r)]).sport;
+      w.sport = pick;
+      done.set(pick, done.get(pick)! + minutes(w));
+      count.set(pick, count.get(pick)! + 1);
+    }
   }
 
   assemble(spec: WeekSpec, chosen: StoredSlot[], day: Map<number, IsoDate>, qSlots: StoredSlot[], fams: string[],
@@ -361,10 +414,15 @@ export function buildPlan(request: StoredRequest, o: BuildOptions = {}): StoredP
     weeks = weeks.map((wk) => (wk.index <= h ? wk : sketchOf(wk)));
   }
   const notes = [...skeleton.notes];
-  const cap = capacityFor(request, RUNNING);
+  const cap = capacityFor(request, mainSport(request));
   if (cap.anchors == null) notes.push(note("plan.note.no_test"));
   else if (speedFromHr(cap)) notes.push(note("plan.note.speed_from_hr"));
   else if (estimated(cap)) notes.push(note("plan.note.estimated"));
+  planRoles(request).forEach((r, i) => {
+    if (ownCapacity(request, r.sport) !== undefined) return;
+    if (r.sport in BORROWS && ownCapacity(request, BORROWS[r.sport]) !== undefined) notes.push(note(`plan.note.borrowed.${r.sport}`));
+    else if (i > 0) notes.push(note(`plan.note.no_test_sport.${r.sport}`));
+  });
   const basedOn: Record<string, IsoDate | null> = {};
   for (const c of request.capacity) basedOn[c.sport] = c.tested || null;
   return {

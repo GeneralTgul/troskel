@@ -47,7 +47,14 @@ export function mainZone(w: StoredWorkout): ZoneCode | null {
   return best;
 }
 
-export const workoutTitle = (w: StoredWorkout) => w.goal ? w.goal.name : t(`plan.workout.${w.template_id}.title`);
+/** The template's title; in a sport other than running with the sport's name first (plan.models.Workout.title). */
+export function workoutTitle(w: StoredWorkout): string {
+  if (w.goal) return w.goal.name;
+  if (w.sport === "run") return t(`plan.workout.${w.template_id}.title`);
+  const any = `plan.workout.${w.template_id}.title_any`;
+  return t("plan.workout.in_sport", { sport: t(`plan.sport.${w.sport}`),
+    title: t(has(any) ? any : `plan.workout.${w.template_id}.title`) });
+}
 export const workoutPurpose = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.purpose`);
 export const workoutHow = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.how`);
 

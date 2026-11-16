@@ -5,7 +5,7 @@
  */
 
 export type ZoneCode = "Z1" | "Z2" | "Z3" | "Z4" | "Z5";
-export type Sport = string; // core.sport.Sport values: "run", "bike", "skierg"; plans are built for "run"
+export type Sport = string; // plan.models.PLAN_SPORTS: "run", "bike", "skierg", "ski", "swim"
 export type IsoDate = string;
 export type IsoTime = string;
 
@@ -50,6 +50,13 @@ export interface StoredSlot {
   role: "core" | "extra" | string;
 }
 
+/** One sport of a plan (plan.models.SportRole): its role and its share of the weekly time in percent (0: the role's). */
+export interface StoredRole {
+  sport: Sport;
+  role: "main" | "support" | "maintenance" | string;
+  share: number;
+}
+
 export interface StoredGoal {
   name: string;
   date: IsoDate;
@@ -69,6 +76,8 @@ export interface StoredRequest {
   duration_weeks: number | null;
   level: "beginner" | "recreational" | "trained" | string;
   recent_weekly_minutes: number | null;
+  /** Several sports (#666); missing or [] in a plan saved before them: the sports in `sports`. */
+  roles?: StoredRole[];
 }
 
 export type PartKind = "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | string;

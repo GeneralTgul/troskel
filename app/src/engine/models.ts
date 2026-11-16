@@ -5,11 +5,15 @@
  */
 import type {
   StoredCapacity, StoredGoal, StoredNote, StoredPart, StoredPlanBody, StoredRequest, StoredSketch,
-  StoredSlot, StoredWeek, StoredWorkout,
+  StoredRole, StoredSlot, StoredWeek, StoredWorkout,
 } from "../model/types";
 import { round, round2 } from "./py";
 
 export const RUNNING = "run";
+/** A sport without its own test borrows the zones of another: skis take the SkiErg's. */
+export const BORROWS: Record<string, string> = { ski: "skierg" };
+export const ROLES = ["main", "support", "maintenance"];
+export const ROLE_SHARE: Record<string, number> = { main: 60, support: 30, maintenance: 10 };
 export const LEVELS = ["beginner", "recreational", "trained"] as const;
 export const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export const EASY_ZONES = ["Z1", "Z2"];
@@ -101,8 +105,33 @@ export function normRequest(r: StoredRequest): StoredRequest {
     capacity: (r.capacity ?? []).map(normCapacity), goals: (r.goals ?? []).map(normGoal),
     duration_weeks: r.duration_weeks ?? null, level: r.level ?? "recreational",
     recent_weekly_minutes: r.recent_weekly_minutes ?? null,
+    roles: (r.roles ?? []).map((x) => ({ sport: sport(x.sport), role: x.role ?? "main", share: x.share ?? 0 })),
   };
 }
+
+/** SportRole.weight: the share, or the role's default share. */
+export const roleWeight = (r: StoredRole) => (r.share > 0 ? r.share : ROLE_SHARE[r.role] ?? ROLE_SHARE.support);
+
+/** PlanRequest.plan_roles: the plan's sports with their roles, the main sport first and each sport once. */
+export function planRoles(r: StoredRequest): StoredRole[] {
+  const given: StoredRole[] = r.roles?.length ? r.roles : r.sports.map((s) => ({ sport: s, role: "support", share: 0 }));
+  const out: StoredRole[] = [];
+  for (const x of given)
+    if (!out.some((o) => o.sport === x.sport))
+      out.push(ROLES.includes(x.role) ? x : { sport: x.sport, role: "support", share: x.share });
+  if (!out.length) return [];
+  let main = out.find((x) => x.role === "main");
+  if (main === undefined) {
+    const a = r.goals.filter((g) => g.priority === "A").map((g, i) => [g, i] as const)
+      .sort(([g, i], [h, j]) => (g.date < h.date ? -1 : g.date > h.date ? 1 : i - j)).map(([g]) => g);
+    main = out.find((x) => a.length > 0 && x.sport === a[a.length - 1].sport) ?? out[0];
+  }
+  const rest = out.filter((x) => x !== main).map((x) => (x.role === "main" ? { sport: x.sport, role: "support", share: x.share } : x));
+  return [{ sport: main.sport, role: "main", share: main.share }, ...rest];
+}
+
+export const planSports = (r: StoredRequest) => planRoles(r).map((x) => x.sport);
+export const mainSport = (r: StoredRequest) => planRoles(r)[0]?.sport ?? RUNNING;
 
 const normNote = (n: StoredNote): StoredNote => ({ key: n.key, args: (n.args ?? []).map(([k, v]) => [k, v]) });
 
@@ -136,9 +165,12 @@ export function normPlan(p: StoredPlanBody): StoredPlanBody {
   };
 }
 
-/** PlanRequest.capacity_for: the sport's capacity, or one where nothing is known. */
+export const ownCapacity = (r: StoredRequest, sp: string) => r.capacity.find((c) => c.sport === sp);
+
+/** PlanRequest.capacity_for: the sport's capacity, a borrowed one (BORROWS), or one where nothing is known. */
 export function capacityFor(r: StoredRequest, sp: string): StoredCapacity {
-  return r.capacity.find((c) => c.sport === sp) ?? { sport: sp, anchors: null, tested: null, source: "" };
+  return ownCapacity(r, sp) ?? (sp in BORROWS ? ownCapacity(r, BORROWS[sp]) : undefined)
+    ?? { sport: sp, anchors: null, tested: null, source: "" };
 }
 
 export function hasThresholds(c: StoredCapacity): boolean {
