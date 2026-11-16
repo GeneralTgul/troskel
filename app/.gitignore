@@ -15,5 +15,7 @@ ios/App/App/config.xml
 *.p8
 *.p12
 *.mobileprovision
+# except the shared key of the test builds (android/app/build.gradle), which signs no release
+!android/app/troskel-test.p12
 android/keystore.properties
 store/screenshots/

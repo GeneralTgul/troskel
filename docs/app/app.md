@@ -10,6 +10,7 @@
   - [Från coach till idrottare](#från-coach-till-idrottare)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
+- [Appen utan butiken](#appen-utan-butiken)
 - [Bygga och köra lokalt](#bygga-och-köra-lokalt)
 
 **Undersidor:**
@@ -101,6 +102,11 @@ Var de sparas står i `app/src/model/storage.ts`:
 - *Ta bort all data på enheten* tömmer både Preferences och `localStorage`.
 
 Proven står i `app/test/storage.test.ts`. I en riktig telefon är lagringen inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
+
+## Appen utan butiken
+
+- **Android:** varje körning av bygget *App* gör en APK (artefakten `android-<version>-<körning>`), som går att installera direkt på en telefon eller surfplatta, utan Google Play. Android frågar en gång om installation från den källan får ske. Testbyggena skrivs under med samma nyckel, `app/android/app/troskel-test.p12`, så att en ny APK installeras ovanpå den gamla och appens data ligger kvar. Nyckeln skriver bara under testbyggen, aldrig AAB-filen till Play.
+- **iPhone och iPad:** appens sida i Safari, *Dela → Lägg till på hemskärmen*. Den byggda iOS-appen kräver Xcode på en Mac eller ett utvecklarkonto hos Apple (TestFlight).
 
 ## Bygga och köra lokalt
 
