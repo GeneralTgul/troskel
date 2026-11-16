@@ -7,7 +7,7 @@ from lopanalys.core.i18n import t
 
 from .models import RUNNING, Capacity, Part, Plan, Workout
 from .periodize import first_week_minutes
-from .resolve import Target, targets
+from .resolve import Target, band_targets, targets
 
 
 def duration(seconds: int) -> str:
@@ -30,9 +30,12 @@ def hours(minutes: float) -> str:
 _RUN_WORDED_PARTS = ("steady", "cooldown")
 
 
-def part_line(part: Part, zone_targets: dict[str, Target], sport: str = RUNNING) -> dict[str, Any]:
-    """One part as pieces: {"kind", "what", "zone", "zone_name", "target", "rest", "rpe"}."""
+def part_line(part: Part, zone_targets: dict[str, Target], sport: str = RUNNING,
+              bands: dict[str, Target] | None = None) -> dict[str, Any]:
+    """One part as pieces: {"kind", "what", "zone", "zone_name", "target", "rest", "rpe"}. A part in a band
+    (the bike's sweet spot) takes the band's target from ``bands`` when the test gave one, else its zone's."""
     tg = zone_targets.get(part.zone) if part.zone else None
+    tg = (bands or {}).get(part.band, tg) if part.band else tg
     what = duration(part.duration_s) if part.duration_s else ""
     if part.repeat > 1:
         what = t("plan.fmt.repeat", n=part.repeat, each=what)
@@ -49,7 +52,8 @@ def part_line(part: Part, zone_targets: dict[str, Target], sport: str = RUNNING)
 def workout_lines(workout: Workout, capacity: Capacity | None, system: str) -> list[dict[str, Any]]:
     """The workout's parts with the targets of ``capacity`` shown as the workout's sport (watt on the bike)."""
     zt = targets(capacity, system, workout.sport)
-    return [part_line(p, zt, workout.sport) for p in workout.parts]
+    bands = band_targets(capacity, system, workout.sport) if any(p.band for p in workout.parts) else {}
+    return [part_line(p, zt, workout.sport, bands) for p in workout.parts]
 
 
 def plain(line: dict[str, Any]) -> str:

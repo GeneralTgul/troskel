@@ -94,6 +94,8 @@ export interface StoredPart {
   repeat: number;
   rest_s: number;
   rest_zone: ZoneCode;
+  /** A narrower target inside the zone (resolve.BANDS): "sweetspot" on the bike. Missing on every other part. */
+  band?: string;
 }
 
 export interface StoredWorkout {
@@ -173,7 +175,9 @@ export interface ZoneTarget {
   swim_high_s?: number | null;
 }
 
-export type ZoneTargets = Partial<Record<ZoneCode, ZoneTarget>>;
+/** The zones' targets, and a band's target under the band's name ("sweetspot": the bike's 88–94 % of the
+ * threshold power) when the test gave one. */
+export type ZoneTargets = Partial<Record<ZoneCode, ZoneTarget>> & { [band: string]: ZoneTarget | undefined };
 
 export interface StoredPlan {
   kind: "troskel.plan";

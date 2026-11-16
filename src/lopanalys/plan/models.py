@@ -214,6 +214,7 @@ class Part:
     repeat: int = 1
     rest_s: int = 0
     rest_zone: str = "Z1"            # where the rest counts: "Z1" standing or walking, "Z2" jogging
+    band: str = ""                   # a narrower target inside the zone (resolve.BANDS): "sweetspot" on the bike
 
     @property
     def work_s(self) -> int:

@@ -166,6 +166,18 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
         ("swim-without-test", replace(base, availability=sl(tuple((d, 60, None, "core", ("run", "swim")) for d in range(7))),
                                       roles=(SportRole("run", "main"), SportRole("swim", "support"))), None),
     ]
+    # Each sport's own test (#666, the rest of step 2): plans without a goal end with it. The bike alone (with the
+    # sweet spot as a band of its threshold power), swimming alone on its CSS test, and skis, which test on the SkiErg.
+    one = lambda sport: sl(tuple((r[0], r[1], None, "core", (sport,)) for r in DEMO_SLOTS))
+    cycle = replace(base, goals=(), duration_weeks=12)
+    out += [
+        ("bike-alone-cycle", replace(cycle, availability=one("bike"), capacity=(BIKE_TEST,), roles=(SportRole("bike"),)), None),
+        ("swim-alone-cycle", replace(cycle, availability=one("swim"), capacity=(SWIM_TEST,), roles=(SportRole("swim"),)), None),
+        ("ski-cycle", replace(cycle, availability=sl(tuple((r[0], r[1], None, "core", ("ski", "skierg")) for r in DEMO_SLOTS)),
+                              capacity=(skierg,), roles=(SportRole("ski", "main"), SportRole("skierg", "support"))), None),
+        ("skierg-alone-cycle", replace(cycle, availability=one("skierg"), capacity=(skierg,), roles=(SportRole("skierg"),)),
+         None),
+    ]
     return out
 
 
@@ -173,11 +185,15 @@ BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bik
 SWIM_TEST = Capacity("swim", None, date(2026, 11, 10), "CSS-test", css_s100=115.0)    # 400 m 7:20, 200 m 3:30
 
 
+TEXT_PLANS = ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-test", "run-strength", "bike-alone-cycle",
+              "swim-alone-cycle", "ski-cycle", "skierg-alone-cycle")
+
+
 def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
     """What the app shows of a workout, written by the Python side (text.py, resolve.py): the title and every part
     as one line, in both languages, for the first workouts of each sport and template of a plan with several sports."""
     out = []
-    for name in ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-test", "run-strength"):
+    for name in TEXT_PLANS:
         stored = plans[name]
         plan = codec.plan_from_dict(stored["plan"], codec.request_from_dict(stored["request"], stored["athlete"]))
         seen: set[tuple[str, str]] = set()
@@ -239,7 +255,7 @@ def engine_fixtures() -> dict[str, Any]:
     plans["demo-done"] = done
     run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
     plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
-    for name in ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-test", "run-strength"):
+    for name in TEXT_PLANS:
         plans[name] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == name), plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
     changes = [  # (name, plan, slots, unavailable, from)

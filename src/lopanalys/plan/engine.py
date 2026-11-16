@@ -43,8 +43,9 @@ from .models import (BORROWS, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, Goal,
                      SportRole, Week, WeekSketch, Workout)
 from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5
 
-ENGINE_VERSION = "6"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
-                               # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming
+ENGINE_VERSION = "7"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
+                               # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming;
+                               # 7: each sport's own test, and the sweet spot as a band of the threshold power
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week

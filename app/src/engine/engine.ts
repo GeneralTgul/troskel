@@ -14,7 +14,7 @@ import {
 import { LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5 } from "./periodize";
 import { addDays, cmp, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
-export const ENGINE_VERSION = "6";
+export const ENGINE_VERSION = "7";
 /** No strength in the days before an A or B race (engine.STRENGTH_CLEAR_DAYS). */
 export const STRENGTH_CLEAR_DAYS = 3;
 export const MAX_HARD_SHARE = 0.25;

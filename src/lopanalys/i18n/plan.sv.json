@@ -238,7 +238,7 @@
  "plan.workout.bike_long_progressive.how": "Lugnt som ett vanligt långpass, och de sista 20 minuterna i zon 3: jämnt tryck, kontrollerat.",
  "plan.workout.bike_sweetspot.title": "sweet spot",
  "plan.workout.bike_sweetspot.purpose": "Långa block strax under tröskeln: mycket träning för tröskeln till en liten kostnad i trötthet.",
- "plan.workout.bike_sweetspot.how": "Håll watten i övre delen av zon 3, jämnt hela blocket. Lätt tramp mellan blocken, kadens 85–95.",
+ "plan.workout.bike_sweetspot.how": "Håll watten på 88–94 % av din tröskelwatt, jämnt hela blocket. Det är passets mål i watt; pulsen hamnar i nedre delen av zon 4 och stiger lite under blocket. Lätt tramp mellan blocken, kadens 85–95.",
  "plan.workout.bike_threshold.title": "tröskelintervaller",
  "plan.workout.bike_threshold.purpose": "Flyttar tröskeln uppåt: du orkar hålla högre watt längre.",
  "plan.workout.bike_threshold.how": "Jämn watt i zon 4, ansträngt men kontrollerat. Sista intervallet ska gå i samma watt som det första. Lätt tramp i vilan.",
@@ -340,5 +340,17 @@
  "plan.workout.strength_upper.how": "Rodd, armhävningar, pressar, chins eller latsdrag och bålövningar, sedan rörlighet. 2–3 set med 8–12 repetitioner, ansträngning 6 av 10. Inga zoner.",
  "plan.workout.strength_maintenance.title": "underhåll",
  "plan.workout.strength_maintenance.purpose": "Behåller styrkan fram till målet utan att trötta.",
- "plan.workout.strength_maintenance.how": "Samma övningar som vanligt men färre set och lättare vikter, ansträngning 5 av 10. Ingen tung belastning de sista dagarna före målet."
+ "plan.workout.strength_maintenance.how": "Samma övningar som vanligt men färre set och lättare vikter, ansträngning 5 av 10. Ingen tung belastning de sista dagarna före målet.",
+ "plan.workout.bike_test.title": "laktattest hos din coach",
+ "plan.workout.bike_test.purpose": "Visar vad träningen har gett och ger nya zoner på cykel. Alla kommande cykelpass får nya mål i puls och watt.",
+ "plan.workout.bike_test.how": "Laktattrappa på trainern: 10 minuters uppvärmning och sedan 6–8 steg på 5 minuter, 25–30 W mer för varje steg, med ett blodprov i slutet av varje steg. Kom utvilad: lugn dag före, ingen hård träning på två dagar, samma mat och dryck som inför förra testet. Ta med egna cykelskor och pedaler om du har.",
+ "plan.workout.skierg_test.title": "laktattest hos din coach",
+ "plan.workout.skierg_test.purpose": "Visar vad träningen har gett och ger nya zoner i stakning. Alla kommande pass får nya mål i puls, watt och tid per 500 m.",
+ "plan.workout.skierg_test.how": "Laktattrappa på SkiErgen: 10 minuters uppvärmning och sedan 6–8 steg på 4 minuter, 15–20 W mer för varje steg, med ett blodprov i en halv minuts paus efter varje steg. Kom utvilad: lugn dag före, ingen hård träning på två dagar, samma mat och dryck som inför förra testet.",
+ "plan.workout.ski_test.title": "laktattest på SkiErg hos din coach",
+ "plan.workout.ski_test.purpose": "Visar vad träningen har gett och ger nya pulszoner för skidpassen, som har SkiErgens zoner.",
+ "plan.workout.ski_test.how": "Testet görs på SkiErgen, eftersom det inte finns något eget test på skidor: 10 minuters uppvärmning och sedan 6–8 steg på 4 minuter, 15–20 W mer för varje steg, med ett blodprov i en halv minuts paus efter varje steg. Kom utvilad: lugn dag före, ingen hård träning på två dagar, samma mat och dryck som inför förra testet.",
+ "plan.workout.swim_test.title": "simtest, 400 m och 200 m",
+ "plan.workout.swim_test.purpose": "Ger din tröskelfart i vattnet (CSS). Simpassen får tid per 100 m för varje zon i stället för bara ansträngning.",
+ "plan.workout.swim_test.how": "Värm upp 15–20 minuter med några korta fartökningar. Simma 400 m så fort du kan i jämn fart och ta tiden. Vila tills du är helt återhämtad, minst 8–10 minuter med lugn simning. Simma sedan 200 m på samma sätt. Samma bassäng och samma start (frånskjut i vattnet) varje gång. Ge de två tiderna till din coach."
 }
