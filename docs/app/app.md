@@ -20,7 +20,7 @@
 
 Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
-- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och varför det görs. Ett styrkepass har ingen zon. Under det kommer morgondagens pass.
+- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och varför det görs. Ett styrkepass har ingen zon. En testdag har inte heller någon zon eller något eget mål, och kortet har appens accentfärg. Under det kommer morgondagens pass.
 - *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. En dag med två pass, till exempel löpning och styrka, har färgen från passet som har en zon. Pilarna bläddrar vecka för vecka.
 - *Schemat*: målen och testdagarna, blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.

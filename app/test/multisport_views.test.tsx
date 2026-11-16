@@ -10,7 +10,7 @@ import { setLang } from "../src/i18n";
 import type { StoredPlan } from "../src/model/types";
 import { labelStep, Overview } from "../src/views/Overview";
 import { distanceText, WorkoutCard, ZONE_COLORS } from "../src/views/parts";
-import { dayZone, Week } from "../src/views/Week";
+import { dayColor, Week } from "../src/views/Week";
 import { demoPlan } from "./helpers";
 // @ts-expect-error a plain script without types
 import { NAMES_EN, renamed } from "../store/screenshots.mjs";
@@ -103,8 +103,28 @@ describe("a plan with several sports in the views", () => {
     expect(run.querySelector(".chip")!.textContent).toContain("Z2");
     // The card has the run's zone colour whichever of the two comes first.
     expect((monday as HTMLElement).style.getPropertyValue("--zc")).toBe(ZONE_COLORS.Z2);
-    expect(dayZone(all(p).filter((w) => w.sport === "strength").slice(0, 1))).toBeNull();
+    expect(dayColor(all(p).filter((w) => w.sport === "strength").slice(0, 1))).toBe("var(--rest)");
     expect(el.querySelector(".week-of")!.textContent).toBe("Vecka 1 av 12 i schemat");
+  });
+});
+
+describe("a test day", () => {
+  it("has no zone and no target of its own, in the card and in the week", () => {
+    setLang("sv");
+    for (const name of ["demo", "ski-main", "swim-alone-cycle"]) {
+      const p = fx.plans[name];
+      const test = all(p).find((w) => w.family === "test")!;
+      const el = show(<WorkoutCard stored={p} w={test} big />);
+      expect(el.querySelector(".stats .chip"), name).toBeNull();
+      expect(el.querySelector(".targets"), name).toBeNull();
+      expect((el.querySelector(".workout") as HTMLElement).style.getPropertyValue("--zc"), name).toBe("var(--accent)");
+      render(null, root!);
+      const wk = show(<Week stored={p} today={test.date} />);
+      const day = wk.querySelector<HTMLElement>(".day.is-today")!;
+      expect(day.querySelector(".chip"), name).toBeNull();
+      expect(day.style.getPropertyValue("--zc"), name).toBe("var(--accent)");
+      render(null, root!);
+    }
   });
 });
 

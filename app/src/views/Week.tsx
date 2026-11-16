@@ -2,17 +2,14 @@ import { useState } from "preact/hooks";
 import { t } from "../i18n";
 import { addDays, dayMonth, isoWeek, mondayOf, weekDays, weekdayShort } from "../model/dates";
 import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSeconds, workoutsOn, planTitle } from "../model/plan";
-import type { IsoDate, StoredPlan, StoredWorkout, ZoneCode } from "../model/types";
-import { clock, zoneColor, ZoneChip } from "./parts";
+import type { IsoDate, StoredPlan, StoredWorkout } from "../model/types";
+import { clock, shownZone, workoutColor, zoneColor, ZoneChip } from "./parts";
 
-/** The zone a day's card is coloured by: its first workout that has one, so that strength before a run (no zone)
- * does not make the day look like a rest day. */
-export function dayZone(ws: StoredWorkout[]): ZoneCode | null {
-  for (const w of ws) {
-    const z = mainZone(w);
-    if (z) return z;
-  }
-  return null;
+/** The colour of a day's card: that of its first workout that has one (a zone, or a test), so that strength before
+ * a run (no zone) does not make the day look like a rest day. */
+export function dayColor(ws: StoredWorkout[]): string {
+  const w = ws.find((x) => x.family === "test" || mainZone(x));
+  return w ? workoutColor(w) : zoneColor(null);
 }
 
 /** The week as a board on the wall: seven cards, today marked, rest days plain. */
@@ -50,7 +47,7 @@ export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today:
           const isToday = day === today;
           return (
             <li key={day} class={`day ${isToday ? "is-today" : ""} ${ws.length ? "" : "is-rest"} ${day < today ? "is-past" : ""}`}
-              style={{ "--zc": zoneColor(dayZone(ws)) }} aria-current={isToday ? "date" : undefined}>
+              style={{ "--zc": dayColor(ws) }} aria-current={isToday ? "date" : undefined}>
               <div class="day-head">
                 <span class="dow">{weekdayShort(i)}</span>
                 <span class="dom">{dayMonth(day)}</span>
@@ -62,7 +59,7 @@ export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today:
                     {workoutSeconds(w) ? <span class="num">{duration(workoutSeconds(w))}</span> : null}
                     {w.start ? <span>{clock(w.start)}</span> : null}
                   </div>
-                  {mainZone(w) ? <ZoneChip zone={mainZone(w)!} /> : null}
+                  {shownZone(w) ? <ZoneChip zone={shownZone(w)!} /> : null}
                 </div>
               )) : <div class="day-title rest-label">{t("ui.week.rest")}</div>}
             </li>
