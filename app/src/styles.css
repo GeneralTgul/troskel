@@ -167,7 +167,9 @@ button:disabled { opacity: .5; cursor: default; }
 .bar-val { display: none; }
 .bar.is-now .bar-label { color: var(--text); font-weight: 700; }
 .bar.is-now .stack { outline: 2px solid var(--today); outline-offset: 1px; }
-.bar.kind-test .bar-label::after, .bar.kind-race .bar-label::after { content: "•"; display: block; color: var(--accent); }
+/* Every label keeps a line for the dot under a test or race week, so all the bars stand on the same baseline. */
+.bar-label::after { content: "\00a0"; display: block; color: var(--accent); }
+.bar.kind-test .bar-label::after, .bar.kind-race .bar-label::after { content: "•"; }
 
 /* My times */
 .time-rows { list-style: none; padding: 0; margin: 12px 0; }

@@ -21,6 +21,8 @@ Appen i butikerna är samma webbapp som på GitHub Pages ([Appen för idrottaren
 - appen läser bara sina egna filer (`dist/`), utan någon server-adress, så inget lämnar telefonen,
 - de inbyggda projekten ligger i `app/android` (Gradle) och `app/ios` (Swift Package Manager, inga CocoaPods).
 
+Det enda insticket är `@capacitor/preferences`, som sparar schemat, tiderna och inställningarna i telefonens egen lagring i stället för webbvyns ([Integritet](../app.md#integritet)).
+
 Ikonen och startbilden ritas ur källorna i `app/resources`.
 
 Kameran får appen bara för att läsa QR-koden med schemat. På Android krävs ingen kamera för att installera appen, och på iOS står skälet i `Info.plist`.
@@ -73,13 +75,22 @@ Integritetspolicyn är `app/public/privacy.html`, som följer med bygget och lig
 
 ### Skärmbilderna
 
-`app/store/screenshots.mjs` fotograferar appen med exempelschemat, på svenska och engelska, i varje storlek som butikerna vill ha: iPhone 6,9 och 6,5 tum, iPad 13 tum, Android-telefon och surfplattor på 7 och 10 tum. Klockan står still på en onsdag i exempelschemats första vecka, så att bilderna blir likadana varje gång. Bilderna läggs i `app/store/screenshots/`, som git ignorerar: de laddas upp i butikerna, inte i repot.
+`app/store/screenshots.mjs` fotograferar appen med exempelschemat, på svenska och engelska, i varje storlek som butikerna vill ha: iPhone 6,9 och 6,5 tum, iPad 13 tum, Android-telefon och surfplattor på 7 och 10 tum. Klockan står still på torsdagen i exempelschemats första vecka, en dag med ett kvalitetspass, så att första bilden visar ett pass och bilderna blir likadana varje gång. Bilderna läggs i `app/store/screenshots/`, som git ignorerar: de laddas upp i butikerna, inte i repot.
 
 ```bash
 cd app
 npm i --no-save playwright@1.65.1 && npx playwright install chromium
 TROSKEL_BASE=./ npx vite build && node store/screenshots.mjs
 ```
+
+På en maskin där Playwrights Chromium inte går att ladda ned pekar `CHROMIUM_PATH` på en Chromium som redan finns, till exempel en äldre i `~/.cache/ms-playwright`. Med ett minnestak, på en maskin som delas:
+
+```bash
+CHROMIUM_PATH=~/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell \
+TROSKEL_BASE=./ systemd-run --user --scope -q -p MemoryMax=2G -p MemorySwapMax=0 node store/screenshots.mjs
+```
+
+Skriptet startar Vite direkt, inte genom `npx`, och stoppar det när bilderna är tagna, så att porten 4179 blir fri.
 
 ## Det som inte är provat
 
