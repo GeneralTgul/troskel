@@ -16,7 +16,7 @@ import { deflateSync } from "node:zlib";
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 4179;
-const FIXED_TIME = "2026-11-18T07:30:00";   // a Wednesday in the example plan's first week
+const FIXED_TIME = "2026-11-19T07:30:00";   // a Thursday in the example plan's first week, with a workout today
 
 // CSS size × scale = the pixels the stores ask for (docs/app/butikerna/butikerna.md, Skärmbilderna).
 export const DEVICES = {
@@ -60,7 +60,9 @@ async function main() {
   // vite preview serves dist/ under the base it was built with (TROSKEL_BASE, see vite.config.ts).
   const built = process.env.TROSKEL_BASE ?? "/troskel/app/";
   const base = `http://127.0.0.1:${PORT}${built.startsWith("/") ? built : "/"}`;
-  const preview = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort", "--host", "127.0.0.1"],
+  // Vite itself, not through npx: killing npx left vite preview running on the port.
+  const vite = join(APP, "node_modules", "vite", "bin", "vite.js");
+  const preview = spawn(process.execPath, [vite, "preview", "--port", String(PORT), "--strictPort", "--host", "127.0.0.1"],
                         { cwd: APP, stdio: "inherit" });
   try {
     await waitFor(base);
