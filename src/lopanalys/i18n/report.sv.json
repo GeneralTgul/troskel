@@ -353,5 +353,7 @@
  "report.plan.sports.max_hr": "Maxpulsen",
  "report.plan.week_sports": "Veckans tid per idrott",
  "report.plan.load": "Belastning",
- "report.plan.load_note": "minuter × zon × idrott, för att jämföra veckorna"
+ "report.plan.load_note": "minuter × zon × idrott, för att jämföra veckorna",
+ "report.plan.sports.strength_role": "{n} pass i veckan",
+ "report.plan.sports.strength_basis": "Utan zoner: upplevd ansträngning, ovanpå uthållighetstiden"
 }

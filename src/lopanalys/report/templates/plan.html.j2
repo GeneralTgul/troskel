@@ -38,7 +38,7 @@
     <tbody>
     {% for s in sports %}
       <tr><td class="first b"><span class="swatch" style="background: {{ s.color }}"></span>{{ s.name }}</td><td>{{ s.role }}</td>
-        <td class="n num">{{ s.share }} %</td><td class="last">{{ s.basis }}</td></tr>
+        <td class="n num">{{ s.share }}</td><td class="last">{{ s.basis }}</td></tr>
     {% endfor %}
     </tbody>
   </table>

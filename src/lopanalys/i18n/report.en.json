@@ -353,5 +353,7 @@
  "report.plan.sports.max_hr": "Max HR",
  "report.plan.week_sports": "The week's time per sport",
  "report.plan.load": "Load",
- "report.plan.load_note": "minutes × zone × sport, to compare the weeks"
+ "report.plan.load_note": "minutes × zone × sport, to compare the weeks",
+ "report.plan.sports.strength_role": "{n} sessions a week",
+ "report.plan.sports.strength_basis": "No zones: perceived effort, on top of the endurance time"
 }

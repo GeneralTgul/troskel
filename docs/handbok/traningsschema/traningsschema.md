@@ -37,6 +37,7 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | | *Nivå* | *Nybörjare*, *Motionär* eller *Vältränad*. Styr var schemat börjar och hur många hårda pass en vecka får |
 | | *Tränar nu* | Minuter löpning i veckan i snitt de senaste 4–6 veckorna. Schemat börjar där. Tomt betyder nivåns förval (2, 3 eller 5 timmar), men aldrig mer än 70 % av den tillgängliga tiden |
 | *Idrotter* | En rad per idrott | Idrotterna i schemat, med roll och andel av veckans tid, se [Flera idrotter](#flera-idrotter) |
+| | *Styrkepass i veckan* | *Inga* eller 1–3 pass. Styrkan läggs ovanpå uthållighetstiden, på de lättaste dagarna, och ett missat styrkepass görs inte igen |
 | *Tillgänglig tid* | Minuter per veckodag | Så länge idrottaren kan träna den dagen, 20–480 minuter. En tom dag får inget pass |
 | | Klockslag | Valfritt. Passet får den tiden i kalenderfilen, annars blir det en heldagshändelse |
 | | Idrotterna den dagen | Bara med flera idrotter: *Alla* eller de idrotter som går den dagen, till exempel bara cykel en dag utan löpband |
@@ -54,7 +55,7 @@ Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är
 - **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
 - **Andel:** hur stor del av veckans tid idrotten får, i tiotal procent. Rollen fyller i 60, 30 eller 10 %. Andelarna räknas mot varandra, så 60 och 30 ger två tredjedelar och en tredjedel.
 
-Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner, och simning går på upplevd ansträngning eftersom Tröskel inte har något simtest. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
+Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner, och simning går på upplevd ansträngning: simtestet (CSS) går inte att göra i programmet än. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
 
 ![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, och tisdagen bara för cykel](images/idrotter.png)
 
@@ -88,10 +89,10 @@ Schemat börjar på det idrottaren tränar nu och växer mot den tillgängliga t
 
 Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter. Veckobladet har dagens pass i tidsordning och veckans belastning längst ned (minuter × zon × idrott, för att jämföra veckorna).
 
-Med flera idrotter har utskriften också:
+Med flera idrotter, eller med styrkepass, börjar varje pass med idrotten (*Löpning: lugnt pass*), och utskriften har också:
 
-- **en tabell över idrotterna** på första sidan: roll, andel av tiden och testet zonerna bygger på, med datum,
-- **en rad per idrott med watt under *Dina zoner***: cykelns watt, och SkiErgens watt och tid per 500 m, zon för zon,
+- **en tabell över idrotterna** på första sidan: roll, andel av tiden och testet zonerna bygger på, med datum. Styrkan står sist med antalet pass i veckan,
+- **en rad per idrott med watt eller tempo under *Dina zoner***: cykelns watt, SkiErgens watt och tid per 500 m och, med ett simtest, simningens tid per 100 m, zon för zon. Styrkepassen har ingen zon, bara ansträngningen,
 - **en färg per idrott** bredvid passets namn på veckobladet. Färgerna skiljer sig från zonernas,
 - **veckans tid per idrott** som en stapel längst ned på veckobladet.
 

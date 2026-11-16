@@ -99,6 +99,7 @@ def test_a_day_with_some_sports_only_is_saved_and_read_back(demo_window, erik):
     assert v.sport_rows["swim"].snapshot() == (True, "maintenance", 10)
     assert v.sport_rows["bike"].snapshot() == (True, "support", 30) and not v.sport_rows["ski"].on
     assert v.day_sports[1].chosen() == ("bike",) and v.day_sports[0].chosen() == ()
+    assert v.strength.currentData() == 0
     assert not v.dirty() and v.plan.request.roles == req.roles
     # a change in the sports is a change of the form
     _tick(v, "swim", False)
@@ -172,3 +173,24 @@ def test_sport_capacity_takes_the_sport_s_own_test_or_max_hr(demo_window, erik):
     run = services.sport_capacity(store, erik, RUNNING)
     newest = services.plan_tests(store, erik.id)[0]
     assert run == services.plan_capacity(store, erik, newest)
+
+
+def test_strength_sessions_are_asked_saved_and_read_back(demo_window, erik):
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v)
+    for h in v.health.values():
+        h.setChecked(True)
+    assert [v.strength.itemData(i) for i in range(v.strength.count())] == [0, 1, 2, 3]
+    assert v.strength.currentData() == 0 and v.strength.currentText() == "Inga"
+    v.strength.setCurrentIndex(v.strength.findData(2))
+    req = v.collect()
+    assert req.strength_sessions == 2 and req.roles == () and req.multi_sport
+    assert v.preview() and sum(wk.strength_sessions for wk in v.plan.detailed_weeks) > 0
+    assert v.save() and not v.dirty()
+    win._plan_back()
+    win.open_plan(erik)
+    assert v.strength.currentData() == 2 and not v.dirty()
+    v.strength.setCurrentIndex(v.strength.findData(0))
+    assert v.dirty()

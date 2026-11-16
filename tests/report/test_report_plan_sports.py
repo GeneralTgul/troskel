@@ -154,3 +154,45 @@ def test_english_sports_table(plans):
     text = _text(_cover(render_plan_html(plans["ski_main"])))
     assert "Main sport" in text and "Supporting" in text and "Maintenance" in text
     assert "Borrows the zones of SkiErg" in text
+
+
+# ---- strength and swimming (#666, step 3) in the printout
+
+
+def test_titles_start_with_the_sport_in_a_plan_with_several(plans):
+    week = render_plan_html(plans["run_bike_12"])
+    week = _text(week[week.index('<section class="week">'):])
+    assert "Löpning: " in week and "Cykel: " in week
+    one = render_plan_html(plans["half_12"])
+    assert "Löpning: " not in _text(one[one.index('<section class="week">'):])
+
+
+def test_strength_sessions_in_the_table_and_on_the_week_page():
+    plan = build_plan(c.CASES["run_strength_2"])
+    html = render_plan_html(plan)
+    cover = _text(_cover(html))
+    assert "Löpning Huvudidrott 100 %" in cover
+    assert "Styrka 2 pass i veckan – Utan zoner: upplevd ansträngning, ovanpå uthållighetstiden" in cover
+    week = plan.weeks[0]
+    strength = [w for w in week.workouts if w.strength]
+    assert len(strength) == 2
+    first = _text(html)
+    first = first[first.index("Vecka 1 "):first.index("Vecka 2 ")]
+    for w in strength:
+        assert plan.title(w) in first and plan.title(w).startswith("Styrka: ")
+    assert "Styrka" in first[first.index("Veckans tid per idrott"):]
+    assert f'<i style="background: {sport_color("strength")}">' in html
+    assert f"Belastning {round(week.load)} " in first
+
+
+def test_swimming_with_a_css_test_gives_the_time_per_100_m():
+    plan = build_plan(c.CASES["triathlon_swim"])
+    html = render_plan_html(plan)
+    cover = _text(_cover(html))
+    assert "Simning Stödjande 25 % CSS-test · 10 november 2026" in cover
+    zones = cover[cover.index("Dina zoner"):]
+    swim = zones[zones.index("Simning"):]
+    assert "/100 m" in swim and "2:10–2:02 /100 m" in swim       # Z2: CSS 1:55 + 15 s to + 7 s
+    assert "> 2:10 /100 m" in swim                                # Z1: slower than CSS + 15 s
+    week = _text(html[html.index('<section class="week">'):])
+    assert "/100 m" in week and "Simning: " in week

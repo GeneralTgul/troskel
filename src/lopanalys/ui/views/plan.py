@@ -13,7 +13,8 @@ what is saved without filling in anything; the banner offers it when they run ou
 Several sports (#666, step 4): the coach ticks the plan's sports, each with a role (main, supporting,
 maintenance) and a share of the weekly time in tens of percent, 60/30/10 by default. Running's zones come
 from the chosen test; every other sport takes its own newest test (services.sport_capacity). A weekday can
-allow some of the sports only: the button beside the day says which, *Alla* by default.
+allow some of the sports only: the button beside the day says which, *Alla* by default. Strength is a number of
+sessions a week (0-3) on top of the endurance time, placed by the engine.
 
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
@@ -36,7 +37,7 @@ from lopanalys.core.models import Athlete
 from lopanalys.plan import RUNNING, Capacity, Goal, Plan, PlanRequest, Slot, SportRole, build_plan
 from lopanalys.plan import rolling
 from lopanalys.plan.engine import horizon_for
-from lopanalys.plan.models import BORROWS, LEVELS, PLAN_SPORTS, ROLE_SHARE, ROLES, WEEKDAY_KEYS, ZONES
+from lopanalys.plan.models import BORROWS, LEVELS, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, WEEKDAY_KEYS, ZONES
 from lopanalys.plan.resolve import targets
 from lopanalys.plan.text import hours, start_line
 from lopanalys.ui import services, theme
@@ -376,6 +377,11 @@ class PlanView(QWidget):
             r.made_main.connect(self._new_main)
             self.sport_rows[sp] = r
             v.addWidget(r)
+        self.strength = QComboBox()
+        self.strength.setObjectName("strength_sessions")
+        for n in range(MAX_STRENGTH + 1):
+            self.strength.addItem(t("ui.plan.strength_none") if n == 0 else t("ui.plan.strength_n", n=n), n)
+        v.addWidget(field(t("ui.plan.strength"), self.strength, t("ui.plan.strength_hint")))
 
         v.addSpacing(6)
         v.addWidget(label(t("ui.plan.sec.time"), "SectionTitle"))
@@ -466,7 +472,7 @@ class PlanView(QWidget):
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
                   self.start.edit, *self.minutes, *self.clocks):
             w.textChanged.connect(self._changed)
-        for cb in (self.test, self.level):
+        for cb in (self.test, self.level, self.strength):
             cb.currentIndexChanged.connect(self._changed)
         self.mode.currentIndexChanged.connect(self._mode_changed)
 
@@ -533,7 +539,7 @@ class PlanView(QWidget):
     def _inputs(self) -> tuple:
         """Everything the plan is built from. Two equal tuples give the same plan."""
         return (self.test.currentData(), self.level.currentData(), self.recent.value(),
-                tuple(r.snapshot() for r in self.sport_rows.values()),
+                tuple(r.snapshot() for r in self.sport_rows.values()), self.strength.currentData(),
                 tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
                                                                                   self.day_sports)),
                 self.mode.currentData(), self.goal_name.text().strip(), self.goal_date.text().strip(),
@@ -676,6 +682,7 @@ class PlanView(QWidget):
             row.set(r.role if r else "support", r.share if r else 0, r is not None)
         for d in self.day_sports:
             d.set_chosen(())
+        self.strength.setCurrentIndex(max(0, self.strength.findData(req.strength_count if req else 0)))
         self._sport_basis()
         if req is None:
             self.test.setCurrentIndex(max(0, self.test.findData(session_id)) if session_id else 0)
@@ -901,7 +908,8 @@ class PlanView(QWidget):
         roles = tuple(self.sport_rows[sp].value() for sp in sports)
         return PlanRequest(a.name, start_day, tuple(slots), tuple(caps), sports, goals=tuple(goals),
                            duration_weeks=weeks, level=level, recent_weekly_minutes=int(recent) if recent else None,
-                           roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else ())
+                           roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else (),
+                           strength_sessions=self.strength.currentData() or 0)
 
     def _session_id(self) -> int | None:
         """The running test the plan is built on; none when running is not in the plan."""

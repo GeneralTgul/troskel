@@ -21,9 +21,9 @@ from markupsafe import Markup
 from lopanalys.core.i18n import language, set_language, t
 from lopanalys.core.zone_colors import sport_color, zone_color
 from lopanalys.plan import library
-from lopanalys.plan.models import BORROWS, WEEKDAY_KEYS, ZONES, Capacity, Plan, Week
+from lopanalys.plan.models import BORROWS, STRENGTH, SWIM, WEEKDAY_KEYS, ZONES, Capacity, Plan, Week
 from lopanalys.plan.periodize import core_slots
-from lopanalys.plan.resolve import SPLIT_SPORTS, split_str, targets
+from lopanalys.plan.resolve import SPLIT_SPORTS, split_str, swim_str, targets
 from lopanalys.plan.text import duration, hours, progress_axis, volume_start, workout_lines
 
 from .builder import ASSETS, Branding, _css_str, _data_uri_image, _env, _footer_line, _safe_color, date_long
@@ -210,6 +210,8 @@ def _sport_name(sport: str) -> str:
 
 def _basis(cap: Capacity) -> str:
     """'Laktattrappa · 13 november 2026', with the marks for estimated zones; 'Inget test' without one."""
+    if cap.anchors is None and cap.css_s100:          # swimming's CSS test: a pace, no heart rate
+        return " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x)
     if cap.anchors is None:
         return t("plan.pdf.fact.no_test")
     basis = " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x) \
@@ -233,18 +235,23 @@ def _sports(plan: Plan) -> list[dict[str, Any]]:
         lent = req.own_capacity(BORROWS[r.sport]) if r.sport in BORROWS else None
         if own is None and lent is not None and lent.anchors is not None:
             basis = t("report.plan.sports.borrows", sport=_sport_name(BORROWS[r.sport]))
-        elif own is None and r.sport == "swim":
+        elif (own is None or not own.known) and r.sport == SWIM:
             basis = t("report.plan.sports.effort")
         else:
             basis = _basis(req.capacity_for(r.sport))
         out.append({"sport": r.sport, "name": _sport_name(r.sport), "color": sport_color(r.sport),
-                    "role": t(f"report.plan.role.{r.role}"), "share": round(100 * r.weight / total), "basis": basis})
+                    "role": t(f"report.plan.role.{r.role}"), "share": f"{round(100 * r.weight / total)} %",
+                    "basis": basis})
+    if req.strength_count:          # outside the shares: a number of sessions on top of the endurance time
+        out.append({"sport": STRENGTH, "name": _sport_name(STRENGTH), "color": sport_color(STRENGTH),
+                    "role": t("report.plan.sports.strength_role", n=req.strength_count), "share": "–",
+                    "basis": t("report.plan.sports.strength_basis")})
     return out
 
 
 def _sport_zones(plan: Plan) -> list[dict[str, Any]]:
     """The other sports' rows under *Dina zoner*: the sports whose test gives watt (the bike; the SkiErg
-    also the time per 500 m), zone by zone."""
+    also the time per 500 m) and swimming with a CSS test (the time per 100 m), zone by zone."""
     req = plan.request
     out = []
     for sp in req.plan_sports:
@@ -252,7 +259,7 @@ def _sport_zones(plan: Plan) -> list[dict[str, Any]]:
             continue
         cap = req.own_capacity(sp)
         zt = targets(cap, plan.zone_system, sp) if cap is not None else {}
-        if not any(z.power_text for z in zt.values()):
+        if not any(z.power_text or (sp == SWIM and z.pace_text) for z in zt.values()):
             continue
         out.append({"name": _sport_name(sp), "color": sport_color(sp),
                     "cells": [_compact(zt[z]) if z in zt else {"hr": "", "load": ""} for z in ZONES]})
@@ -274,6 +281,9 @@ def _compact(tg: Any) -> dict[str, str]:
     hr = _ends(str(tg.hr_low or ""), str(tg.hr_high or ""))
     watt = _ends(str(tg.power_low_w or ""), str(tg.power_high_w or ""))
     split = _ends(split_str(tg.power_low_w), split_str(tg.power_high_w), True) if tg.sport in SPLIT_SPORTS else ""
+    if tg.sport == SWIM:
+        swim = _ends(swim_str(tg.swim_low_s), swim_str(tg.swim_high_s), True)
+        split = f"{swim} /100 m" if swim else ""
     load = " · ".join(x for x in (f"{watt} W" if watt else "", split) if x)
     return {"hr": hr, "load": load}
 
@@ -303,7 +313,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
 
     # ---- cover
     period = {"k": t("plan.pdf.fact.period"), "v": f"{date_long(plan.start)} – {date_long(plan.end)}"}
-    multi = len(req.plan_roles()) > 1
+    multi = req.multi_sport
     if cap.anchors is None:
         basis = t("plan.pdf.fact.no_test")
     else:
@@ -380,7 +390,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
                     line["color"] = zone_color(ZONES.index(line["zone"])) if line["zone"] else UNZONED
                 race = " · ".join(x for x in (t("plan.goal.distance", km=fmt_num(w.goal.distance_km, 1 if w.goal.distance_km % 1 else 0))
                                               if w.goal.distance_km else "", w.goal.target) if x) if w.goal else ""
-                items.append({"title": w.title, "purpose": (race or w.purpose),
+                items.append({"title": plan.title(w), "purpose": (race or w.purpose),
                               "duration": duration(w.seconds) if w.seconds else "", "lines": lines,
                               "start": f"{w.start:%H:%M}" if w.start else "", "race": bool(w.goal),
                               "quality": w.quality, "sport": _sport_name(w.sport) if multi else "",

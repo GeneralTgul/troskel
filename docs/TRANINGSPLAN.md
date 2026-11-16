@@ -1,6 +1,6 @@
 # Träningsplanen
 
-*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)). Motorn fyller flera idrotter med varje idrotts egna pass, styrka och simning med ett manuellt simtest; formuläret och utskriften har idrotterna, men antalet styrkepass och simtestet finns inte i formuläret än. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
+*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)). Motorn fyller flera idrotter med varje idrotts egna pass, styrka och simning med ett manuellt simtest; formuläret och utskriften har idrotterna och antalet styrkepass, men simtestet går inte att göra i programmet än. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
 
 Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
 
@@ -56,7 +56,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Ombyggnad av resten av planen (nya pass och ny volym) efter ett omtest, sjukdom och missade pass | Inte byggt (resten av steg P4) |
 | Flera idrotter: veckotiden fördelad efter andelar, hårda dagar och långpass över idrotterna, platser med flera idrotter | Byggt (steg 1 av 4), se [Flera idrotter](#flera-idrotter) |
 | Cykelns och SkiErgens egna pass med mål i watt och tid per 500 m | Byggt (steg 2 av 4) |
-| Styrka (0–3 pass i veckan ovanpå uthållighetsveckan) och simning på ansträngning eller på ett manuellt CSS-test | Byggt i motorn och i appen (steg 3 av 4), se [Styrka](#styrka) och [Simning](#simning). Formuläret för simtestet och antalet styrkepass finns inte i programmet än |
+| Styrka (0–3 pass i veckan ovanpå uthållighetsveckan) och simning på ansträngning eller på ett manuellt CSS-test | Byggt i motorn och i appen (steg 3 av 4), se [Styrka](#styrka) och [Simning](#simning). Antalet styrkepass väljs i formuläret; formuläret för simtestet finns inte i programmet än |
 | Idrotterna i formuläret och utskriften: roll och andel, idrotterna per veckodag, en färg per idrott, idrottstabellen, watt i zonerna, veckans tid per idrott och belastningen | Byggt (steg 4 av 4), se [Utskriften](#4-utskriften). Inte provat på Windows ([PROV.md](PROV.md)) |
 | Återhämtningsblock efter ett mål, passkort | Inte byggt |
 
@@ -352,6 +352,8 @@ Utskriften byggs i rapportmotorn (`report/plan_builder.py` och mallen `plan.html
 | **Så läser du schemat** (1–2 sidor) | Blocken med skälen, zontabellen, passen som schemat använder med syfte och känsla, reglerna bakom schemat och ansvarstexten |
 | **Veckoblad** (en sida per vecka med pass) | Sju dagar: tid, passets namn och syfte, delarna med zon, puls och fart, en ruta att bocka av och rader att anteckna på. Dagens pass i tidsordning. Veckans syfte överst, och nederst veckans tid per zon och belastningen (`Week.load`) |
 
+- **Titlarna** kommer ur `Plan.title`, så i ett schema med flera idrotter eller med styrka börjar varje pass med idrotten.
+- **Styrka och simning:** styrkepassen står på veckobladet utan zon, med ansträngningen, i styrkans färg, och sist i idrottstabellen med antalet pass i veckan. Simningen med ett CSS-test får tid per 100 m i passen och en rad under *Dina zoner*. Veckans tid i veckohuvudet är uthållighetstiden; stapeln per idrott och belastningen tar med styrkan.
 - **Flera idrotter:** idrottstabellen på översikten (roll, andel som procent av andelarnas summa, och testet med datum, eller att skidor lånar SkiErgens zoner och att simning går på ansträngning) i stället för raden *Bygger på*. Under *Dina zoner* en rad per annan idrott vars test ger watt. En färg per idrott (`core.zone_colors.sport_color`, ingen av dem en zonfärg) bredvid passets namn i stället för zonfärgen, och veckans tid per idrott som en stapel på veckobladet. Resten av översikten ritas lite mindre, så att den ryms på en sida.
 - **Skissen** (sist, bara i ett rullande schema): veckorna utan pass, en rad var med block, typ av vecka, tid och antal pass. I översikten är skissveckornas staplar bleka.
 - **Kalenderfilen** (`plan/ics.py`) har en händelse per pass i veckorna med pass, med passets delar och mål i beskrivningen. En plats med klockslag ger en händelse vid den tiden, annars en heldagshändelse. Händelsens id är passets fasta nyckel, så att en ny import skriver över i stället för att dubblera.
