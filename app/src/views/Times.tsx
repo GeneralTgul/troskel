@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import { t } from "../i18n";
 import type { Engine } from "../engine";
+import { planSports } from "../engine/models";
 import { addDays, dayMonth, weekdayLong } from "../model/dates";
 import type { PendingTimes } from "../model/storage";
 import { daysFromSlots, slotsFromDays, type DayTimes } from "../model/times";
@@ -29,7 +30,7 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
 
   const save = (e: Event) => {
     e.preventDefault();
-    const slots = slotsFromDays(days, stored.request.availability, stored.request.sports);
+    const slots = slotsFromDays(days, stored.request.availability, planSports(stored.request));
     const unavailable = off.filter((d) => d > today).sort();
     const p: PendingTimes = { slots, unavailable, saved: today };
     if (engine.available) {

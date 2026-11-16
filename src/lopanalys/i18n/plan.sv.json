@@ -210,5 +210,18 @@
  "plan.block_short.base": "Grund",
  "plan.block_short.build": "Uppb.",
  "plan.block_short.peak": "Topp",
- "plan.block_short.taper": "Nedtr."
+ "plan.block_short.taper": "Nedtr.",
+ "plan.sport.run": "Löpning",
+ "plan.sport.bike": "Cykel",
+ "plan.sport.skierg": "SkiErg",
+ "plan.sport.ski": "Skidor",
+ "plan.sport.swim": "Simning",
+ "plan.workout.in_sport": "{sport}: {title}",
+ "plan.workout.easy.title_any": "lugnt pass",
+ "plan.workout.recovery.title_any": "återhämtningspass",
+ "plan.note.borrowed.ski": "Skidpassen har SkiErgens zoner, eftersom det inte finns något eget test på skidor.",
+ "plan.note.no_test_sport.bike": "Cykelpassen bygger inte på något cykeltest och anges med zon och ansträngning.",
+ "plan.note.no_test_sport.skierg": "SkiErg-passen bygger inte på något SkiErg-test och anges med zon och ansträngning.",
+ "plan.note.no_test_sport.ski": "Skidpassen bygger inte på något test och anges med zon och ansträngning.",
+ "plan.note.no_test_sport.swim": "Simpassen anges med zon och upplevd ansträngning (RPE), eftersom det inte finns något simtest."
 }

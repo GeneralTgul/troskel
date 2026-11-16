@@ -1,6 +1,6 @@
 # Träningsplanen
 
-*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn för löpning, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)); flera idrotter är det inte. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
+*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)). Motorn fyller flera idrotter med löpningens pass; egna pass och mål per idrott, styrka och formuläret för idrotterna är inte byggda. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
 
 Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
 
@@ -42,9 +42,9 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 
 | Del | Läge |
 |---|---|
-| Indata: idrottare med kapacitet per sport, tillgänglighet per veckodag, mål (A, B, C) eller längd, nivå och nuvarande veckovolym | Byggt |
+| Indata: idrottare med kapacitet per sport, idrotter med roll och andel, tillgänglighet per veckodag, mål (A, B, C) eller längd, nivå och nuvarande veckovolym | Byggt i motorn. Formuläret har bara löpning än |
 | Block bakåt från målet, lätta veckor, omtest, volymökning, långpass, kvalitetspass med vila emellan | Byggt, se [Planmotorn](#2-planmotorn) |
-| Passbibliotek för löpning med texter på svenska och engelska | Byggt |
+| Passbibliotek för löpning med texter på svenska och engelska | Byggt. Det används för alla idrotter tills vidare, med idrottens namn i passets titel |
 | Zon till puls och fart ur testet, uppskattade zoner märkta, schema utan test | Byggt |
 | Ett omtest flyttar målen i puls och fart från en dag och framåt, utan att något pass byter dag | Byggt (`resolve.retest`), och erbjuds i programmet efter ett nytt test, se [Omtest och omläggning](#omtest-och-omläggning) |
 | Utskrift: översikt, läsanvisning och ett blad per vecka | Byggt. Utskriften på Windows är inte provad ([PROV.md](PROV.md)) |
@@ -54,7 +54,8 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Sidan *Träningsschema*: formulär, förhandsvisning, spara, skriv ut, PDF, kalenderfil och e-post till idrottaren | Byggt |
 | Hälsodeklarationen som tre rutor som krävs före utskrift, PDF, kalenderfil och e-post | Byggt i enkel form, se [Säkerhet och ansvar](#3-säkerhet-och-ansvar) |
 | Ombyggnad av resten av planen (nya pass och ny volym) efter ett omtest, sjukdom och missade pass | Inte byggt (resten av steg P4) |
-| Flera idrotter, styrka, återhämtningsblock efter ett mål, passkort | Inte byggt |
+| Flera idrotter: veckotiden fördelad efter andelar, hårda dagar och långpass över idrotterna, platser med flera idrotter | Byggt (steg 1 av 4), se [Flera idrotter](#flera-idrotter) |
+| Pass och mål i watt och tid per 500 m för cykel och SkiErg, styrka, simtest, idrotterna i formuläret och utskriften, återhämtningsblock efter ett mål, passkort | Inte byggt |
 
 ## 1. Datamodellen
 
@@ -65,6 +66,8 @@ PlanRequest                      det idrottaren och coachen anger
   athlete_name, start: date      schemat börjar första måndagen från och med start
   availability: [Slot]
   capacity: [Capacity]           en per sport
+  sports: [str]                  idrotterna när roles är tomt; den första (eller A-målets) är huvudidrott
+  roles: [SportRole]             idrotterna med roll och andel; tomt i scheman sparade före flera idrotter
   goals: [Goal]                  tomt = plan utan tävlingsmål
   duration_weeks: int | None     längden när inget A-mål finns (förval 12)
   level: "beginner" | "recreational" | "trained"
@@ -74,6 +77,11 @@ Slot                             ett tillfälle i veckan
   weekday, max_minutes, start: time | None
   sports: [str]                  vad som går att träna då
   role: "core" | "extra"         bara kärnplatser fylls
+
+SportRole                        en idrott i planen
+  sport: str                     "run", "bike", "skierg", "ski" eller "swim" (models.PLAN_SPORTS)
+  role: "main" | "support" | "maintenance"     huvudidrott, stödjande eller underhåll
+  share: int                     andel av veckotiden i procent; 0 = rollens förval 60, 30 eller 10
 
 Goal
   name, date, sport, distance_km
@@ -123,7 +131,9 @@ Note                             en text som nyckel och värden, så att planen 
 
 `Plan.capacity_log` håller de tidigare testerna efter ett omtest: en dag och kapaciteten som gällde före den. `Plan.capacity_on(sport, dag)` ger kapaciteten ett pass visas med.
 
-**Inte i modellen än:** andelar mellan flera sporter, utrustning per plats och gruppträningar med fast innehåll.
+`PlanRequest.plan_roles()` ger idrotterna i ordning med huvudidrotten först, en gång var och med exakt en huvudidrott: den första som angetts som huvudidrott, annars A-målets idrott, annars den första. `Workout.load` och `Week.load` är belastningen: minuter × zonfaktor (Z1 0,5, Z2 1, Z3 1,5, Z4 2,5, Z5 3,5; ett test räknas som Z4) × idrottsfaktor (löpning, SkiErg och skidor 1,0, cykel och simning 0,7, styrka 0,8).
+
+**Inte i modellen än:** utrustning per plats och gruppträningar med fast innehåll.
 
 **Tre regler i modellen:**
 
@@ -138,7 +148,7 @@ Note                             en text som nyckel och värden, så att planen 
 | `plans` | En rad per idrottare (`athlete_id` är unik): `session_id` (testet schemat bygger på), `request_json` (tillgänglighet, mål, delmål, längd, nivå, veckovolym och testets trösklar), `plan_json` (schemat som det byggdes: block, veckor, pass och loggen över tidigare tester), `health_json` (hälsodeklarationens rutor och datum), `engine_version`, `created`, `updated` |
 | `plan_events` | Loggen: tid, händelse (`saved`, `changed`, `retest`, `renewed`) och detaljer, till exempel vilka två tester ett omtest gick mellan |
 
-- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass.
+- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass. Idrotternas roller sparas under `roles` i det som angavs. Ett schema som sparades före dem saknar fältet och läses utan roller, alltså med idrotterna i `sports`.
 - **Namnet sparas inte i schemat.** Det läses från idrottarens rad när schemat öppnas.
 - **Målen följer testet.** När schemat öppnas räknas trösklarna om ur testet det bygger på, så att ett rättat laktatvärde slår igenom. Är testet borttaget gäller trösklarna som sparades med schemat.
 - **Radering:** raderna följer idrottaren (`ON DELETE CASCADE`) och skrivs över som övriga uppgifter. Tas testet bort ligger schemat kvar utan test. Schemat är med i utdraget (*Exportera allt*). PDF:en och kalenderfilen registreras som sparade filer, så att raderingen hittar dem.
@@ -150,10 +160,10 @@ Modulen `src/lopanalys/plan/`:
 | Fil | Innehåll |
 |---|---|
 | `models.py` | Dataklasserna i [datamodellen](#1-datamodellen) |
-| `library.py` | Passbiblioteket för löpning som data |
+| `library.py` | Passbiblioteket som data: löpningens pass, som alla idrotter använder tills vidare |
 | `periodize.py` | Block, veckotyper och veckovolym: var den börjar, vad veckan rymmer och hur fort den växer |
 | `engine.py` | `build_plan()`: passen läggs i platserna |
-| `resolve.py` | Zon till puls och fart, och `retest()` |
+| `resolve.py` | Zon till puls och fart (fart bara för löpning), och `retest()` |
 | `text.py` | Passen som text på aktuellt språk, för utskrift och kalender, och översiktens rad om var tiden börjar |
 | `rolling.py` | Det rullande schemat: `roll_forward` ger nästa veckor pass ur den sparade skissen |
 | `ics.py` | Kalenderfilen |
@@ -192,13 +202,20 @@ Motorn räknar bakåt från A-målet. Finns flera A-mål slutar planen med det s
 
 ### Flera idrotter
 
-Inte byggt. Motorn fyller bara löpning, och platser för andra sporter lämnas tomma. Reglerna när det byggs:
+Idrottaren anger idrotterna med en roll och en andel av veckotiden (`PlanRequest.roles`, beslutet i #666 2026-11-15). Utan roller gäller idrotterna i `sports`, och ett schema med en idrott blir detsamma som förut. Formuläret i programmet har inte idrotterna än (steg 4).
 
-- Volymen fördelas efter andelarna i `PlanRequest` och förskjuts mot A-målets sport ju närmare målet är.
-- Kvalitetspassen räknas över alla sporter tillsammans. Två hårda pass i veckan är två totalt, inte två per sport.
-- Senare mål byggs in tidigt med ett underhållspass i veckan (som löpfart under en skidvinter).
-- En plats med flera möjliga sporter fylls med den sport som ligger längst efter sin andel.
-- Styrka är en egen sport utan zoner: ett till tre pass, aldrig ersatta när de missas.
+- **Rollerna:** *huvudidrott*, *stödjande* och *underhåll*, med andelen 60, 30 och 10 % som förval. Andelarna är vikter: 60 och 30 ger två tredjedelar och en tredjedel.
+- **Platserna:** en kärnplats används när den tillåter någon av planens idrotter. En plats för en idrott som planen inte har lämnas tom. Långpassets plats är huvudidrottens längsta plats.
+- **Veckan fylls som förut, över alla idrotter på en gång.** Antalet pass, de hårda dagarna, långpasset, taket på 10 % i veckan och taket på en fjärdedel av tiden över LT1 räknas alltså över idrotterna: en hård dag är en hård dag oavsett idrott, aldrig två i rad (inte heller över veckogränsen) och aldrig dagen före långpasset.
+- **Sedan får varje pass sin idrott** (`engine._Filler._sports`): långpasset och testet i huvudidrotten, de hårda passen i datumordning och de lugna med det längsta först, var och ett till den idrott som ligger längst efter sin andel av veckans minuter bland de idrotter platsen tillåter. Ett lopp är i målets idrott.
+- **Närmare målet** tar huvudidrotten hälften av de andra idrotternas andel i toppen och tre fjärdedelar i nedtrappningen (`engine.SHARE_SHIFT`).
+- **Underhållsidrotten** får högst ett pass i veckan och aldrig ett hårt.
+- **Löpningen har ett eget tak:** löpminuterna växer högst 10 % över den största löpveckan före, så länge platsen tillåter en annan idrott.
+- **Passen** är löpningens mallar tills vidare, med idrottens namn först i titeln (*Cykel: lugnt pass*). Texterna om hur passet görs är skrivna för löpning.
+- **Zonerna per idrott:** varje idrott får puls ur sitt eget test. Fart anges bara för löpning, eftersom testets belastning i de andra idrotterna är watt. Skidor lånar SkiErgens zoner tills ett eget test finns (`models.BORROWS`), och planen säger det. En idrott utan test får zon och ansträngning, och planen säger det, så simning går på upplevd ansträngning (RPE).
+- **Appen** har samma regler i TypeScript och provas mot Python-motorn med sju fall med flera idrotter.
+
+**Inte byggt (steg 2–4):** egna pass och mål i watt och tid per 500 m för cykel och SkiErg; styrka som egna pass (0–3 i veckan, aldrig ersatta), simning och ett manuellt simtest (CSS); belastningen i utskriften och som tak för veckan; idrotterna i formuläret, en färg per idrott och idrottstabellen i PDF:en. Inte heller två pass samma dag (en plats per veckodag gäller) eller ett mindre långpass i en stödjande idrott.
 
 ### Delmål och planer utan mål
 

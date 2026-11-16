@@ -4,7 +4,7 @@
  */
 import type { IsoDate, StoredBlock, StoredGoal, StoredNote, StoredRequest, StoredSlot } from "../model/types";
 import * as library from "./library";
-import { LEVELS, PlanError, RUNNING, note } from "./models";
+import { LEVELS, PlanError, mainSport, note, planSports } from "./models";
 import { addDays, daysBetween, floordiv, round, sortedBy, weekday } from "./py";
 
 export const DEFAULT_WEEKS = 12;
@@ -57,11 +57,13 @@ export interface Skeleton {
 export const firstMonday = (d: IsoDate) => addDays(d, ((-weekday(d)) % 7 + 7) % 7);
 export const round5 = (minutes: number) => round(minutes / 5.0) * 5;
 
-/** The core slots for a sport, one per weekday (the longest), in weekday order. */
-export function coreSlots(r: StoredRequest, sport = RUNNING): StoredSlot[] {
+/** The core slots for a sport, or (null) for any of the plan's sports: one per weekday (the longest), in weekday order. */
+export function coreSlots(r: StoredRequest, sport: string | null = null): StoredSlot[] {
+  const wanted = sport !== null ? [sport] : planSports(r);
   const best = new Map<number, StoredSlot>();
   for (const s of r.availability) {
-    if (s.role !== "core" || !s.sports.includes(sport) || s.max_minutes <= 0 || !(s.weekday >= 0 && s.weekday <= 6))
+    if (s.role !== "core" || !s.sports.some((x) => wanted.includes(x)) || s.max_minutes <= 0
+      || !(s.weekday >= 0 && s.weekday <= 6))
       continue;
     const b = best.get(s.weekday);
     if (!b || s.max_minutes > b.max_minutes) best.set(s.weekday, s);
@@ -69,7 +71,10 @@ export function coreSlots(r: StoredRequest, sport = RUNNING): StoredSlot[] {
   return [...best.keys()].sort((a, b) => a - b).map((d) => best.get(d)!);
 }
 
-export function longSlot(slots: StoredSlot[]): StoredSlot {
+/** The long run's slot: the longest slot for the main sport, the later day on a tie (else the longest of all). */
+export function longSlot(all: StoredSlot[], main: string): StoredSlot {
+  const own = all.filter((s) => s.sports.includes(main));
+  const slots = own.length ? own : all;
   let best = slots[0];
   for (const s of slots.slice(1))
     if (s.max_minutes > best.max_minutes || (s.max_minutes === best.max_minutes && s.weekday > best.weekday)) best = s;
@@ -77,18 +82,18 @@ export function longSlot(slots: StoredSlot[]): StoredSlot {
 }
 
 /** The minutes a week can really hold (periodize.week_capacity). */
-export function weekCapacity(r: StoredRequest, sport = RUNNING): number {
+export function weekCapacity(r: StoredRequest, sport: string | null = null): number {
   const level = LEVEL[r.level];
   const slots = coreSlots(r, sport);
   if (!slots.length) return 0;
-  const ls = longSlot(slots);
+  const ls = longSlot(slots, mainSport(r));
   const easyMax = library.get("easy").max_minutes;
   const held = slots.map((s) => (s === ls ? Math.min(s.max_minutes, level.long_cap) : Math.min(s.max_minutes, easyMax)))
     .sort((a, b) => b - a);
   return held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
 }
 
-export function firstWeekMinutes(r: StoredRequest, sport = RUNNING): [number, string] {
+export function firstWeekMinutes(r: StoredRequest, sport: string | null = null): [number, string] {
   const cap = weekCapacity(r, sport);
   const recent = r.recent_weekly_minutes;
   if (recent) return recent > cap ? [cap, "capped"] : [Math.trunc(recent), "recent"];

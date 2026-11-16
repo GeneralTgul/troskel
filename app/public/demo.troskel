@@ -91,13 +91,14 @@
   ],
   "duration_weeks": null,
   "level": "recreational",
-  "recent_weekly_minutes": 200
+  "recent_weekly_minutes": 200,
+  "roles": []
  },
  "plan": {
   "format": 2,
   "id": "demo",
   "created": "2026-11-16T00:00:00+00:00",
-  "engine_version": "3",
+  "engine_version": "4",
   "zone_system": "garmin",
   "status": "draft",
   "based_on": {

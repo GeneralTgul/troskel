@@ -38,13 +38,22 @@ def zone_targets(capacity: Capacity | None, system: str) -> dict[str, dict[str, 
     return {z: _target_dict(tg) for z, tg in targets(capacity, system).items()}
 
 
+def _targets(plan: Plan) -> dict[str, dict[str, dict[str, Any]]]:
+    """Targets per sport: each test's, and a sport without its own test with the test it borrows (skis: SkiErg)."""
+    out = {c.sport: zone_targets(c, plan.zone_system) for c in plan.request.capacity}
+    for sport in plan.request.plan_sports:
+        if sport not in out and plan.request.capacity_for(sport).anchors is not None:
+            out[sport] = zone_targets(plan.request.capacity_for(sport), plan.zone_system)
+    return out
+
+
 def stored_plan(plan: Plan, athlete_name: str | None = None) -> dict[str, Any]:
     """The payload for the app. ``athlete_name`` None: the plan's own name; "" leaves the name out."""
     name = plan.request.athlete_name if athlete_name is None else athlete_name
     return {
         "kind": KIND, "format": FORMAT, "athlete": name,
         "request": codec.request_to_dict(plan.request), "plan": codec.plan_to_dict(plan),
-        "targets": {c.sport: zone_targets(c, plan.zone_system) for c in plan.request.capacity},
+        "targets": _targets(plan),
         # Targets of the earlier tests: a workout dated before ``until`` is shown with them (Plan.capacity_on).
         "targets_log": [{"until": until.isoformat(), "sport": c.sport, "targets": zone_targets(c, plan.zone_system)}
                         for until, c in plan.capacity_log],

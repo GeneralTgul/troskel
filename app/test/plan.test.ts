@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { keys, setLang, t } from "../src/i18n";
-import { duration, hours, paceStr, pyRound, targetText, weekMinutes, workoutLines, plain } from "../src/model/plan";
+import { duration, hours, paceStr, pyRound, targetText, weekMinutes, workoutLines, workoutTitle, plain } from "../src/model/plan";
 import { daysFromSlots, slotsFromDays } from "../src/model/times";
 import { demoPlan } from "./helpers";
 
@@ -18,6 +18,19 @@ describe("numbers as in the printout", () => {
     expect(paceStr(12)).toBe("5:00");
     expect(paceStr(14.4)).toBe("4:10");
     expect(paceStr(null)).toBe("");
+  });
+});
+
+describe("a workout in another sport", () => {
+  it("has the sport's name in its title, as Workout.title in Python", () => {
+    setLang("sv");
+    const w = demoPlan().plan.weeks[0].workouts.find((x) => x.template_id === "easy")!;
+    expect(workoutTitle(w)).toBe("Lugn löpning");
+    expect(workoutTitle({ ...w, sport: "bike" })).toBe("Cykel: lugnt pass");
+    expect(workoutTitle({ ...w, sport: "swim", template_id: "threshold" })).toBe("Simning: Tröskelintervaller");
+    setLang("en");
+    expect(workoutTitle({ ...w, sport: "bike" })).toBe("Cycling: easy session");
+    setLang("sv");
   });
 });
 
