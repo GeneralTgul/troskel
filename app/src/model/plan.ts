@@ -2,6 +2,7 @@
  * What the views read out of a stored plan: the numbers of models.py (seconds, minutes, zone time) and the
  * texts of text.py and resolve.py, in the current language. Nothing here changes the plan.
  */
+import { DRILLS, feel, TIPS } from "../engine/library";
 import { multiSport } from "../engine/models";
 import { has, t } from "../i18n";
 import type {
@@ -63,6 +64,18 @@ export function workoutTitle(w: StoredWorkout, multi = false): string {
 export const planTitle = (stored: StoredPlan, w: StoredWorkout) => workoutTitle(w, multiSport(stored.request));
 export const workoutPurpose = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.purpose`);
 export const workoutHow = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.how`);
+
+/** How the workout should feel (text.feel_line): "Z4, ansträngning 7 av 10"; "" for a race. */
+export function feelText(w: StoredWorkout): string {
+  const f = w.goal ? null : feel(w.parts);
+  if (!f) return "";
+  const rpe = f.rpeLow === f.rpeHigh ? String(f.rpeLow) : `${f.rpeLow}–${f.rpeHigh}`;
+  if (!f.zoneLow) return t("plan.feel.effort", { rpe });
+  return t("plan.feel.zone", { zone: f.zoneLow === f.zoneHigh ? f.zoneLow : `${f.zoneLow}–${f.zoneHigh}`, rpe });
+}
+/** The workout's tips and drills (text.tips, text.drills), in the current language. */
+export const workoutTips = (w: StoredWorkout) => (TIPS[w.template_id] ?? []).map((k) => t(`plan.tip.${k}`));
+export const workoutDrills = (w: StoredWorkout) => (DRILLS[w.template_id] ?? []).map((k) => t(`plan.drill.${k}`));
 
 export function noteText(n: StoredNote): string {
   return t(n.key, Object.fromEntries(n.args));

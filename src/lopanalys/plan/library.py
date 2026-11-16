@@ -256,3 +256,60 @@ def build(template_id: str, *, minutes: int | None = None, step: int = 0) -> lis
         return [Part("technique", minutes * MIN, "Z2", 3)]
     rpe = {"recovery": 2, "long": 4}.get(kind, 3)
     return [Part("steady", minutes * MIN, "Z2", rpe)]
+
+
+# ---- the guide to a workout: how it should feel, tips, and drills for the technique swim
+# The texts are plan.tip.<id> and plan.drill.<id>; a tip can serve several templates. The app's box for the day and
+# the athlete's printout read them from here (the app's port: app/src/engine/library.ts, checked with the fixtures).
+TIPS: dict[str, tuple[str, ...]] = {
+    "easy": ("middle_zone", "too_easy"),
+    "recovery": ("too_easy",),
+    "long": ("carbs", "race_kit"),
+    "long_progressive": ("carbs", "race_kit"),
+    "threshold": ("even", "even_start", "jog_rest", "tired_z3"),
+    "vo2max": ("even", "jog_rest", "relaxed"),
+    "hills": ("treadmill_hills", "arms"),
+    "opener": ("relaxed",),
+    "race": ("nothing_new", "race_energy"),
+    "bike_easy": ("cadence_drills",),
+    "bike_recovery": ("too_easy",),
+    "bike_long": ("carbs", "race_kit"),
+    "bike_long_progressive": ("carbs",),
+    "bike_sweetspot": ("seated",),
+    "bike_threshold": ("even", "seated"),
+    "bike_vo2max": ("even",),
+    "bike_vo2_short": ("even",),
+    "skierg_easy": ("pole_hips",),
+    "skierg_recovery": ("pole_hips",),
+    "skierg_long": ("pole_hips", "carbs", "race_kit"),
+    "skierg_long_progressive": ("carbs",),
+    "skierg_threshold": ("even_split",),
+    "skierg_vo2max": ("even_split",),
+    "skierg_fartlek": ("pole_hips",),
+    "skierg_hills": ("pole_hips", "full_rest"),
+    "swim_easy": ("breathe_three",),
+    "swim_long": ("breathe_three",),
+    "swim_intervals": ("even",),
+    "swim_hard": ("even",),
+    "swim_test": ("css_formula",),
+    "strength_full": ("heavy_before",),
+    "strength_legs": ("heavy_before",),
+    "strength_maintenance": ("no_max",),
+}
+DRILLS: dict[str, tuple[str, ...]] = {
+    "swim_technique": ("warmup", "catch_up", "fingertip", "single_arm", "six_kick", "fists", "sculling",
+                       "breathe_three", "finish", "kit"),
+}
+# The parts that say how a workout feels: not the warm-up, the cool-down or the mobility after strength.
+_EASING = ("warmup", "cooldown", "mobility")
+
+
+def feel(parts: list[Part] | tuple[Part, ...]) -> tuple[str | None, str | None, int, int] | None:
+    """How a workout should feel: its lowest and highest zone (None without a zone) and its lowest and highest
+    effort (RPE of 10), over the parts that carry the workout, not the warm-up or the cool-down. None for a race."""
+    main = [p for p in parts if p.kind not in _EASING and p.kind != "race"] or [p for p in parts if p.kind != "race"]
+    if not main:
+        return None
+    zones = sorted(p.zone for p in main if p.zone)
+    rpes = [p.rpe for p in main]
+    return (zones[0] if zones else None, zones[-1] if zones else None, min(rpes), max(rpes))

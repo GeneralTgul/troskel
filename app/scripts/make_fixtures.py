@@ -9,7 +9,8 @@ The example plan is the demo runner of ``lopanalys.plan.demo`` (12 weeks, a half
 ``build_plan`` and ``roll_forward`` make from demo requests, and ``rebuild`` on the demo plans with new times.
 ``rebuild`` here is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
 ``texts`` is what the app shows of a workout in another sport (title, parts and their watt, time per 500 m or per
-100 m), written by text.py and resolve.py.
+100 m, how it should feel, tips and drills), written by text.py and resolve.py; ``guide`` is library.TIPS and
+library.DRILLS, which app/src/engine/library.ts has too.
 ``links`` is the short link's data (link.short_plan, format 2) of every plan above that has one: the app builds each
 of them with its engine and gets the stored plan back. ``demo.link.txt`` is the demo plan's link as Tröskel sends
 it (the short one) and ``demo.full.link.txt`` the link with the whole plan (format 1).
@@ -27,7 +28,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
-from lopanalys.plan import codec, demo, ics, link, text
+from lopanalys.plan import codec, demo, ics, library, link, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
 from lopanalys.plan.models import Capacity, Goal, PlanRequest, SportRole
 from lopanalys.plan.rolling import roll_forward
@@ -221,7 +222,8 @@ TEXT_PLANS = ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-t
 
 def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
     """What the app shows of a workout, written by the Python side (text.py, resolve.py): the title and every part
-    as one line, in both languages, for the first workouts of each sport and template of a plan with several sports."""
+    as one line, how it should feel, its tips and drills, in both languages, for the first workouts of each sport and
+    template of a plan with several sports."""
     out = []
     for name in TEXT_PLANS:
         stored = plans[name]
@@ -234,7 +236,8 @@ def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
             for lang in ("sv", "en"):
                 set_language(lang)
                 lines = [text.plain(x) for x in text.workout_lines(w, plan.capacity_on(w.sport, w.date), plan.zone_system)]
-                out.append({"plan": name, "key": w.key, "lang": lang, "title": plan.title(w), "lines": lines})
+                out.append({"plan": name, "key": w.key, "lang": lang, "title": plan.title(w), "lines": lines,
+                            "feel": text.feel_line(w), "tips": text.tips(w), "drills": text.drills(w)})
     set_language("sv")
     return out
 
@@ -334,7 +337,8 @@ def engine_fixtures() -> dict[str, Any]:
             raise AssertionError(name)
     return {"engine_version": ENGINE_VERSION, "build": build, "roll": {"plan": codec.plan_to_dict(rolling), "request":
             codec.request_to_dict(rolling.request), "cases": roll}, "plans": plans, "rebuild": rebuilds,
-            "texts": text_fixtures(plans), "links": short_links(build, roll, rolling, plans)}
+            "texts": text_fixtures(plans), "links": short_links(build, roll, rolling, plans),
+            "guide": {"tips": library.TIPS, "drills": library.DRILLS}}
 
 
 def short_links(build: list[dict[str, Any]], roll: list[dict[str, Any]], rolling: Any,

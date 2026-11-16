@@ -1,7 +1,8 @@
 import { t } from "../i18n";
-import { addDays, dayMonth } from "../model/dates";
+import { addDays, dayMonth, mondayOf } from "../model/dates";
 import { planEnd, planStart, workoutsOn } from "../model/plan";
 import type { IsoDate, StoredPlan } from "../model/types";
+import { Extras, SeasonStrip, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
 import { dayLabel, WorkoutCard } from "./parts";
 
 function nextWorkoutDay(stored: StoredPlan, after: IsoDate): IsoDate | null {
@@ -11,7 +12,7 @@ function nextWorkoutDay(stored: StoredPlan, after: IsoDate): IsoDate | null {
   return best;
 }
 
-export function Today({ stored, today }: { stored: StoredPlan; today: IsoDate }) {
+export function Today({ stored, today, log = NO_LOG, onLog = ignore }: { stored: StoredPlan; today: IsoDate } & Partial<LogProps>) {
   const tomorrow = addDays(today, 1);
   const now = workoutsOn(stored, today);
   const next = workoutsOn(stored, tomorrow);
@@ -25,13 +26,18 @@ export function Today({ stored, today }: { stored: StoredPlan; today: IsoDate })
         {start && today < start ? <p class="notice">{t("ui.today.before", { date: dayMonth(start) })}</p> : null}
         {end && today > end ? <p class="notice">{t("ui.today.after")}</p> : null}
         {now.length ? (
-          now.map((w) => <WorkoutCard key={w.key} stored={stored} w={w} big />)
+          now.map((w) => (
+            <WorkoutCard key={w.key} stored={stored} w={w} big>
+              <StatusPicker stored={stored} w={w} log={log} onLog={onLog} />
+            </WorkoutCard>
+          ))
         ) : (
           <article class="workout big rest">
             <h3>{t("ui.today.rest")}</h3>
             <p>{t("ui.today.rest_text")}</p>
           </article>
         )}
+        <Extras stored={stored} day={today} log={log} onLog={onLog} />
       </div>
       <div class="col">
         <h2>{t("ui.today.tomorrow")}</h2>
@@ -43,6 +49,8 @@ export function Today({ stored, today }: { stored: StoredPlan; today: IsoDate })
             {coming ? <p class="muted">{t("ui.today.next", { day: dayLabel(coming) })}</p> : null}
           </article>
         )}
+        <WeekNumbers stored={stored} monday={mondayOf(today)} log={log} />
+        <SeasonStrip stored={stored} today={today} />
       </div>
     </section>
   );

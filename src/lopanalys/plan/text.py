@@ -5,6 +5,7 @@ from typing import Any
 
 from lopanalys.core.i18n import t
 
+from . import library
 from .models import RUNNING, Capacity, Part, Plan, Workout
 from .periodize import first_week_minutes
 from .resolve import Target, band_targets, targets
@@ -54,6 +55,29 @@ def workout_lines(workout: Workout, capacity: Capacity | None, system: str) -> l
     zt = targets(capacity, system, workout.sport)
     bands = band_targets(capacity, system, workout.sport) if any(p.band for p in workout.parts) else {}
     return [part_line(p, zt, workout.sport, bands) for p in workout.parts]
+
+
+def feel_line(workout: Workout) -> str:
+    """How the workout should feel (library.feel): 'Z4, ansträngning 7 av 10', 'Z2–Z3, ansträngning 4–6 av 10',
+    'Ansträngning 7 av 10' without a zone; '' for a race."""
+    f = library.feel(workout.parts) if workout.goal is None else None
+    if f is None:
+        return ""
+    lo, hi, rlo, rhi = f
+    rpe = str(rlo) if rlo == rhi else f"{rlo}–{rhi}"
+    if lo is None:
+        return t("plan.feel.effort", rpe=rpe)
+    return t("plan.feel.zone", zone=lo if lo == hi else f"{lo}–{hi}", rpe=rpe)
+
+
+def tips(workout: Workout) -> list[str]:
+    """The workout's tips (library.TIPS), in the current language."""
+    return [t(f"plan.tip.{k}") for k in library.TIPS.get(workout.template_id, ())]
+
+
+def drills(workout: Workout) -> list[str]:
+    """Drills to choose from (library.DRILLS): the technique swim's."""
+    return [t(f"plan.drill.{k}") for k in library.DRILLS.get(workout.template_id, ())]
 
 
 def plain(line: dict[str, Any]) -> str:

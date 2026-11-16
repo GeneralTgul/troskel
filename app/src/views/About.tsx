@@ -11,9 +11,13 @@ interface Props {
   onLang: (l: Lang) => void;
   onDelete: () => void;
   onNewPlan?: () => void;
+  wall?: boolean;
+  /** Missing until there is a plan to show on the wall. */
+  onWall?: (on: boolean) => void;
+  canKeepAwake?: boolean;
 }
 
-export function About({ lang, stored, onLang, onDelete, onNewPlan }: Props) {
+export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false, onWall, canKeepAwake = true }: Props) {
   return (
     <section class="view about">
       <h2>{t("ui.about.title")}</h2>
@@ -28,6 +32,18 @@ export function About({ lang, stored, onLang, onDelete, onNewPlan }: Props) {
       </div>
 
       {onNewPlan ? <button class="secondary wide" onClick={onNewPlan}>{t("ui.load.new")}</button> : null}
+
+      {onWall ? (
+        <>
+          <h3>{t("ui.about.wall_title")}</h3>
+          <label class="switch">
+            <input type="checkbox" checked={wall} onChange={(e) => onWall((e.target as HTMLInputElement).checked)} />
+            <span class="day-name">{t("ui.about.wall_switch")}</span>
+          </label>
+          <p class="muted small">{t("ui.about.wall")}</p>
+          {wall && !canKeepAwake ? <p class="notice small">{t("ui.about.wall_no_lock")}</p> : null}
+        </>
+      ) : null}
 
       <h3>{t("ui.about.privacy_title")}</h3>
       <p>{t("ui.about.privacy")}</p>

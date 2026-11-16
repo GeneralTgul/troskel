@@ -13,6 +13,10 @@
   --danger: #b42318;
   --rest: #c9c5bb;
   --today: #16181b;
+  /* The athlete's log: done (and a plan reached, an easy week), partly done. Not a zone colour's job. */
+  --done: #1e8a3c;
+  --partial: #9a6a00;
+  --load: #cfcabf;
   --radius: 16px;
   --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 4px 16px rgb(0 0 0 / 5%);
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -32,6 +36,9 @@
     --danger: #ff7a70;
     --rest: #4a525a;
     --today: #eef0f2;
+    --done: #45c267;
+    --partial: #e3b341;
+    --load: #3a4249;
     --shadow: none;
   }
 }
@@ -202,13 +209,97 @@ button:disabled { opacity: .5; cursor: default; }
 .day-name { font-weight: 600; }
 .time-fields { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-top: 6px; }
 .time-fields label { display: flex; flex-direction: column; }
-input[type="number"], input[type="time"], input[type="date"], input[type="url"] {
+input[type="number"], input[type="time"], input[type="date"], input[type="url"], input[type="text"], select {
   min-height: 48px; font: inherit; font-variant-numeric: tabular-nums; padding: 0 12px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
 }
 input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 .add-date { display: flex; gap: 8px; margin: 10px 0 20px; }
 .add-date input { flex: 1; }
+
+/* The box for the day */
+.guide h4 { margin: .8rem 0 .2rem; font-size: .95rem; }
+.tips { margin: 0; padding-left: 1.2rem; }
+.tips li { margin: .2rem 0; }
+
+/* Ticking off: done, partly, missed */
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.status-label { width: 100%; }
+.status-pick { display: flex; width: 100%; max-width: 420px; }
+.status-pick button { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+.status-pick button.on.st-done { background: var(--done); color: #fff; }
+.status-pick button.on.st-partial { background: var(--partial); color: #fff; }
+.status-pick button.on.st-missed { background: var(--danger); color: #fff; }
+@media (prefers-color-scheme: dark) { .status-pick button.on { color: var(--bg) !important; } }
+.status-minutes { display: flex; flex-direction: column; }
+.st-mark {
+  display: inline-block; margin-top: 4px; border-radius: 999px; padding: 0 8px; font-size: .75rem; font-weight: 600;
+  color: #fff; background: var(--muted);
+}
+.st-mark.st-done { background: var(--done); }
+.st-mark.st-partial { background: var(--partial); }
+.st-mark.st-missed { background: var(--danger); }
+@media (prefers-color-scheme: dark) { .st-mark { color: var(--bg); } }
+.day[role="button"] { cursor: pointer; }
+.day-extra .day-title { color: var(--muted); }
+
+/* Sessions outside the plan */
+.extras { margin: 4px 0 12px; }
+.extra-list { list-style: none; padding: 0; margin: 0 0 4px; }
+.extra-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.extra-list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.extra-list .link-btn { font-size: 1.4rem; min-width: 44px; text-decoration: none; }
+.extra-form {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9em), 1fr)); gap: 8px 12px; align-items: end;
+  background: var(--surface); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow);
+}
+.extra-form label { display: flex; flex-direction: column; min-width: 0; }
+.extra-form input, .extra-form select { width: 100%; }
+.extra-actions { display: flex; gap: 8px; grid-column: 1 / -1; flex-wrap: wrap; }
+
+/* The week in numbers */
+.sum-rows { list-style: none; padding: 0; margin: 0; }
+.sum-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sum-name { font-weight: 600; overflow-wrap: anywhere; }
+.sum-val { white-space: nowrap; }
+.sum-row .num { font-weight: 700; }
+.meter { grid-column: 1 / -1; height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.sum-row.reached .meter i { background: var(--done); }
+.sum-row.reached .sum-val { color: var(--done); }
+.sum-row.extra .sum-name { font-weight: 500; }
+
+/* The season strip */
+.season { margin-top: 8px; }
+.strip { position: relative; display: flex; gap: 4px; margin: 8px 0 4px; }
+.strip-block { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.strip-name { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-weeks { display: flex; gap: 2px; }
+.strip-weeks i { flex: 1 1 0; min-width: 2px; height: 22px; border-radius: 3px; background: var(--load); }
+.strip-weeks i.easy { background: var(--done); }
+.strip-weeks i.kind-race { background: var(--accent); }
+.strip-now {
+  position: absolute; bottom: -4px; height: 32px; width: 3px; border-radius: 2px; background: var(--today);
+  transform: translateX(-50%); box-shadow: 0 0 0 2px var(--bg);
+}
+.strip-legend .key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; }
+.strip-legend .key.easy { background: var(--done); }
+
+/* A day on top of the week */
+.sheet-back {
+  position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 45%); display: flex; justify-content: center;
+  align-items: flex-end; padding: max(16px, env(safe-area-inset-top)) 0 0;
+}
+.sheet {
+  width: 100%; max-width: 720px; max-height: 100%; overflow: auto; background: var(--bg); border-radius: 20px 20px 0 0;
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.sheet-head h2 { margin: 0; }
+@media (min-width: 760px) {
+  .sheet-back { align-items: center; padding: 24px; }
+  .sheet { border-radius: 20px; max-height: calc(100dvh - 48px); }
+}
 
 /* Welcome, about, QR */
 .welcome { max-width: 560px; margin: 0 auto; }

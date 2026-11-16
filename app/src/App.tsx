@@ -5,8 +5,10 @@ import { today as todayIn } from "./model/dates";
 import { liveDemo } from "./model/demo";
 import { toIcs } from "./model/ics";
 import { linkData, PlanError, readPlanText } from "./model/link";
+import { keepFor, type TrainingLog } from "./model/log";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
+import { canKeepAwake, idleTimer, keepAwake, WALL_IDLE_MS } from "./model/wall";
 import { About } from "./views/About";
 import { Overview } from "./views/Overview";
 import { Qr } from "./views/Qr";
@@ -38,6 +40,9 @@ export interface AppProps {
   onIncomingRead?: () => void;
   download?: (name: string, text: string, type: string) => void;
   hasCamera?: boolean;
+  /** The wall mode's screen lock (wall.keepAwake); a stand-in in the tests. */
+  keepAwake?: () => () => void;
+  canKeepAwake?: boolean;
 }
 
 function errorText(e: unknown): string {
@@ -46,6 +51,8 @@ function errorText(e: unknown): string {
 
 export function App(props: AppProps) {
   const { store, engine } = props;
+  // A tablet on the wall runs for days: the date is read again every minute in the wall mode (`tick`).
+  const [, setTick] = useState(0);
   const today = todayIn(props.now?.() ?? new Date(), props.timeZone);
   const [lang, setLangState] = useState<Lang>(() => {
     const l = store.settings().lang ?? deviceLang();
@@ -60,9 +67,19 @@ export function App(props: AppProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [qr, setQr] = useState(false);
   const [welcome, setWelcome] = useState(false);
+  const [log, setLogState] = useState<TrainingLog>(() => store.log());
+  const [wall, setWall] = useState(() => store.settings().wall === true);
+  // Bumped when the wall mode goes back home: the views start again, the week view on this week.
+  const [home, setHome] = useState(0);
+
+  const onLog = (l: TrainingLog) => {
+    store.setLog(l);
+    setLogState(l);
+  };
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
     store.setPlan(p, isDemo);
+    onLog(keepFor(store.log(), p));
     setStored(p);
     setDemo(isDemo);
     setPending(null);
@@ -101,6 +118,33 @@ export function App(props: AppProps) {
     return () => clearTimeout(id);
   }, [toast]);
 
+  useEffect(() => {
+    if (!wall) return;
+    const release = (props.keepAwake ?? keepAwake)();
+    const timer = idleTimer(WALL_IDLE_MS, () => {
+      setTab("today");
+      setWelcome(false);
+      setQr(false);
+      setHome((h) => h + 1);
+    });
+    const poke = () => timer.poke();
+    const events = ["pointerdown", "keydown", "touchstart", "wheel"];
+    for (const e of events) globalThis.addEventListener?.(e, poke, { passive: true });
+    timer.poke();
+    const minute = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => {
+      timer.stop();
+      clearInterval(minute);
+      for (const e of events) globalThis.removeEventListener?.(e, poke);
+      release();
+    };
+  }, [wall]);
+
+  const changeWall = (on: boolean) => {
+    store.setSettings({ ...store.settings(), wall: on });
+    setWall(on);
+  };
+
   const changeLang = (l: Lang) => {
     setLang(l);
     store.setSettings({ ...store.settings(), lang: l });
@@ -117,6 +161,8 @@ export function App(props: AppProps) {
 
   const deleteAll = () => {
     store.clear();
+    setLogState(store.log());
+    setWall(false);
     setStored(null);
     setDemo(false);
     setPending(null);
@@ -133,8 +179,8 @@ export function App(props: AppProps) {
   if (qr) body = <Qr onText={readText} onClose={() => setQr(false)} />;
   else if (!stored || welcome)
     body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} />;
-  else if (tab === "today") body = <Today stored={stored} today={today} />;
-  else if (tab === "week") body = <Week stored={stored} today={today} onCalendar={calendar} />;
+  else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={log} onLog={onLog} />;
+  else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={log} onLog={onLog} />;
   else if (tab === "plan") body = <Overview stored={stored} today={today} onCalendar={calendar} />;
   else if (tab === "times")
     body = (
@@ -170,6 +216,7 @@ export function App(props: AppProps) {
         {body}
         {(tab === "about" && showTabs) || (!stored && !qr) ? (
           <About lang={lang} stored={stored} onLang={changeLang} onDelete={deleteAll}
+            wall={wall} onWall={stored ? changeWall : undefined} canKeepAwake={props.canKeepAwake ?? canKeepAwake()}
             onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined} />
         ) : null}
       </main>
