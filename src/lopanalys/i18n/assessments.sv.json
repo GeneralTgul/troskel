@@ -2,7 +2,7 @@
   "assessments.stage.warmup": "Uppvärmning",
   "assessments.stage.n": "Steg {n}",
   "assessments.stage.ramp": "Trappa {n}",
-  "assessments.stage.speed": "Fart {n}: {kmh} km/h",
+  "assessments.stage.speed": "Fart {n}: {pace} min/km ({kmh} km/h)",
   "assessments.stage.sprint": "Slutspurt",
   "assessments.level.beginner": "nybörjare",
   "assessments.level.recreational": "motionär",

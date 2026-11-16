@@ -84,3 +84,10 @@ def test_gait_window_only_warmup_when_the_first_stage_is_too_hard():
     recs = _ramp([180, 185, 190])
     w = gait_window(recs, [], 600 + 3 * 60.0)
     assert w["stages"] == [] and w["cutoff_s"] == 600.0
+
+
+def test_gait_stage_label_says_the_pace_first():
+    """The pace first and km/h after, everywhere. The gait stage label is the
+    announcement on the TV when the coach sets the belt by hand."""
+    labels = [s.label for s in library.gait_check([10.0, 12.5]).stages]
+    assert labels == ["Fart 1: 6:00 min/km (10,0 km/h)", "Fart 2: 4:48 min/km (12,5 km/h)"]

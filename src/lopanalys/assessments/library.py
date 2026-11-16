@@ -26,7 +26,7 @@ from typing import Any
 from lopanalys.assessments.protocol import Protocol, Stage
 from lopanalys.core.i18n import t
 from lopanalys.core.models import TestKind
-from lopanalys.core.sport import Sport, sport_of
+from lopanalys.core.sport import Sport, profile, sport_of
 
 
 @dataclass(frozen=True)
@@ -312,7 +312,10 @@ def gait_check(speeds_kmh: list[float], stage_s: float = 120, *, incline_pct: fl
     if warmup_s > 0:
         st.append(Stage(limits.speed(min(speeds_kmh)), inc, warmup_s, t("assessments.stage.warmup"), is_warmup=True))
     for i, v in enumerate(speeds_kmh):
-        st.append(Stage(limits.speed(v), inc, stage_s, t("assessments.stage.speed", n=i + 1, kmh=fmt_kmh(limits.speed(v))),
+        # pace first, km/h after: the runner reads the pace
+        label = t("assessments.stage.speed", n=i + 1, pace=profile(Sport.RUN).pace_str(limits.speed(v)),
+                  kmh=fmt_kmh(limits.speed(v)))
+        st.append(Stage(limits.speed(v), inc, stage_s, label,
                         record_gait=True))
     return Protocol(
         name=t("assessments.protocol.gait.name"),
