@@ -18,10 +18,10 @@ from typing import Any
 
 from markupsafe import Markup
 
-from lopanalys.core.i18n import language, set_language, t
+from lopanalys.core.i18n import has, language, set_language, t
 from lopanalys.core.zone_colors import sport_color, zone_color
 from lopanalys.plan import library
-from lopanalys.plan.models import BORROWS, STRENGTH, SWIM, WEEKDAY_KEYS, ZONES, Capacity, Plan, Week
+from lopanalys.plan.models import BORROWS, PLAN_SPORTS, STRENGTH, SWIM, WEEKDAY_KEYS, ZONES, Capacity, Plan, Week
 from lopanalys.plan.periodize import core_slots
 from lopanalys.plan.resolve import SPLIT_SPORTS, split_str, swim_str, targets
 from lopanalys.plan.text import duration, hours, progress_axis, volume_start, workout_lines
@@ -301,6 +301,48 @@ def _goal_line(g: Any) -> str:
                                   if g.distance_km else "", date_long(g.date), g.target) if x)
 
 
+def _guide(plan: Plan) -> list[dict[str, Any]]:
+    """*Passen i schemat*: the templates this plan uses, one group per sport that has templates of its own
+    (running, bike, SkiErg, swimming, strength), in the order of the plan's sports. Skis use the SkiErg's
+    templates and are named in its heading. A plan with one group (running alone) has no headings."""
+    req = plan.request
+    order = list(dict.fromkeys([req.main_sport, *req.sports, *PLAN_SPORTS, STRENGTH]))
+    groups: dict[str, dict[str, Any]] = {}
+    for w in plan.workouts:
+        try:
+            tpl = library.get(w.template_id)
+        except KeyError:
+            continue
+        if tpl.family == "race" or not has(f"plan.workout.{tpl.id}.purpose"):
+            continue
+        g = groups.setdefault(tpl.sport, {"by": set(), "ids": {}})
+        g["by"].add(w.sport)
+        g["ids"][tpl.id] = tpl
+    known = list(library.TEMPLATES)
+
+    def place(tpl: Any) -> tuple[int, int]:
+        base = tpl.base or tpl.id
+        return (GUIDE_ORDER.index(base) if base in GUIDE_ORDER else len(GUIDE_ORDER),
+                known.index(tpl.id) if tpl.id in known else len(known))
+
+    out = []
+    def rank(sport: str) -> int:             # the SkiErg's templates stand where the skis are, when only skis use them
+        return min((order.index(s) for s in {sport, *groups[sport]["by"]} if s in order), default=len(order))
+
+    for sport in sorted(groups, key=rank):
+        g = groups[sport]
+        by = sorted(g["by"], key=lambda s: (s != sport, order.index(s) if s in order else len(order)))
+        items = []
+        for tpl in sorted(g["ids"].values(), key=place):
+            title = t(f"plan.workout.{tpl.id}.title")       # the template's own title: the heading names the sport
+            items.append({"title": title[:1].upper() + title[1:], "purpose": t(f"plan.workout.{tpl.id}.purpose"),
+                          "how": t(f"plan.workout.{tpl.id}.how"), "zone": tpl.top_zone or "",
+                          "color": zone_color(ZONES.index(tpl.top_zone)) if tpl.top_zone else UNZONED})
+        out.append({"sport": " · ".join(_sport_name(s) for s in by) if len(groups) > 1 else "",
+                    "color": sport_color(sport), "items": items})
+    return out
+
+
 def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     req = plan.request
     cap = req.capacity_for(req.main_sport)
@@ -357,15 +399,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
               "pace": " · ".join(x for x in (zt[z].power_text, zt[z].pace_text) if x) if z in zt else "",
               "purpose": t(f"assessments.zones.garmin.{z}.purpose")} for i, z in enumerate(ZONES)]
 
-    # ---- the guide: only the workouts this plan uses
-    used = {w.template_id for w in plan.workouts}
-    guide = []
-    for tid in GUIDE_ORDER:
-        if tid in used:
-            tpl = library.get(tid)
-            guide.append({"title": t(f"plan.workout.{tid}.title"), "purpose": t(f"plan.workout.{tid}.purpose"),
-                          "how": t(f"plan.workout.{tid}.how"), "zone": tpl.top_zone or "",
-                          "color": zone_color(ZONES.index(tpl.top_zone)) if tpl.top_zone else UNZONED})
+    guide = _guide(plan)
     blocks = [{"name": b.name, "color": BLOCK_FILL[b.kind],
                "weeks": t("plan.pdf.week_range", a=b.first_week, b=b.last_week) if b.weeks > 1
                else t("plan.pdf.week_one", a=b.first_week),

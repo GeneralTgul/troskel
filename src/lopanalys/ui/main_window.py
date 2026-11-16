@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QButtonGroup, QHBoxLayout, QLabel, QMainWindow, Q
                                QStackedWidget, QVBoxLayout, QWidget)
 
 from lopanalys.core.i18n import t
+from lopanalys.core.models import TestKind
 from lopanalys.ui import bridge, theme
 from lopanalys.ui.context import GAIT_KINDS, TECHNIQUE_KINDS, AppContext, is_active
 from lopanalys.ui.lock import IdleWatcher, LockScreen, check_pin
@@ -400,6 +401,10 @@ class MainWindow(QMainWindow):
         self.operator = None
 
     def open_session(self, session_id: int) -> None:
+        s = self.ctx.store.session(session_id)
+        if s is not None and s.kind == TestKind.SWIM_CSS:     # a manual test has no result page: its form
+            self.history.edit_css(s)
+            return
         self.results.flush()
         try:
             self.results.load_session(session_id)

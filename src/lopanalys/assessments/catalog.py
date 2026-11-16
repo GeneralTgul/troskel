@@ -23,6 +23,7 @@ SPORT_TESTS: dict[Sport, tuple[str, ...]] = {
     Sport.RUN: ("lactate", "max_hr", "hr_zones", "gait", "zones", "vo2max"),
     Sport.BIKE: ("bike_lactate", "bike_ramp", "bike_ftp", "bikefit", "bike_zones"),
     Sport.SKIERG: ("skierg_lactate", "skierg_ramp", "ski_technique", "skierg_zones"),
+    Sport.SWIM: ("swim_css",),
 }
 TESTS = SPORT_TESTS[Sport.RUN]
 FIELDS = ("measures", "how", "time", "equipment", "standard", "get", "limits")

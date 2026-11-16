@@ -89,8 +89,6 @@
   {% endfor %}
 </div>
 
-<div class="plan-promise"><b>{{ t("plan.pdf.promise.title") }}</b> {{ t("plan.pdf.promise.text") }}</div>
-{% if notes %}<div class="plan-notes">{% for n in notes %}<p>{{ n }}</p>{% endfor %}</div>{% endif %}
 </div>
 
 {# ============================== page 2: how to read the plan ============================== #}
@@ -99,6 +97,12 @@
     <div class="kicker">{{ t("plan.pdf.read.kicker") }}</div>
     <h2>{{ t("plan.pdf.read.title") }}</h2>
     <p class="lead">{{ t("plan.pdf.read.lead") }}</p>
+  </div>
+
+  {# The box and the notes open this page: on the cover they did not fit and fell alone on a page of their own. #}
+  <div class="plan-use">
+  <div class="plan-promise"><b>{{ t("plan.pdf.promise.title") }}</b> {{ t("plan.pdf.promise.text") }}</div>
+  {% if notes %}<div class="plan-notes">{% for n in notes %}<p>{{ n }}</p>{% endfor %}</div>{% endif %}
   </div>
 
   <h3 class="keep">{{ t("plan.pdf.blocks.title") }}</h3>
@@ -127,18 +131,22 @@
   </div>
 
   <h3 class="keep">{{ t("plan.pdf.guide.title") }}</h3>
+  {% for group in guide %}
+  {% if group.sport %}<h4 class="guide-sport keep"><i style="background: {{ group.color }}"></i>{{ group.sport }}</h4>{% endif %}
   <div class="guide">
-    {% for g in guide %}
+    {% for g in group["items"] %}
     <div class="g"><b><span class="swatch" style="background: {{ g.color }}"></span>{{ g.title }}</b>
       <p>{{ g.purpose }}</p><p class="how">{{ g.how }}</p></div>
     {% endfor %}
   </div>
+  {% endfor %}
 
   <div class="block">
   <h3 class="keep">{{ t("plan.pdf.rules.title") }}</h3>
   <ul class="rules">{% for r in rules %}<li>{{ r }}</li>{% endfor %}</ul>
-  </div>
+  {# inside the block: the disclaimer never stands alone on a page of its own #}
   <p class="disclaimer">{{ t("plan.pdf.disclaimer") }}</p>
+  </div>
 </section>
 
 {# ============================== one page per week ============================== #}

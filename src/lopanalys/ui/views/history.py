@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDial
                                QListWidget, QListWidgetItem, QMessageBox, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
+from lopanalys.assessments import css
 from lopanalys.core import paths
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Session, TestKind
@@ -27,7 +28,7 @@ log = logging.getLogger(__name__)
 
 KIND_ICON = {TestKind.GAIT: "run", TestKind.LACTATE_STEP: "droplet", TestKind.MAX_HR: "heart",
              TestKind.HR_ZONES: "gauge", TestKind.FTP: "gauge",
-             TestKind.BIKEFIT: "camera", TestKind.SKI_TECHNIQUE: "camera"}
+             TestKind.BIKEFIT: "camera", TestKind.SKI_TECHNIQUE: "camera", TestKind.SWIM_CSS: "droplet"}
 COMPARE_COLOURS = ["accent", "accent2", "watch", "muted"]
 
 
@@ -52,6 +53,10 @@ class HistoryView(QWidget):
         self.report_btn = button(t("ui.hist.collected"), "pdf")
         self.report_btn.setToolTip(t("ui.hist.collected_tip"))
         self.report_btn.clicked.connect(self.collected_report)
+        self.css_btn = button(t("ui.hist.css"), "droplet")
+        self.css_btn.setToolTip(t("ui.hist.css_tip"))
+        self.css_btn.clicked.connect(self.new_css)
+        hdr.add_action(self.css_btn)
         hdr.add_action(self.cmp_btn)
         hdr.add_action(self.report_btn)
         hdr.add_action(self.open_btn)
@@ -181,6 +186,8 @@ class HistoryView(QWidget):
             elif (res.get("power") or {}).get("ftp_w"):      # cycling: FTP from the 20 minute test or the ramp
                 summary = f"FTP {num(res['power']['ftp_w'], 0)} W" + (
                     f" · {t('ui.hist.maxhr', n=res['max_hr'])}" if res.get("max_hr") and s.kind == TestKind.MAX_HR else "")
+            elif s.kind == TestKind.SWIM_CSS and res.get("css_s100"):
+                summary = t("ui.hist.css_pace", pace=css.pace_str(res["css_s100"]))
             elif res.get("max_hr"):
                 summary = t("ui.hist.maxhr", n=res["max_hr"])
             else:
@@ -205,14 +212,35 @@ class HistoryView(QWidget):
 
     def _sel_changed(self) -> None:
         sel = self._selected()
+        measured = not any(s.kind == TestKind.SWIM_CSS for s in sel)   # a manual test has no curve and no report
         self.open_btn.setEnabled(len(sel) == 1)
-        self.cmp_btn.setEnabled(len(sel) >= 2)
-        self.report_btn.setEnabled(len(sel) >= 2)
+        self.cmp_btn.setEnabled(len(sel) >= 2 and measured)
+        self.report_btn.setEnabled(len(sel) >= 2 and measured)
+        self.css_btn.setEnabled(self.alist.currentItem() is not None)
 
     def _open(self) -> None:
         sel = self._selected()
-        if len(sel) == 1 and sel[0].id is not None:
+        if len(sel) == 1 and sel[0].kind == TestKind.SWIM_CSS:
+            self.edit_css(sel[0])
+        elif len(sel) == 1 and sel[0].id is not None:
             self.open_session.emit(sel[0].id)
+
+    def new_css(self) -> None:
+        """Write in a CSS test (swimming) for the chosen athlete."""
+        it = self.alist.currentItem()
+        if it is not None:
+            self._css_dialog(it.data(Qt.ItemDataRole.UserRole), None)
+
+    def edit_css(self, session: Session) -> None:
+        """Open a saved CSS test in its form (it has no result page)."""
+        a = self.ctx.store.athlete(session.athlete_id)
+        if a is not None:
+            self._css_dialog(a, session)
+
+    def _css_dialog(self, athlete: Any, session: Session | None) -> None:
+        from lopanalys.ui.views.css_test import CssTestDialog
+        self.css_dialog = CssTestDialog(self.ctx, athlete, session, self)
+        self.css_dialog.exec()
 
     def compare(self) -> None:
         sel = self._selected()[:4]

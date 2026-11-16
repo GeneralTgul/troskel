@@ -41,7 +41,7 @@ FAST = 20                 # the demo clock runs this many times faster, so a sta
 DEMO_TEST_DATES = (datetime(2026, 4, 14, 8, 30, tzinfo=timezone.utc),
                    datetime(2026, 8, 18, 8, 30, tzinfo=timezone.utc))
 VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost", "testerna", "testerna-cykel",
-         "historik",
+         "historik", "simtest",
          "jamforelse", "resultat-laktat", "resultat-zoner", "resultat-klocka", "resultat-vo2max", "skicka",
          "traningsschema", "traningsschema-idrotter", "traningsschema-mal",
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
@@ -357,6 +357,16 @@ class Studio:
         self.win.go("history")
         self.win.history.select_athlete(self.erik.id)
         return self.win
+
+    def simtest(self) -> Any:
+        """The form for the swimming test with two times written in."""
+        from lopanalys.ui.views.css_test import CssTestDialog
+        dlg = CssTestDialog(self.win.ctx, self.erik, None, self.win)
+        dlg.t400.setText("6:40")
+        dlg.t200.setText("3:10")
+        dlg.show()
+        self.extra.append(dlg)
+        return dlg
 
     def jamforelse(self) -> Any:
         from lopanalys.ui.views.history import CompareDialog

@@ -111,6 +111,10 @@ def _basis_text(cap: Capacity | None, sport: str) -> str:
     """What a sport's zones come from, under its row in the form."""
     if cap is None:
         return t("ui.plan.sport_basis.effort")
+    if cap.anchors is None and cap.css_s100:                # swimming's CSS test: a pace, no heart rate
+        from lopanalys.assessments.css import pace_str
+        return t("ui.plan.sport_basis.css", pace=pace_str(cap.css_s100),
+                 date=cap.tested.isoformat() if cap.tested else "")
     if cap.anchors is None:
         return t("ui.plan.sport_basis.none")
     if cap.tested:

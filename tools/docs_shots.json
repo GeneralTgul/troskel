@@ -32,6 +32,7 @@
     {"view": "traningsschema-idrotter", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "idrotter.png"},
     {"view": "traningsschema-mal", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "mal-och-halsodeklaration.png"},
     {"view": "historik", "page": "docs/handbok/resultat/resultat.md", "file": "historik.png"},
+    {"view": "simtest", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "simtest.png"},
     {"view": "jamforelse", "page": "docs/handbok/resultat/resultat.md", "file": "jamforelse.png"},
     {"view": "testerna", "page": "docs/handbok/resultat/resultat.md", "file": "testerna.png"},
     {"view": "testerna-cykel", "page": "docs/handbok/resultat/resultat.md", "file": "testerna-cykel.png"},

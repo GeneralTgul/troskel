@@ -460,5 +460,13 @@
   "assessments.protocol.skierg.ski.desc": "{warmup} min uppvärmning som inte filmas, sedan {min} min i jämn takt på {w} W. Det steget filmas från sidan. Åkaren håller målet som visas på TV:n och står på samma tejpade plats varje gång, så att testerna går att jämföra.",
   "assessments.css.error.missing": "Skriv in båda tiderna, 400 m och 200 m.",
   "assessments.css.error.range": "Tiden ser fel ut: 200 m ska vara mellan 1:40 och 10:00, och 400 m mellan 3:20 och 20:00.",
-  "assessments.css.error.order": "400 m ska ta mer än dubbelt så lång tid som 200 m. Har tiderna bytt plats?"
+  "assessments.css.error.order": "400 m ska ta mer än dubbelt så lång tid som 200 m. Har tiderna bytt plats?",
+  "assessments.info.swim_css.title": "CSS-test (simning)",
+  "assessments.info.swim_css.measures": "Ditt kritiska simtempo (CSS, Critical Swim Speed): det tempo per 100 m du ungefär kan hålla länge utan att tröttna fort. Det är ett mått på tröskeln i vattnet och används för att styra simpassen.",
+  "assessments.info.swim_css.how": "Du värmer upp väl. Sedan simmar du 400 m så fort du orkar hålla jämnt, vilar tills du är återhämtad, och simmar 200 m på samma sätt. Starta i vattnet med frånskjut från kanten båda gångerna. Tiderna tas med klocka och skrivs in i programmet.",
+  "assessments.info.swim_css.time": "Cirka 45 minuter med uppvärmning och vila.",
+  "assessments.info.swim_css.equipment": "En bassäng på 25 eller 50 m och ett tidtagarur. Ingen utrustning kopplas till programmet.",
+  "assessments.info.swim_css.standard": "CSS räknas ur skillnaden mellan de två tiderna: tempot per 100 m är (tiden på 400 m minus tiden på 200 m) delat med 2. Metoden kommer från Wakayoshi med flera (1992) och används i den här formen av bland andra Swim Smooth.",
+  "assessments.info.swim_css.get": "Ditt CSS-tempo per 100 m. Träningsschemat räknar simpassens tempo ur det, zon för zon.",
+  "assessments.info.swim_css.limits": "Testet mäter ingen puls och inget laktat, och CSS är en uppskattning av tröskeln. Ojämn fart, en för kort vila eller olika starter ger ett missvisande värde. Tempot gäller den bassänglängd testet simmades i."
 }

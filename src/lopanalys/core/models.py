@@ -101,6 +101,7 @@ class TestKind(str, Enum):
     HR_ZONES = "hr_zones"      # steady steps, then a ramp to exhaustion: zones with speed, no lactate
     FTP = "ftp"                # cycling: 20 minutes as hard as the rider can hold (FTP = 95 % of the mean power)
     BIKEFIT = "bikefit"        # cycling: the rider filmed on the trainer, analysed by pose.bike (pose.technique.BIKEFIT)
+    SWIM_CSS = "swim_css"      # swimming: the 400 m and 200 m times written in by hand (assessments.css), no measurements
     SKI_TECHNIQUE = "ski"      # SkiErg: double poling filmed from the side, analysed by pose.ski (pose.technique.SKI)
 
 

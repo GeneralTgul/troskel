@@ -8,6 +8,7 @@
 - [Öppna träningsschemat](#öppna-träningsschemat)
 - [Fyll i formuläret](#fyll-i-formuläret)
   - [Flera idrotter](#flera-idrotter)
+  - [Simtestet (CSS)](#simtestet-css)
   - [Vad testet ger schemat](#vad-testet-ger-schemat)
 - [Förhandsvisa schemat](#förhandsvisa-schemat)
 - [Förnya schemat](#förnya-schemat)
@@ -55,11 +56,32 @@ Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är
 - **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
 - **Andel:** hur stor del av veckans tid idrotten får, i tiotal procent. Rollen fyller i 60, 30 eller 10 %. Andelarna räknas mot varandra, så 60 och 30 ger två tredjedelar och en tredjedel.
 
-Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner, och simning går på upplevd ansträngning: simtestet (CSS) går inte att göra i programmet än. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
+Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner. Simning tar tempot per 100 m ur idrottarens senaste [simtest](#simtestet-css), och går på upplevd ansträngning när det inte finns något. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
 
 ![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, och tisdagen bara för cykel](images/idrotter.png)
 
 Hur motorn fördelar passen över idrotterna står i [Träningsplanen → Flera idrotter](../../TRANINGSPLAN.md#flera-idrotter).
+
+### Simtestet (CSS)
+
+Simtestet ger det kritiska simtempot (CSS, Critical Swim Speed): tempot per 100 m som idrottaren kan hålla länge, ett mått på tröskeln i vattnet. Testet görs i bassängen utan utrustning, och du skriver in tiderna efteråt.
+
+1. **Idrottaren simmar** 400 m så fort ett jämnt tempo tillåter, vilar tills hen är återhämtad och simmar sedan 200 m på samma sätt. Båda börjar i vattnet med frånskjut från kanten.
+2. **Öppna *Historik*,** välj idrottaren och tryck *Simtest (CSS)*.
+3. **Skriv in tiderna** på 400 m och 200 m som minuter och sekunder (*6:40* eller *6:40,5*), datumet och bassängens längd (25 eller 50 m). Tempot visas direkt under fälten, till exempel *CSS 1:45 /100 m*: skillnaden mellan tiderna delad med två.
+4. **Tryck *Spara*.**
+
+![Formuläret för simtestet: tiderna på 400 m och 200 m, datum, bassäng och det uträknade tempot](images/simtest.png)
+
+Går tiderna inte ihop står felet i rött när du sparar, och inget sparas:
+
+- **en tid saknas** eller går inte att läsa,
+- **en tid är orimlig:** 200 m ska ligga mellan 1:40 och 10:00, och 400 m mellan 3:20 och 20:00,
+- **400 m tar inte mer än dubbelt så lång tid som 200 m:** då har tiderna oftast bytt plats.
+
+Testet står sedan i *Historik* som *Simning · CSS-test* med tempot. Det har ingen resultatsida: *Öppna* visar formuläret igen, där du kan rätta tiderna. Det går inte att jämföra eller ta med i en samlad rapport, eftersom det inte har några mätvärden.
+
+Nästa gång du bygger ett schema med simning står *Tempot ur CSS-testet* med datum och tempo under idrotten, och simpassen får tid per 100 m i varje zon. Zonerna står i [Träningsplanen → Simning](../../TRANINGSPLAN.md#simning).
 
 ### Vad testet ger schemat
 
@@ -87,14 +109,15 @@ Tryck *Förhandsvisa*. Översikten till höger visar:
 
 Schemat börjar på det idrottaren tränar nu och växer mot den tillgängliga tiden, högst nivåns takt (5, 7 eller 8 %) per belastningsvecka. Ligger starten nära den tillgängliga tiden växer det långsammare, så att hela tiden nås först i slutet av uppbyggnaden. Tränar idrottaren mer än dagarna rymmer börjar schemat på all tillgänglig tid och står still i tid; ökningen ligger då i passen. Samma diagram med linjerna finns på utskriftens första sida.
 
-Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter. Veckobladet har dagens pass i tidsordning och veckans belastning längst ned (minuter × zon × idrott, för att jämföra veckorna).
+Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter. Läsanvisningen börjar med rutan *Så använder du schemat* och förklarar under *Passen i schemat* varje sorts pass som schemat har. Veckobladet har dagens pass i tidsordning och veckans belastning längst ned (minuter × zon × idrott, för att jämföra veckorna).
 
 Med flera idrotter, eller med styrkepass, börjar varje pass med idrotten (*Löpning: lugnt pass*), och utskriften har också:
 
 - **en tabell över idrotterna** på första sidan: roll, andel av tiden och testet zonerna bygger på, med datum. Styrkan står sist med antalet pass i veckan,
 - **en rad per idrott med watt eller tempo under *Dina zoner***: cykelns watt, SkiErgens watt och tid per 500 m och, med ett simtest, simningens tid per 100 m, zon för zon. Styrkepassen har ingen zon, bara ansträngningen,
 - **en färg per idrott** bredvid passets namn på veckobladet. Färgerna skiljer sig från zonernas,
-- **veckans tid per idrott** som en stapel längst ned på veckobladet.
+- **veckans tid per idrott** som en stapel längst ned på veckobladet,
+- **passen per idrott i läsanvisningen:** *Passen i schemat* har en rubrik per idrott med idrottens egna pass, också testet i idrotten och styrkepassen. Skidor står ihop med SkiErgen, vars pass de använder.
 
 Hur schemat räknas fram (block, lätta veckor, andelen lugn träning) står i [Träningsplanen](../../TRANINGSPLAN.md#2-planmotorn).
 

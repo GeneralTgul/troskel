@@ -1,10 +1,11 @@
-"""Sport as a concept: running, cycling and SkiErg, and what each one means for a test.
+"""Sport as a concept: running, cycling, SkiErg and swimming, and what each one means for a test.
 
 A test (Session), a protocol, the thresholds and the zones carry a ``Sport`` value. The
 ``SportProfile`` says what the sport's *load* is (the quantity the protocol steps up and the lactate
 curve is drawn against), its unit, how a pace is derived from it, and which device modes set it.
 
-All three sports can be chosen (``selectable``). Cycling runs on a trainer in ERG mode (the
+Running, cycling and SkiErg can be chosen (``selectable``); swimming only has a test that is written in by
+hand (the CSS test). Cycling runs on a trainer in ERG mode (the
 program sets the watt), SkiErg on a Concept2 PM5 that is read and never set (the screen shows the
 target). No Qt imports, no i18n: the texts live in the UI and the report.
 
@@ -23,6 +24,7 @@ class Sport(str, Enum):
     RUN = "run"
     BIKE = "bike"
     SKIERG = "skierg"
+    SWIM = "swim"
 
 
 DEFAULT_SPORT = Sport.RUN   # every test stored before sport existed is a running test
@@ -31,6 +33,11 @@ DEFAULT_SPORT = Sport.RUN   # every test stored before sport existed is a runnin
 def _run_pace_s(speed_kmh: float) -> float:
     """Seconds per kilometre at a speed in km/h."""
     return 3600.0 / speed_kmh
+
+
+def _swim_pace_s(speed_ms: float) -> float:
+    """Seconds per 100 m at a speed in m/s."""
+    return 100.0 / speed_ms
 
 
 def _skierg_pace_s(power_w: float) -> float:
@@ -99,6 +106,10 @@ PROFILES: dict[Sport, SportProfile] = {p.sport: p for p in (
                  ("pm5", "manual", "sim"), False, "stroke", "strokes/min", True,
                  cooldown_load=0.0, moving_load=20.0, still_load=5.0, stop_s=8.0, same_load=0.02,
                  lt2_overshoot=1.10, curve_shift=3.0),
+    # Swimming has no ergometer and no test that runs in the program: its one test (the CSS test,
+    # assessments.css) is written in by hand, so the sport cannot be chosen in the guide.
+    SportProfile(Sport.SWIM, "speed", "m/s", 2, False, "/100 m", _swim_pace_s, "pool",
+                 ("manual",), False, "stroke", "strokes/min", False),
 )}
 
 
