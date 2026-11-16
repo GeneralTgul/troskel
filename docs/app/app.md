@@ -8,6 +8,11 @@
 - [Vad appen gör](#vad-appen-gör)
 - [Hur schemat kommer till appen](#hur-schemat-kommer-till-appen)
   - [Från coach till idrottare](#från-coach-till-idrottare)
+- [Bocka av passen](#bocka-av-passen)
+  - [Veckan i siffror](#veckan-i-siffror)
+  - [Rutan för dagen](#rutan-för-dagen)
+  - [Säsongsremsan](#säsongsremsan)
+- [Väggläget](#väggläget)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
 - [Bygga och köra lokalt](#bygga-och-köra-lokalt)
@@ -21,11 +26,11 @@
 
 Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
-- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och varför det görs. Ett styrkepass har ingen zon. En testdag har inte heller någon zon eller något eget mål, och kortet har en egen färg, violett, som inte är någon zons. Har dagen flera pass står de i tidsordning, och pass utan klocktid sist, som i utskriftens veckoblad. Under det kommer morgondagens pass.
-- *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. En dag med två pass, till exempel löpning och styrka, har färgen från passet som har en zon. Pilarna bläddrar vecka för vecka.
+- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och rutan för dagen: varför passet görs, hur det ska kännas och tips (se [Rutan för dagen](#rutan-för-dagen)). Under passet bockar idrottaren av det: *Gjort*, *Delvis* eller *Missat*. Ett styrkepass har ingen zon. En testdag har inte heller någon zon eller något eget mål, och kortet har en egen färg, violett, som inte är någon zons. Har dagen flera pass står de i tidsordning, och pass utan klocktid sist, som i utskriftens veckoblad. Under det kommer *+ Lägg till ett pass* och, i högra kolumnen på en surfplatta, morgondagens pass, veckan i siffror och säsongsremsan.
+- *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. En dag med två pass, till exempel löpning och styrka, har färgen från passet som har en zon. Ett avbockat pass har sitt märke (*Gjort*, *Delvis*, *Missat*), och ett pass utanför planen står som *+ namn*. Ett tryck på en dag visar dagens pass med rutan för dagen, och fram till i dag går de att bocka av där. Pilarna bläddrar vecka för vecka, och under veckan står veckan i siffror.
 - *Schemat*: målen och testdagarna (i ett schema med flera idrotter med idrotten som testas), blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
-- *Om appen*: språket, integriteten, licensen och knappen som tar bort all data på enheten.
+- *Om appen*: språket, [väggläget](#väggläget), integriteten, licensen och knappen som tar bort all data på enheten.
 
 Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Veckans sju kort står i en rad från 900 punkters bredd, och i två rader på en smalare surfplatta. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
@@ -73,6 +78,47 @@ Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och 
 
 Efter *Förnya* eller ett nytt test ger *Till appen* det nya schemat, med samma schema-id och samma start. Appen har ett schema i taget: varje inläst schema ersätter det sparade (`setPlan` i `app/src/model/storage.ts`) och tar bort tider under *Mina tider* som inte har räknats in än.
 
+## Bocka av passen
+
+Idrottaren bockar av varje pass i *I dag* eller i dagens ruta under *Veckan*: **Gjort**, **Delvis** eller **Missat**. Ett andra tryck på samma val tar bort det. Vid *Delvis* frågar appen hur många minuter som blev gjorda, och tills idrottaren svarar räknas halva passet, i hela femminuter. Ett pass som inte har kommit än går inte att bocka av.
+
+*+ Lägg till ett pass* lägger till ett pass utanför planen, med namn (till exempel yoga), idrott och minuter. Idrotterna är schemats, styrka och *Annat*. Passet står som *+ Yoga* i dagens lista och på veckans kort, och ett tryck på × tar bort det.
+
+Allt sparas på enheten bredvid schemat, i samma lagring som *Mina tider* (`log` i `app/src/model/storage.ts`, se [Integritet](#integritet)), och logiken står i `app/src/model/log.ts`:
+
+- Ett märke hör till passets nyckel (`<schema>-<åå><vv>-<dag>`). Planmotorn behåller nyckeln när den räknar om schemat med nya tider (samma schema-id och samma datum), och passen före `from` ligger kvar som de var, så märkena följer med. Ett nytt schema med samma id (efter *Förnya* i Tröskel) behåller också märkena, och ett schema med ett annat id tar bort dem (`keepFor`). Passen utanför planen ligger kvar, eftersom de är idrottarens och inte schemats.
+- Har ett pass en status från Tröskel (`done`, `missed` eller `skipped` i schemat) visas den tills idrottaren bockar av passet själv.
+- *Ta bort all data på enheten* tar bort märkena och passen utanför planen också.
+
+### Veckan i siffror
+
+Under *I dag* (den här veckan) och under *Veckan* (den visade veckan) står gjort mot planerat per idrott i timmar och minuter, till exempel *Löpning 0:48 av 2:50*. Huvudidrotten står först och styrka sist. Ett gjort pass räknas med hela sin tid, ett delvis gjort med minuterna idrottaren angav, och ett missat inte alls. Stapeln fylls mot veckans plan och blir grön när planen är nådd. Ett lopp har ingen planerad tid och ger ingen egen rad. Passen utanför planen står var för sig som *+ Yoga 0:40 extra* och räknas inte in i planens tid (`weekTotals`).
+
+### Rutan för dagen
+
+Dagens stora kort (och dagen under *Veckan*) har passets guide ur passbiblioteket i Tröskel ([Träningsplanen → Passbiblioteket](../TRANINGSPLAN.md#passbiblioteket)):
+
+- **Varför** och **Så här**, som förut.
+- **Känsla:** zonen och ansträngningen av 10 för de delar som bär passet, till exempel *Z4, ansträngning 7 av 10* (`feelText`, som `text.feel_line` i Python).
+- **Tips:** noll till fyra per pass (`TIPS`).
+- **Övningar att välja bland:** teknikpasset i simning har tio övningar (`DRILLS`).
+
+Tabellerna `TIPS` och `DRILLS` och funktionen `feel` står både i `src/lopanalys/plan/library.py` och i `app/src/engine/library.ts`. Fixturerna (`guide` och `texts` i `engine.json.gz`) bär Pythons tabeller och texter, och `app/test/plan.test.ts` stoppar när appen visar något annat.
+
+### Säsongsremsan
+
+Under *I dag* står blocken fram till målet, en ruta per vecka med bredd efter veckor, och blockens korta namn ovanför (*Grund*, *Uppb.*, *Topp*, *Nedtr.*). De lätta veckorna är gröna, också testveckan, som är en lätt vecka med ett test. Loppveckan har appens orange färg, och ett streck visar i dag. Remsan går fram till nästa A-lopp, annars nästa lopp, annars det sista loppet, och utan lopp visar den hela schemat (`app/src/model/season.ts`).
+
+## Väggläget
+
+För en surfplatta på väggen, som en tavla i hallen. Under *Om appen* slår *Använd väggläget* på det, och valet sparas på enheten:
+
+- **Skärmen hålls tänd** med Screen Wake Lock API (`navigator.wakeLock`). Webbläsaren släpper låset när appen inte syns, så appen tar det igen när den kommer tillbaka. Appen i butikerna använder samma API i sin webbvy: Capacitor har inget eget sätt att hålla skärmen tänd utan ett nytt tillägg, och appen tar inga nya beroenden för det. Saknar enheten API:t säger *Om appen* det, och då får skärmens tidsgräns ställas i enhetens inställningar.
+- **Tillbaka till i dag:** efter 3 minuter utan tryck går appen tillbaka till *I dag*, och *Veckan* till den här veckan. En öppen dag stängs, och ett formulär som inte sparats töms. Varje tryck, tangent eller hjulrörelse börjar om tiden.
+- **Datumet följer klockan:** appen läser datumet varje minut, så att *I dag* byter dag vid midnatt fast ingen rör plattan.
+
+Logiken står i `app/src/model/wall.ts` (`idleTimer`, `keepAwake`), och proven i `app/test/log.test.ts` och `app/test/log_views.test.tsx`. På en riktig surfplatta är väggläget inte provat.
+
 ## Mina tider och planmotorn
 
 När idrottaren sparar nya tider räknar appen om schemat från i morgon med planmotorn, samma regler som i Tröskel. Motorn i appen är en översättning till TypeScript av `src/lopanalys/plan/` (`periodize`, `engine`, `rolling` och passbiblioteket), en fil per Python-modul i `app/src/engine/`, och den provas mot Python-motorn (se nedan).
@@ -90,7 +136,7 @@ Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriv
 
 ## Integritet
 
-Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna och språkvalet sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
+Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
 
 Var de sparas står i `app/src/model/storage.ts`:
 

@@ -2,9 +2,10 @@
 import { getLang, t } from "../i18n";
 import { dayMonth, weekdayLong } from "../model/dates";
 import {
-  duration, mainTarget, mainZone, workoutHow, workoutLines, workoutPurpose, workoutSeconds, planTitle, zoneName,
-  hrText, paceText, powerText,
+  duration, feelText, mainTarget, mainZone, workoutDrills, workoutHow, workoutLines, workoutPurpose, workoutSeconds,
+  workoutTips, planTitle, zoneName, hrText, paceText, powerText,
 } from "../model/plan";
+import type { ComponentChildren } from "preact";
 import type { IsoDate, StoredPlan, StoredWorkout, ZoneCode } from "../model/types";
 import { weekday } from "../model/dates";
 
@@ -50,8 +51,39 @@ export function dayLabel(day: IsoDate): string {
 /** What the pace of a sport is called: per km in running, per 500 m on the SkiErg and per 100 m in the pool. */
 export const PACE_LABEL: Record<string, string> = { skierg: "ui.workout.split", swim: "ui.workout.swim_pace" };
 
-/** The workout as the big card of the day: title, length, the main zone's targets and every part. */
-export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w: StoredWorkout; big?: boolean }) {
+/** The box for the day (the guide): why, how, the feel (zone and effort of 10), tips and, for the technique swim,
+ * drills to choose from. */
+export function Guide({ w }: { w: StoredWorkout }) {
+  if (w.goal) return null;
+  const feel = feelText(w);
+  const tips = workoutTips(w);
+  const drills = workoutDrills(w);
+  return (
+    <div class="explain guide">
+      <p><b>{t("ui.workout.why")}.</b> {workoutPurpose(w)}</p>
+      {feel ? <p class="feel"><b>{t("ui.guide.feel")}.</b> {feel}</p> : null}
+      <p><b>{t("ui.workout.how")}.</b> {workoutHow(w)}</p>
+      {tips.length ? (
+        <>
+          <h4>{t("ui.guide.tips")}</h4>
+          <ul class="tips">{tips.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </>
+      ) : null}
+      {drills.length ? (
+        <>
+          <h4>{t("ui.guide.drills")}</h4>
+          <ol class="tips drills">{drills.map((x, i) => <li key={i}>{x}</li>)}</ol>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** The workout as the big card of the day: title, length, the main zone's targets and every part. `children` come
+ * at the end of a big card: the athlete's mark. */
+export function WorkoutCard({ stored, w, big = false, children }: {
+  stored: StoredPlan; w: StoredWorkout; big?: boolean; children?: ComponentChildren;
+}) {
   const zone = shownZone(w);
   const secs = workoutSeconds(w);
   const tg = zone ? mainTarget(stored, w) : undefined;
@@ -97,12 +129,8 @@ export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w:
           ))}
         </ol>
       ) : null}
-      {big && !w.goal ? (
-        <div class="explain">
-          <p><b>{t("ui.workout.why")}.</b> {workoutPurpose(w)}</p>
-          <p><b>{t("ui.workout.how")}.</b> {workoutHow(w)}</p>
-        </div>
-      ) : null}
+      {big ? <Guide w={w} /> : null}
+      {children}
     </article>
   );
 }

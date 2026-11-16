@@ -1,5 +1,6 @@
 /**
- * Everything the app keeps, on the device only: the plan, the athlete's new times and the settings.
+ * Everything the app keeps, on the device only: the plan, the athlete's new times, what the athlete has ticked off
+ * and the settings.
  * The browser (the PWA) keeps it in localStorage. The app store builds keep it in Capacitor Preferences
  * (UserDefaults on iOS, SharedPreferences on Android), because iOS may empty a web view's localStorage when
  * the phone runs short of space. Preferences is asynchronous: `openStore` reads everything once at start,
@@ -9,6 +10,7 @@ import { Capacitor } from "@capacitor/core";
 import type { Lang } from "../i18n";
 import type { NewAvailability } from "../engine";
 import { checkPlan } from "./link";
+import { checkLog, type TrainingLog } from "./log";
 import type { StoredPlan } from "./types";
 
 export interface Backend {
@@ -18,7 +20,7 @@ export interface Backend {
 }
 
 const PREFIX = "troskel.";
-const KEYS = ["plan", "demo", "times", "settings"] as const;
+const KEYS = ["plan", "demo", "times", "settings", "log"] as const;
 
 /** An asynchronous key-value store, such as Capacitor Preferences. */
 export interface AsyncBackend {
@@ -121,6 +123,8 @@ export async function openStore(
 
 export interface Settings {
   lang?: Lang;
+  /** The wall mode (wall.ts): the screen kept on, back to today after three minutes. */
+  wall?: boolean;
 }
 
 export interface PendingTimes extends Omit<NewAvailability, "from"> {
@@ -172,6 +176,15 @@ export class Store {
 
   setTimes(t: PendingTimes): void {
     this.write("times", t);
+  }
+
+  /** What the athlete has ticked off and added (log.ts). A new plan does not empty it: see `log.keepFor`. */
+  log(): TrainingLog {
+    return checkLog(this.read<unknown>("log"));
+  }
+
+  setLog(l: TrainingLog): void {
+    this.write("log", l);
   }
 
   settings(): Settings {

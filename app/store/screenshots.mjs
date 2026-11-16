@@ -67,9 +67,10 @@ export async function layoutProblems(page) {
     }
     for (const el of document.querySelectorAll("main .chip .zn"))
       if (el.scrollWidth > el.clientWidth + 1) out.push(`the zone name "${el.textContent}" is cut off`);
-    for (const el of document.querySelectorAll("main h2, main h3, main .day-title, main .targets dd, main .bar-label, main .chip")) {
+    for (const el of document.querySelectorAll("main h2, main h3, main .day-title, main .targets dd, main .bar-label, main .chip, "
+                                                + "main .status-pick, main .sum-val, main .strip")) {
       const r = el.getBoundingClientRect();
-      const box = (el.closest(".workout, .day, .bars, .col") ?? document.documentElement).getBoundingClientRect();
+      const box = (el.closest(".workout, .day, .bars, .numbers, .season, .col") ?? document.documentElement).getBoundingClientRect();
       if (r.width && (r.right > width + 1 || r.right > box.right + 1 || r.left < box.left - 1))
         out.push(`"${el.textContent.trim().slice(0, 40)}" does not fit`);
     }
