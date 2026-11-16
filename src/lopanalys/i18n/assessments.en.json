@@ -2,7 +2,7 @@
   "assessments.stage.warmup": "Warm-up",
   "assessments.stage.n": "Stage {n}",
   "assessments.stage.ramp": "Ramp {n}",
-  "assessments.stage.speed": "Speed {n}: {kmh} km/h",
+  "assessments.stage.speed": "Speed {n}: {pace} min/km ({kmh} km/h)",
   "assessments.stage.sprint": "Final sprint",
   "assessments.level.beginner": "beginner",
   "assessments.level.recreational": "recreational",
