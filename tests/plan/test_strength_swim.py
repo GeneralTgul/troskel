@@ -265,3 +265,22 @@ def test_older_requests_and_capacities_read_without_strength_or_css():
     assert "strength_sessions" not in d and all("css_s100" not in x for x in d["capacity"])
     back = codec.request_from_dict(d)
     assert back.strength_sessions == 0 and back.capacity[0].css_s100 is None
+
+
+def test_the_printout_lists_a_day_in_clock_order_and_the_untimed_last():
+    """The same order as ``workoutsOn`` in the app (app/src/model/plan.ts): strength without a time comes after the
+    run at 18, also when it stands first in the plan."""
+    import re
+    from datetime import time
+
+    from lopanalys.report.plan_builder import render_plan_html
+
+    plan = build_plan(c.CASES["run_strength_2"], plan_id="order")
+    wk = plan.weeks[0]
+    gym = next(w for w in wk.workouts if w.strength)
+    run = next(w for w in wk.workouts if w.date == gym.date and not w.strength)
+    rest = [w for w in wk.workouts if w.date != gym.date]
+    wk.workouts[:] = [replace(gym, start=None), replace(run, start=time(18)), *rest]
+    html = render_plan_html(plan)
+    page = re.sub(r"<[^>]+>", " ", html[html.index('<section class="week">'):])
+    assert "18:00" in page and page.index(plan.title(run)) < page.index(plan.title(gym))

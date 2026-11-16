@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { setLang } from "../src/i18n";
-import { planTitle, weekMinutes, workoutMinutes } from "../src/model/plan";
+import { planTitle, weekMinutes, workoutMinutes, workoutsOn } from "../src/model/plan";
 import type { StoredPlan } from "../src/model/types";
 import { WorkoutCard } from "../src/views/parts";
 
@@ -30,6 +30,18 @@ afterEach(() => {
 });
 
 describe("strength and swimming in the app", () => {
+  it("lists a day's workouts in clock order, the ones without a time last (as the printout does)", () => {
+    const p = fx.plans["run-strength"];
+    const day = workoutsOn(p, "2026-11-16");
+    expect(day.map((w) => [w.sport, w.start])).toEqual([["run", "18:00:00"], ["strength", null]]);
+    // Two with a time go by the clock, whatever their order in the plan; two without keep the plan's order.
+    const moved: StoredPlan = JSON.parse(JSON.stringify(p));
+    all(moved).find((w) => w.key === day[1].key)!.start = "07:00:00";
+    expect(workoutsOn(moved, "2026-11-16").map((w) => w.sport)).toEqual(["strength", "run"]);
+    const tri = workoutsOn(fx.plans["triathlon-css"], "2026-11-16");
+    expect(tri.map((w) => [w.sport, w.start])).toEqual([["run", null], ["strength", null]]);
+  });
+
   it("shows strength without zones or targets, with its sport first", () => {
     setLang("sv");
     const p = fx.plans["run-strength"];
