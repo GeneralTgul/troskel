@@ -109,6 +109,36 @@ describe("a plan with several sports in the views", () => {
 });
 
 describe("a test day", () => {
+  it("gives the test day a colour that is no zone's, in the light and in the dark mode", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf-8");
+    const tests = [...css.matchAll(/--test:\s*(#[0-9a-f]{6})/gi)].map((m) => m[1].toLowerCase());
+    expect(tests).toHaveLength(2);
+    const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const far = (a: string, b: string) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));
+    for (const c of tests)
+      for (const z of Object.values(ZONE_COLORS)) expect(far(c, z as string), `${c} ${z}`).toBeGreaterThan(80);
+  });
+
+  it("says which sport a test day tests when the plan has several sports", () => {
+    const days = (name: string) =>
+      [...show(<Overview stored={fx.plans[name]} today="2026-11-18" />).querySelectorAll("li[data-sport]")].map((l) => l.textContent!);
+    setLang("sv");
+    const tri = days("triathlon-css");
+    expect(tri.length).toBeGreaterThan(0);
+    for (const line of tri) expect(line).toMatch(/ · Löpning/);
+    render(null, root!);
+    setLang("en");
+    expect(days("triathlon-css")[0]).toMatch(/ · Running/);
+    render(null, root!);
+    // One sport, with or without strength: only the date.
+    for (const name of ["demo", "run-strength"]) {
+      const one = days(name);
+      expect(one.length, name).toBeGreaterThan(0);
+      for (const line of one) expect(line, name).not.toMatch(/ · /);
+      render(null, root!);
+    }
+  });
+
   it("has no zone and no target of its own, in the card and in the week", () => {
     setLang("sv");
     for (const name of ["demo", "ski-main", "swim-alone-cycle"]) {
@@ -117,12 +147,12 @@ describe("a test day", () => {
       const el = show(<WorkoutCard stored={p} w={test} big />);
       expect(el.querySelector(".stats .chip"), name).toBeNull();
       expect(el.querySelector(".targets"), name).toBeNull();
-      expect((el.querySelector(".workout") as HTMLElement).style.getPropertyValue("--zc"), name).toBe("var(--accent)");
+      expect((el.querySelector(".workout") as HTMLElement).style.getPropertyValue("--zc"), name).toBe("var(--test)");
       render(null, root!);
       const wk = show(<Week stored={p} today={test.date} />);
       const day = wk.querySelector<HTMLElement>(".day.is-today")!;
       expect(day.querySelector(".chip"), name).toBeNull();
-      expect(day.style.getPropertyValue("--zc"), name).toBe("var(--accent)");
+      expect(day.style.getPropertyValue("--zc"), name).toBe("var(--test)");
       render(null, root!);
     }
   });

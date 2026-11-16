@@ -229,6 +229,9 @@ def _error_case(name: str, request: PlanRequest, key: str, args: dict[str, Any])
 
 
 def engine_fixtures() -> dict[str, Any]:
+    # The demo requests carry texts (the name of the test, the goal): always the Swedish ones, whatever the caller
+    # last wrote in.
+    set_language("sv")
     build = []
     for name, request, today in _requests():
         plan = build_plan(request, plan_id="demo", today=today)

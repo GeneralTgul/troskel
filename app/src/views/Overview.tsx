@@ -29,6 +29,8 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
   const max = Math.max(1, ...weeks.map(weekMinutes));
   const goals = [...stored.request.goals].sort((a, b) => a.date.localeCompare(b.date));
   const tests: StoredWorkout[] = weeks.flatMap((w) => w.workouts).filter((w) => w.family === "test");
+  // With several sports a test day says which sport it tests (strength is not a sport with a test).
+  const several = planSports(stored.request).length > 1;
   const start = planStart(stored);
   const end = planEnd(stored);
   const thisWeek = mondayOf(today);
@@ -69,7 +71,10 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
             <h3>{t("ui.plan.tests")}</h3>
             <ul class="list">
               {tests.map((w) => (
-                <li key={w.key}><span class="grow">{dayLabel(w.date)}</span><span class="small">{relative(w.date, today)}</span></li>
+                <li key={w.key} data-sport={w.sport}>
+                  <span class="grow">{dayLabel(w.date)}{several ? ` · ${t(`plan.sport.${w.sport}`)}` : ""}</span>
+                  <span class="small">{relative(w.date, today)}</span>
+                </li>
               ))}
             </ul>
           </>

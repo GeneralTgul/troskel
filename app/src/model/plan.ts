@@ -68,10 +68,13 @@ export function noteText(n: StoredNote): string {
   return t(n.key, Object.fromEntries(n.args));
 }
 
+/** The day's workouts in clock order, the ones without a time last and otherwise in the plan's own order
+ *  (the endurance session before strength): the order of the printout's week page (report/plan_builder.py). */
 export function workoutsOn(stored: StoredPlan, day: IsoDate): StoredWorkout[] {
   const out: StoredWorkout[] = [];
   for (const wk of stored.plan.weeks) for (const w of wk.workouts) if (w.date === day) out.push(w);
-  return out.sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
+  const at = (w: StoredWorkout) => w.start ?? "";
+  return out.sort((a, b) => Number(!a.start) - Number(!b.start) || (at(a) < at(b) ? -1 : at(a) > at(b) ? 1 : 0));
 }
 
 export function weekOf(stored: StoredPlan, monday: IsoDate): StoredWeek | undefined {
