@@ -26,7 +26,7 @@ BORROWS = {"ski": Sport.SKIERG.value}
 # The roles of a sport in a plan, and the share of the weekly time each one gets when none is given.
 ROLES = ("main", "support", "maintenance")
 ROLE_SHARE = {"main": 60, "support": 30, "maintenance": 10}
-# The load of a workout: minutes x zone factor x sport factor (Tom 2026-11-15, #666). A part without a zone
+# The load of a workout: minutes x zone factor x sport factor (#666, decided 2026-11-15). A part without a zone
 # (a test) counts as Z4; a race has no planned length.
 ZONE_LOAD = {"Z1": 0.5, "Z2": 1.0, "Z3": 1.5, "Z4": 2.5, "Z5": 3.5}
 SPORT_LOAD = {RUNNING: 1.0, Sport.BIKE.value: 0.7, Sport.SKIERG.value: 1.0, "ski": 1.0, "swim": 0.7, "strength": 0.8}

@@ -11,7 +11,7 @@ The rules (docs/TRANINGSPLAN.md):
   - At most a quarter of a week's time above LT1; the engine steps the quality down, never up, to hold it.
   - A week never holds more than 10 % above the biggest week before it.
   - The same request always gives the same plan: no randomness anywhere.
-  - Several sports (#666, Tom 2026-11-15): the week is filled as above over every sport at once, so the
+  - Several sports (#666, decided 2026-11-15): the week is filled as above over every sport at once, so the
     hard days, the long run and the ceilings count over all sports. Then every workout gets its sport
     (``_Filler._sports``): the long run and the test in the main sport, the rest to the sport furthest
     behind its share of the week among the sports its slot allows. The shares shift towards the main sport
