@@ -20,7 +20,7 @@
 
 Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
-- *I dag*: dagens pass stort, med tid, zon, puls och tempo, varje del av passet och varför det görs. Under det kommer morgondagens pass.
+- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m), varje del av passet och varför det görs. Under det kommer morgondagens pass.
 - *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. Pilarna bläddrar vecka för vecka.
 - *Schemat*: målen och testdagarna, blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
@@ -47,7 +47,7 @@ Samma data går också
 - som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Ett schema på tolv veckor ryms precis i en QR-kod; ett längre schema skickas som länk eller fil.
 - som fil, `<namn>.troskel`, som är samma JSON i läsbar form (*Öppna en fil*).
 
-Innehållet är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart, uträknade ur testet när coachen skickar schemat. Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `plan_link`, `plan_file`, `read_link`).
+Innehållet är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`), uträknade ur testet när coachen skickar schemat. Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `plan_link`, `plan_file`, `read_link`).
 
 ## Mina tider och planmotorn
 

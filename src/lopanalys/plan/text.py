@@ -5,7 +5,7 @@ from typing import Any
 
 from lopanalys.core.i18n import t
 
-from .models import Capacity, Part, Plan, Workout
+from .models import RUNNING, Capacity, Part, Plan, Workout
 from .periodize import first_week_minutes
 from .resolve import Target, targets
 
@@ -26,23 +26,30 @@ def hours(minutes: float) -> str:
     return f"{m // 60}:{m % 60:02d}"
 
 
-def part_line(part: Part, zone_targets: dict[str, Target]) -> dict[str, Any]:
+# Parts whose name says running ("Löpning", "Nedjogg", "lugn jogg"): in another sport they take the word without it.
+_RUN_WORDED_PARTS = ("steady", "cooldown")
+
+
+def part_line(part: Part, zone_targets: dict[str, Target], sport: str = RUNNING) -> dict[str, Any]:
     """One part as pieces: {"kind", "what", "zone", "zone_name", "target", "rest", "rpe"}."""
     tg = zone_targets.get(part.zone) if part.zone else None
     what = duration(part.duration_s) if part.duration_s else ""
     if part.repeat > 1:
         what = t("plan.fmt.repeat", n=part.repeat, each=what)
+    any_ = "" if sport == RUNNING else "_any"
     rest = ""
     if part.repeat > 1 and part.rest_s:
-        rest = t("plan.part.rest_jog" if part.rest_zone == "Z2" else "plan.part.rest", d=duration(part.rest_s))
-    return {"kind": t(f"plan.part.{part.kind}"), "what": what, "zone": part.zone or "",
+        rest = t(f"plan.part.rest_jog{any_}" if part.rest_zone == "Z2" else "plan.part.rest", d=duration(part.rest_s))
+    kind = f"plan.part.{part.kind}{any_ if part.kind in _RUN_WORDED_PARTS else ''}"
+    return {"kind": t(kind), "what": what, "zone": part.zone or "",
             "zone_name": tg.name if tg else (t(f"assessments.zones.garmin.{part.zone}.name") if part.zone else ""),
             "target": tg.text if tg else "", "rest": rest, "rpe": t("plan.part.rpe", v=part.rpe)}
 
 
 def workout_lines(workout: Workout, capacity: Capacity | None, system: str) -> list[dict[str, Any]]:
-    zt = targets(capacity, system)
-    return [part_line(p, zt) for p in workout.parts]
+    """The workout's parts with the targets of ``capacity`` shown as the workout's sport (watt on the bike)."""
+    zt = targets(capacity, system, workout.sport)
+    return [part_line(p, zt, workout.sport) for p in workout.parts]
 
 
 def plain(line: dict[str, Any]) -> str:

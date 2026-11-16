@@ -13,6 +13,9 @@ TESTED = Capacity(RUNNING, Anchors(192, 46, 165, 174, 13.2, 14.4), date(2026, 11
 FIVE = (Slot(0, 45, start=time(18)), Slot(1, 75, start=time(18)), Slot(3, 75, start=time(18)),
         Slot(5, 60, start=time(9)), Slot(6, 120, start=time(9)))
 THREE = (Slot(1, 60), Slot(3, 60), Slot(6, 90))
+# The bike's and the SkiErg's tests (#666, step 2): LT1 and LT2 in watt.
+BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
+SKIERG_TEST = Capacity("skierg", Anchors(188, 48, 150, 168, 160.0, 210.0, sport="skierg"), date(2026, 11, 1), "Laktattrappa")
 SEVEN = tuple(Slot(d, 90 if d < 5 else 180) for d in range(7))
 
 
@@ -30,6 +33,7 @@ def for_sports(slots, *sports: str) -> tuple:
 RUN_BIKE = (SportRole(RUNNING, "main"), SportRole("bike", "support"))
 FOUR = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("ski", "support", 20),
         SportRole("swim", "maintenance"))
+RUN_BIKE_ERG = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("skierg", "support", 20))
 
 
 HALF = Goal("Halvmaran", date(2027, 2, 6), distance_km=21.1, target="under 1:45")       # Saturday of week 12
@@ -48,4 +52,13 @@ CASES = {
     "run_bike_12": request(for_sports(FIVE, RUNNING, "bike"), goals=(HALF, SEEDING, PARKRUN), roles=RUN_BIKE),
     "four_sports_marathon": request(for_sports(SEVEN, RUNNING, "bike", "ski", "swim"), goals=(MARATHON,),
                                     level="trained", recent=320, roles=FOUR),
+    # The bike's and the SkiErg's own workouts with their tests, the bike alone, and skis as the main sport.
+    "bike_skierg_tested": request(for_sports(FIVE, RUNNING, "bike", "skierg"), goals=(HALF, SEEDING, PARKRUN),
+                                  capacity=(TESTED, BIKE_TEST, SKIERG_TEST), roles=RUN_BIKE_ERG),
+    "bike_alone_26": request(for_sports(FIVE, "bike"), weeks=26, level="beginner", recent=None, capacity=(BIKE_TEST,),
+                             roles=(SportRole("bike"),)),
+    "ski_main": request(for_sports(SEVEN, "ski", "skierg", RUNNING), level="trained", recent=None,
+                        goals=(Goal("Skidlopp", date(2027, 3, 6), sport="ski", distance_km=45),),
+                        capacity=(TESTED, SKIERG_TEST),
+                        roles=(SportRole("ski", "main"), SportRole("skierg", "support"), SportRole(RUNNING, "maintenance"))),
 }

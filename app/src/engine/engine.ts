@@ -14,7 +14,7 @@ import {
 import { LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5 } from "./periodize";
 import { addDays, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
-export const ENGINE_VERSION = "4";
+export const ENGINE_VERSION = "5";
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -261,7 +261,6 @@ class Filler {
     }
     const [ws, usedSteps, longMinutes] = result ?? [[], new Map<string, number>(), null];
     let workouts = ws;
-    this.sports(spec, workouts, new Map(chosen.map((s) => [s.weekday, s])));
     for (const g of spec.goals) workouts.push(this.workout(g.date, "race", null, { goal: g }));
     workouts = byDateKey(workouts);
 
@@ -285,9 +284,14 @@ class Filler {
     return week;
   }
 
-  /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place. */
+  /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place, and then the
+   * sport's template in the place of the running one (library.inSport: the same minutes). */
   sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>): void {
-    if (this.roles.length < 2) return;
+    if (this.roles.length >= 2) this.assign(spec, workouts, slotOf);
+    for (const w of workouts) [w.template_id, w.parts] = library.inSport(w.parts, w.template_id, w.sport);
+  }
+
+  assign(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>): void {
     const share = shares(this.roles, spec.block);
     const total = sum(workouts.map(minutes));
     const done = new Map(this.roles.map((r) => [r.sport, 0]));
@@ -375,6 +379,8 @@ class Filler {
         workouts[i] = this.workout(workouts[i].date, workouts[i].template_id, this.longSlot, { minutes: longMinutes });
       }
     }
+    // Every workout in its sport, before the checks: another sport's template may hold more hard minutes.
+    this.sports(spec, workouts, byWd);
     if (workouts.reduce((s, w) => s + minutes(w), 0) > ceiling || hardShare(workouts) > MAX_HARD_SHARE) return null;
     return [workouts, used, longMinutes];
   }

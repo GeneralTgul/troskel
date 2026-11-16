@@ -18,7 +18,8 @@ from lopanalys.core.i18n import t
 from lopanalys.core.sport import Sport
 
 # The sport keys: core.sport.Sport values ("run", "bike", "skierg") and the sports without a test in
-# Tröskel ("ski", "swim"). Every sport uses the running templates for now, with the sport's name.
+# Tröskel ("ski", "swim"). The bike, the SkiErg and skis have their own templates (plan.library.SPORT_TEMPLATES);
+# swimming uses the running templates with the sport's name until it gets its own (#666, step 3).
 RUNNING = Sport.RUN.value
 PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", "swim")
 # A sport without its own test borrows the zones of another: skis and roller skis take the SkiErg's.

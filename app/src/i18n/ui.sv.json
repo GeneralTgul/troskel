@@ -28,6 +28,8 @@
  "ui.workout.race": "Lopp",
  "ui.workout.hr": "Puls",
  "ui.workout.pace": "Tempo",
+ "ui.workout.power": "Watt",
+ "ui.workout.split": "Tid per 500 m",
  "ui.workout.no_targets": "Inga mål i puls och tempo: kör efter ansträngningen.",
  "ui.week.title": "Vecka {n}",
  "ui.week.prev": "Förra veckan",

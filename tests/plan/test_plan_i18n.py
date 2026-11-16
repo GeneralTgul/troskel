@@ -43,6 +43,7 @@ def test_keys_built_at_run_time_exist():
     keys += [f"plan.level.{x}" for x in LEVELS] + [f"plan.weekday.{d}" for d in WEEKDAY_KEYS]
     keys += [f"plan.month.{m}" for m in range(1, 13)] + [f"plan.pdf.rule.{i}" for i in range(1, 7)]
     keys += [f"plan.part.{k}" for k in ("warmup", "steady", "work", "cooldown", "test", "race")]
+    keys += ["plan.part.steady_any", "plan.part.cooldown_any", "plan.part.rest_jog_any"]
     keys += [f"plan.sport.{s}" for s in PLAN_SPORTS] + [f"plan.note.borrowed.{s}" for s in BORROWS]
     keys += [f"plan.note.no_test_sport.{s}" for s in PLAN_SPORTS if s != RUNNING]
     missing = sorted(k for k in keys if k not in SV)

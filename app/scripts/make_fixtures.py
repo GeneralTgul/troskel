@@ -8,6 +8,8 @@ The example plan is the demo runner of ``lopanalys.plan.demo`` (12 weeks, a half
 ``engine.json.gz`` is what the app's TypeScript engine (app/src/engine) is checked against: plans that
 ``build_plan`` and ``roll_forward`` make from demo requests, and ``rebuild`` on the demo plans with new times.
 ``rebuild`` here is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
+``texts`` is what the app shows of a workout in another sport (title, parts and their watt or time per 500 m),
+written by text.py and resolve.py.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
-from lopanalys.plan import codec, demo, ics, link
+from lopanalys.plan import codec, demo, ics, link, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
 from lopanalys.plan.models import Capacity, Goal, PlanRequest, SportRole
 from lopanalys.plan.rolling import roll_forward
@@ -132,6 +134,45 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
         ("four-sports-rolling", replace(base, availability=sl(tuple((d, 60, None, "core", four) for d in range(7))),
                                         roles=roles4), date(2026, 12, 2)),
     ]
+    # The bike's and the SkiErg's own workouts (#666, step 2): with and without their tests, one sport alone, and skis.
+    erg = ("run", "bike", "skierg")
+    out += [
+        ("bike-skierg-tested", replace(base, availability=sl(tuple((r[0], r[1], None, "core", erg) for r in DEMO_SLOTS)),
+                                       capacity=base.capacity + (BIKE_TEST, skierg),
+                                       roles=(SportRole("run", "main"), SportRole("bike", "support"),
+                                              SportRole("skierg", "support", 20))), None),
+        ("bike-alone", replace(base, availability=sl(tuple((r[0], r[1], None, "core", ("bike",)) for r in DEMO_SLOTS)),
+                               capacity=(BIKE_TEST,), roles=(SportRole("bike"),), level="trained",
+                               goals=(Goal("Cykellopp", date(2027, 2, 13), sport="bike", distance_km=90),)), None),
+        ("ski-main", replace(base, availability=sl(tuple((d, 60 if d < 5 else 150, None, "core", ("ski", "skierg", "run"))
+                                                         for d in range(7))),
+                             capacity=base.capacity + (skierg,), level="trained", recent_weekly_minutes=None,
+                             roles=(SportRole("ski", "main"), SportRole("skierg", "support"), SportRole("run", "maintenance")),
+                             goals=(Goal("Skidlopp", date(2027, 3, 7), sport="ski", distance_km=45),)), None),
+    ]
+    return out
+
+
+BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
+
+
+def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
+    """What the app shows of a workout, written by the Python side (text.py, resolve.py): the title and every part
+    as one line, in both languages, for the first workouts of each sport and template of a plan with several sports."""
+    out = []
+    for name in ("bike-skierg-tested", "ski-main"):
+        stored = plans[name]
+        plan = codec.plan_from_dict(stored["plan"], codec.request_from_dict(stored["request"], stored["athlete"]))
+        seen: set[tuple[str, str]] = set()
+        for w in plan.workouts:
+            if w.goal is not None or (w.sport, w.template_id) in seen:
+                continue
+            seen.add((w.sport, w.template_id))
+            for lang in ("sv", "en"):
+                set_language(lang)
+                lines = [text.plain(x) for x in text.workout_lines(w, plan.capacity_on(w.sport, w.date), plan.zone_system)]
+                out.append({"plan": name, "key": w.key, "lang": lang, "title": w.title, "lines": lines})
+    set_language("sv")
     return out
 
 
@@ -181,6 +222,8 @@ def engine_fixtures() -> dict[str, Any]:
     plans["demo-done"] = done
     run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
     plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
+    for name in ("bike-skierg-tested", "ski-main"):
+        plans[name] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == name), plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
     changes = [  # (name, plan, slots, unavailable, from)
         ("shorter-thursday", "demo", _slots(*DEMO_SLOTS[:2], (3, 45), *DEMO_SLOTS[3:]), [], "2026-11-26"),
@@ -220,7 +263,8 @@ def engine_fixtures() -> dict[str, Any]:
         else:
             raise AssertionError(name)
     return {"engine_version": ENGINE_VERSION, "build": build, "roll": {"plan": codec.plan_to_dict(rolling), "request":
-            codec.request_to_dict(rolling.request), "cases": roll}, "plans": plans, "rebuild": rebuilds}
+            codec.request_to_dict(rolling.request), "cases": roll}, "plans": plans, "rebuild": rebuilds,
+            "texts": text_fixtures(plans)}
 
 
 def _gz(data: Any) -> bytes:

@@ -181,10 +181,10 @@ def test_a_workout_in_another_sport_has_the_sport_in_its_title():
     p = build_plan(c.CASES["four_sports_marathon"])
     titles = {(w.sport, w.template_id): w.title for w in p.workouts if w.goal is None}
     assert titles[(RUNNING, "easy")] == "Lugn löpning"
-    assert titles[("bike", "easy")] == "Cykel: lugnt pass"
-    assert any(t.startswith("Simning: ") for (sp, _), t in titles.items() if sp == "swim")
+    assert titles[("bike", "bike_easy")] == "Cykel: lugnt pass i Z2"
+    assert titles[("swim", "easy")] == "Simning: lugnt pass"          # swimming keeps the running templates
     set_language("en")
-    assert next(w for w in p.workouts if w.sport == "bike" and w.template_id == "easy").title == "Cycling: easy session"
+    assert next(w for w in p.workouts if w.template_id == "bike_easy").title == "Cycling: easy Z2 ride"
 
 
 def test_sports_without_a_test_say_so_and_skis_borrow_the_skierg():
@@ -197,24 +197,27 @@ def test_sports_without_a_test_say_so_and_skis_borrow_the_skierg():
     assert r.capacity_for("ski") is skierg
     stored = link.stored_plan(p)
     assert set(stored["targets"]) == {RUNNING, "skierg", "ski"}
-    assert stored["targets"]["ski"] == stored["targets"]["skierg"]
+    # Skis get the SkiErg's heart rates, but not its watt: on snow the load is not the ergometer's.
+    ski, erg = stored["targets"]["ski"], stored["targets"]["skierg"]
+    assert {z: (x["hr_low"], x["hr_high"]) for z, x in ski.items()} == {z: (x["hr_low"], x["hr_high"]) for z, x in erg.items()}
+    assert erg["Z4"]["power_low_w"] and not any("power_low_w" in x for x in ski.values())
 
 
-def test_other_sports_get_heart_rate_but_no_pace_until_step_2():
+def test_other_sports_get_heart_rate_and_no_pace_in_km_h():
     bike = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
     tg = resolve.targets(bike)
     assert tg["Z4"].hr_low and tg["Z4"].speed_low_kmh is None and tg["Z4"].speed_high_kmh is None
-    assert "min/km" not in tg["Z4"].text
+    assert "min/km" not in tg["Z4"].text and " W" in tg["Z4"].text
     assert resolve.targets(c.TESTED)["Z4"].speed_high_kmh
 
 
 def test_the_load_weighs_minutes_by_zone_and_sport():
     p = build_plan(c.CASES["run_bike_12"])
-    easy = {w.sport: w for w in p.workouts if w.template_id == "easy"}
+    easy = {w.sport: w for w in p.workouts if w.family == "easy"}
     run, bike = easy[RUNNING], easy["bike"]
     assert run.load == pytest.approx(run.minutes * 1.0)            # all in Z2
     assert bike.load == pytest.approx(bike.minutes * 0.7)
-    hard = next(w for w in p.workouts if w.template_id == "threshold")
+    hard = next(w for w in p.workouts if w.family == "threshold")
     assert hard.load > hard.minutes * (0.7 if hard.sport == "bike" else 1.0)
 
 

@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { keys, setLang, t } from "../src/i18n";
-import { duration, hours, paceStr, pyRound, targetText, weekMinutes, workoutLines, workoutTitle, plain } from "../src/model/plan";
+import {
+  duration, hours, hrText, paceStr, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, plain,
+} from "../src/model/plan";
+import type { StoredPlan } from "../src/model/types";
 import { daysFromSlots, slotsFromDays } from "../src/model/times";
 import { demoPlan } from "./helpers";
 
@@ -77,5 +83,36 @@ describe("my times", () => {
     const out = slotsFromDays(days, slots, ["run"]);
     expect(out.map((s) => s.weekday)).toEqual([1, 2, 3, 5, 6]);
     expect(out[1]).toEqual({ weekday: 2, max_minutes: 30, sports: ["run"], start: null, role: "core" });
+  });
+});
+
+describe("the bike's and the SkiErg's targets (#666, step 2)", () => {
+  interface TextCase { plan: string; key: string; lang: "sv" | "en"; title: string; lines: string[] }
+  const fx: { plans: Record<string, StoredPlan>; texts: TextCase[] } = JSON.parse(
+    gunzipSync(readFileSync(resolve(process.cwd(), "test/fixtures/engine.json.gz"))).toString("utf-8"));
+
+  it.each(fx.texts.map((c) => [`${c.plan} ${c.key} ${c.lang}`, c] as const))("shows %s as Python", (_, c) => {
+    setLang(c.lang);
+    const stored = fx.plans[c.plan];
+    const w = stored.plan.weeks.flatMap((wk) => wk.workouts).find((x) => x.key === c.key)!;
+    expect(workoutTitle(w)).toBe(c.title);
+    expect(workoutLines(stored, w).map(plain)).toEqual(c.lines);
+  });
+
+  it("gives watt on the bike, watt and time per 500 m on the SkiErg, and heart rate only on skis", () => {
+    setLang("sv");
+    const plan = fx.plans["bike-skierg-tested"];
+    expect(targetText(plan.targets.bike.Z4, "bike")).toMatch(/^\d+–\d+ slag\/min · \d+–\d+ W$/);
+    expect(targetText(plan.targets.skierg.Z4, "skierg")).toMatch(/^\d+–\d+ slag\/min · \d+–\d+ W · \d:\d\d–\d:\d\d \/500 m$/);
+    const ski = fx.plans["ski-main"].targets.ski.Z4!;
+    expect(ski.power_low_w).toBeUndefined();
+    expect(targetText(ski, "ski")).toMatch(/^\d+–\d+ slag\/min$/);
+  });
+
+  it("reads a target without the watt fields, as sent before", () => {
+    const tg = { ...demoPlan().targets.run.Z4! };
+    expect(targetText(tg, "bike")).toBe(hrText(tg));           // no watt in it, and no pace in km/h on the bike
+    expect(splitStr(null)).toBe("");
+    expect(splitStr(200)).toBe("2:01");                          // core.sport: 500 * (2.80 / 200) ** (1/3) s
   });
 });

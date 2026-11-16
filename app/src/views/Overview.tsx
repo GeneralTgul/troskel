@@ -102,7 +102,7 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
           {ZONES.map((z) => (
             <li key={z} style={{ "--zc": zoneColor(z) }}>
               <span class="swatch" />
-              <span class="grow"><span><b>{z}</b> {zoneName(z)}</span><span class="muted small">{targetText(zt[z])}</span></span>
+              <span class="grow"><span><b>{z}</b> {zoneName(z)}</span><span class="muted small">{targetText(zt[z], main)}</span></span>
             </li>
           ))}
         </ul>
