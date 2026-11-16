@@ -58,9 +58,15 @@ Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är
 - **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* (varannan vecka ett mindre, lugnt långpass när tiden räcker, aldrig dagen före eller efter huvudidrottens långpass) eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
 - **Andel:** hur stor del av veckans tid idrotten får, i tiotal procent. Rollen fyller i 60, 30 eller 10 %. Andelarna räknas mot varandra, så 60 och 30 ger två tredjedelar och en tredjedel.
 
-Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner. Simning tar tempot per 100 m ur idrottarens senaste [simtest](#simtestet-css), och går på upplevd ansträngning när det inte finns något. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
+Under varje idrott utom löpning väljer du testet som zonerna bygger på, som *Bygger på testet* för löpningen:
 
-![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, tisdagen bara för cykel och en andra tid på torsdagen för cykel kl. 07:00](images/idrotter.png)
+- **Har idrotten tester** finns en lista under idrotten med idrottens laktat-, maxpuls- och zontest (simningens [simtest](#simtestet-css)), det senaste förvalt, och sist *Inget test*. Ett sparat schema visar testet det byggdes på. Under simtestet står tempot per 100 m.
+- **Utan tester, eller med *Inget test*,** står vad zonerna bygger på: maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Simning går då på upplevd ansträngning.
+- **Skidor** lånar SkiErgens zoner. Är SkiErg inte med i schemat väljer skidorna bland SkiErgens tester, annars gäller testet under SkiErg.
+
+Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
+
+![Formuläret med löpning som huvudidrott och cykel som stödjande idrott med cykeltestet valt, tisdagen bara för cykel och en andra tid på torsdagen för cykel kl. 07:00](images/idrotter.png)
 
 Hur motorn fördelar passen över idrotterna står i [Träningsplanen → Flera idrotter](../../TRANINGSPLAN.md#flera-idrotter).
 

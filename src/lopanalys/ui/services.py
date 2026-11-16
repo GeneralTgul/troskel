@@ -1463,6 +1463,28 @@ def sport_capacity(store: Store, athlete: Athlete, sport: str) -> Any:
         else Capacity(sport)
 
 
+def sport_test_list(store: Store, athlete_id: int, sport: str) -> list[Session]:
+    """The tests a plan can take a sport's zones from, newest first: the CSS tests for swimming, else the sport's
+    lactate, max HR and zones tests (``sport_tests``); none for a sport without tests in Tröskel."""
+    if sport == Sport.SWIM.value:
+        return css_tests(store, athlete_id)
+    return sport_tests(store, athlete_id, sport) if sport in {s.value for s in Sport} else []
+
+
+def sport_capacity_of(store: Store, athlete: Athlete, sport: str, session_id: int | None) -> Any:
+    """The capacity of a sport from the test chosen in the plan form (#666): that test's, or with ``session_id``
+    None (*Inget test*) the max HR in the sport, else nothing; swimming without a test is planned on effort (None)."""
+    from lopanalys.plan.models import Capacity
+    session = store.session(session_id) if session_id is not None else None
+    if session is not None:
+        return retest_capacity(store, athlete, session)
+    if sport == Sport.SWIM.value or sport not in {s.value for s in Sport}:
+        return None
+    mx = athlete.max_hr_for(sport)
+    return Capacity(sport, zone_systems.Anchors(max_hr=mx, resting_hr=athlete.resting_hr, sport=sport)) if mx \
+        else Capacity(sport)
+
+
 def css_tests(store: Store, athlete_id: int) -> list[Session]:
     """The athlete's valid CSS tests (swimming, written in by hand), newest first."""
     from lopanalys.assessments import css

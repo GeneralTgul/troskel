@@ -885,6 +885,7 @@
   "ui.plan.strength_n": "{n} pass",
   "ui.plan.strength_hint": "Ovanpå uthållighetstiden, på de lättaste dagarna. Ett missat styrkepass görs inte igen.",
   "ui.plan.no_test": "Inget test (zon och ansträngning, eller maxpulsen)",
+  "ui.plan.no_test_swim": "Inget test (upplevd ansträngning)",
   "ui.plan.level": "Nivå",
   "ui.plan.level_choose": "Välj nivå",
   "ui.plan.recent": "Tränar nu",

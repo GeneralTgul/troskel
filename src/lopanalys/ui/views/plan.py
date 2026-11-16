@@ -13,7 +13,9 @@ what is saved without filling in anything; the banner offers it when they run ou
 
 Several sports (#666, step 4): the coach ticks the plan's sports, each with a role (main, supporting,
 maintenance) and a share of the weekly time in tens of percent, 60/30/10 by default. Running's zones come
-from the chosen test; every other sport takes its own newest test (services.sport_capacity). A weekday can
+from the chosen test (*Bygger på testet*); every other sport with tests has a list of its own under its row, the
+newest test chosen, and *Inget test* for the max HR alone (services.sport_capacity_of). Skis choose among the SkiErg's
+tests, unless the SkiErg is in the plan too. A weekday can
 allow some of the sports only: the button beside the day says which, *Alla* by default. Strength is a number of
 sessions a week (0-3) on top of the endurance time, placed by the engine. With more than one sport a weekday can have
 a second time (the *+* beside the day): a second slot with its own minutes, clock time and sports, which the engine
@@ -40,7 +42,7 @@ from lopanalys.core.models import Athlete
 from lopanalys.plan import RUNNING, Capacity, Goal, Plan, PlanRequest, Slot, SportRole, build_plan
 from lopanalys.plan import rolling
 from lopanalys.plan.engine import horizon_for
-from lopanalys.plan.models import BORROWS, LEVELS, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, WEEKDAY_KEYS, ZONES
+from lopanalys.plan.models import BORROWS, LEVELS, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, SWIM, WEEKDAY_KEYS, ZONES
 from lopanalys.plan.resolve import targets
 from lopanalys.plan.text import hours, start_line
 from lopanalys.ui import services, theme
@@ -148,10 +150,15 @@ class SportRow(QWidget):
             self.share.addItem(t("ui.plan.share", n=n), n)
         self.basis = label("", "Hint", wrap=True)      # what the sport's zones come from
         self.basis.hide()
+        self.test = QComboBox()                          # the sport's test (not running: *Bygger på testet*)
+        self.test.setObjectName(f"sport_test_{sport}")
+        self.test.hide()
+        self.test_shown = False                          # the sport has tests, and chooses its own
         g.addWidget(self.check, 0, 0)
         g.addWidget(self.role, 0, 1)
         g.addWidget(self.share, 0, 2)
         g.addWidget(self.basis, 1, 0, 1, 3)
+        g.addWidget(self.test, 2, 0, 1, 3)
         g.setColumnStretch(0, 3)
         g.setColumnStretch(1, 3)
         g.setColumnStretch(2, 2)
@@ -159,6 +166,7 @@ class SportRow(QWidget):
         self.check.toggled.connect(self._toggled)
         self.role.currentIndexChanged.connect(self._role_changed)
         self.share.currentIndexChanged.connect(self.changed)
+        self.test.currentIndexChanged.connect(self.changed)
 
     def set(self, role: str, share: int, on: bool) -> None:
         """Without signals: the role, the share (0: the role's default) and whether the sport is in the plan."""
@@ -177,6 +185,7 @@ class SportRow(QWidget):
         self.role.setEnabled(on)
         self.share.setEnabled(on)
         self.basis.setVisible(on and bool(self.basis.text()))
+        self.test.setVisible(on and self.test_shown)
 
     def _toggled(self, *_: Any) -> None:
         self._enable()
@@ -201,6 +210,10 @@ class SportRow(QWidget):
 
     def snapshot(self) -> tuple:
         return (self.on, self.role.currentData(), self.share.currentData())
+
+    def test_id(self) -> int | None:
+        """The chosen test's session id; None for *Inget test*, or when the sport has no tests to choose."""
+        return self.test.currentData() if self.test_shown else None
 
 
 class DaySports(QPushButton):
@@ -384,6 +397,7 @@ class PlanView(QWidget):
             r = SportRow(sp)
             r.changed.connect(self._sports_changed)
             r.made_main.connect(self._new_main)
+            r.test.currentIndexChanged.connect(lambda *_, r=r: self._test_changed(r))
             self.sport_rows[sp] = r
             v.addWidget(r)
         self.strength = QComboBox()
@@ -572,7 +586,8 @@ class PlanView(QWidget):
     def _inputs(self) -> tuple:
         """Everything the plan is built from. Two equal tuples give the same plan."""
         return (self.test.currentData(), self.level.currentData(), self.recent.value(),
-                tuple(r.snapshot() for r in self.sport_rows.values()), self.strength.currentData(),
+                tuple(r.snapshot() for r in self.sport_rows.values()),
+                tuple(r.test_id() for r in self.sport_rows.values()), self.strength.currentData(),
                 tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
                                                                                   self.day_sports)),
                 tuple((m.value(), c.text().strip(), d.chosen()) if self._second_on(i) else None
@@ -614,6 +629,10 @@ class PlanView(QWidget):
             d.offer(sports)
         for d in self.day_sports:
             d.setVisible(len(sports) > 1)
+        ski = self.sport_rows.get("ski")
+        if ski is not None:                             # skis with the SkiErg in the plan: the SkiErg's test
+            ski.test_shown = ski.test.count() > 1 and "skierg" not in sports
+            ski._enable()
         for i, b in enumerate(self.second_btns):        # two workouts a day are two sports
             b.setVisible(len(sports) > 1)
             for w in self.second_rows[i]:
@@ -635,23 +654,66 @@ class PlanView(QWidget):
             w.setVisible(self._second_on(i))
         self._changed()
 
-    def _sport_basis(self) -> None:
-        """Under each sport but running: what its zones come from (services.sport_capacity)."""
+    def _sport_basis(self, req: PlanRequest | None = None, session_id: int | None = None) -> None:
+        """Under each sport but running: its tests to choose from, or what its zones come from without one.
+
+        The list has the sport's tests (services.sport_tests, a CSS test for swimming), newest first, and *Inget
+        test*. A saved plan chooses the test its targets came from (the day of ``PlanRequest.own_capacity``), and
+        *Inget test* when it had none; a new form chooses ``session_id`` when it is one of them, else the newest."""
         a = self.athlete
         for sp, r in self.sport_rows.items():
             text = ""
-            if sp != RUNNING and a is not None:
+            r.test.blockSignals(True)
+            r.test.clear()
+            r.test_shown = False
+            if sp != RUNNING and a is not None and a.id is not None:
+                src = BORROWS.get(sp, sp)
                 try:
-                    cap = services.sport_capacity(self.ctx.store, a, BORROWS.get(sp, sp))
+                    tests = services.sport_test_list(self.ctx.store, a.id, src)
+                    cap = services.sport_capacity(self.ctx.store, a, src)
                 except Exception:
                     log.exception("reading the sport's test failed")
-                    cap = None
-                if sp in BORROWS and cap is not None and cap.anchors is not None:
+                    tests, cap = [], None
+                for s in tests:
+                    r.test.addItem(f"{s.protocol_name}  ·  {s.started.astimezone():%Y-%m-%d}", s.id)
+                if tests:
+                    r.test.addItem(t("ui.plan.no_test_swim" if src == SWIM else "ui.plan.no_test"), None)
+                    r.test_shown = sp not in BORROWS
+                    pick = 0
+                    if req is not None:
+                        own = req.own_capacity(src)
+                        day = own.tested if own is not None else None
+                        pick = next((i for i, s in enumerate(tests) if s.started.astimezone().date() == day
+                                     and (not own.source or s.protocol_name == own.source)), len(tests))
+                    elif session_id is not None and r.test.findData(session_id) >= 0:
+                        pick = r.test.findData(session_id)
+                    r.test.setCurrentIndex(pick)
+                if sp in BORROWS and cap is not None and (cap.anchors is not None or tests):
                     text = t("ui.plan.sport_basis.borrow", sport=t(f"plan.sport.{BORROWS[sp]}"))
-                else:
+                elif not tests:
                     text = _basis_text(cap, sp)
+                else:
+                    text = self._chosen_basis(r)
             r.basis.setText(text)
+            r.test.blockSignals(False)
             r._enable()
+
+    def _chosen_basis(self, r: SportRow) -> str:
+        """Under a sport's list of tests: a CSS test's pace, or what *Inget test* gives (the max HR or nothing).
+        A test with thresholds says nothing more than the list."""
+        a = self.athlete
+        if a is None or r.sport in BORROWS:
+            return r.basis.text()
+        try:
+            cap = services.sport_capacity_of(self.ctx.store, a, r.sport, r.test.currentData())
+        except Exception:
+            log.exception("reading the sport's test failed")
+            return ""
+        return "" if cap is not None and cap.anchors is not None and cap.tested else _basis_text(cap, r.sport)
+
+    def _test_changed(self, r: SportRow) -> None:
+        r.basis.setText(self._chosen_basis(r))
+        r._enable()
 
     def _mode_changed(self, *_: Any) -> None:
         goal = self.mode.currentData() == "goal"
@@ -739,7 +801,7 @@ class PlanView(QWidget):
         for d in self.day_sports + self.day_sports2:
             d.set_chosen(())
         self.strength.setCurrentIndex(max(0, self.strength.findData(req.strength_count if req else 0)))
-        self._sport_basis()
+        self._sport_basis(req, session_id)
         if req is None:
             self.test.setCurrentIndex(max(0, self.test.findData(session_id)) if session_id else 0)
             self.level.setCurrentIndex(0)
@@ -973,8 +1035,21 @@ class PlanView(QWidget):
         caps: list[Capacity] = []
         try:
             for sp in sports:
-                cap = services.plan_capacity(self.ctx.store, a, session) if sp == RUNNING \
-                    else services.sport_capacity(self.ctx.store, a, sp)
+                if sp == RUNNING:
+                    cap = services.plan_capacity(self.ctx.store, a, session)
+                elif sp in BORROWS:          # skis: the SkiErg's test, from the SkiErg's row when it is in the plan
+                    src = BORROWS[sp]
+                    if src in sports:
+                        continue
+                    row = self.sport_rows[sp]
+                    cap = (services.sport_capacity_of(self.ctx.store, a, src, row.test_id()) if row.test_shown
+                           else services.sport_capacity(self.ctx.store, a, src))
+                    if cap is not None and cap.anchors is None:
+                        cap = None           # nothing to borrow: zone and effort
+                else:
+                    row = self.sport_rows[sp]
+                    cap = (services.sport_capacity_of(self.ctx.store, a, sp, row.test_id()) if row.test_shown
+                           else services.sport_capacity(self.ctx.store, a, sp))
                 if cap is not None:
                     caps.append(cap)
         except Exception as e:

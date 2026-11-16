@@ -885,6 +885,7 @@
   "ui.plan.strength_n": "{n} sessions",
   "ui.plan.strength_hint": "On top of the endurance time, on the easiest days. A missed strength session is not made up for.",
   "ui.plan.no_test": "No test (zone and effort, or the max heart rate)",
+  "ui.plan.no_test_swim": "No test (perceived effort)",
   "ui.plan.level": "Level",
   "ui.plan.level_choose": "Choose a level",
   "ui.plan.recent": "Trains now",

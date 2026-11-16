@@ -529,7 +529,8 @@ class Studio:
 
     def traningsschema_idrotter(self) -> Any:
         """The form with running and cycling: the sports' rows, the button per weekday and a second time on Thursday
-        (the bike in the morning), the plan previewed."""
+        (the bike in the morning), the bike's test chosen under its row, the plan previewed."""
+        self._power_result("bike-lactate")          # a bike test to choose
         v = self._plan()
         v.sport_rows["bike"].check.setChecked(True)
         v.day_sports[1].actions_["bike"].setChecked(True)
