@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from lopanalys.core.i18n import t
+from lopanalys.pose import reliability
 from lopanalys.pose.filters import fix_leg_swaps, mask_low_visibility
 from lopanalys.pose.findings import num
 from lopanalys.pose.gait import GaitEvents, event_quality
@@ -52,7 +53,9 @@ def test_leg_swaps_are_undone_with_uneven_frame_times(seed):
 
 
 @pytest.mark.parametrize("seed", [1, 2, 3])
-def test_landings_hit_the_frame_at_25_fps(seed):
+def test_landings_hit_the_frame_at_25_fps(seed, monkeypatch):
+    # what the detector finds, before the frame-rate limits leave values out (pose.reliability)
+    monkeypatch.setattr(reliability, "REQUIREMENTS", {})
     p = RunnerParams(**GOPRO_USB, seed=seed)
     poses, truth = generate(p)
     core = analyze_core(poses, p.height_cm, p.view, times=truth.times)

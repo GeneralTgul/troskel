@@ -29,11 +29,11 @@ def _analysis(fps: float):
 
 
 def test_report_marks_uncertain_values(tmp_path):
-    a = _analysis(25)
+    a = _analysis(60)
     html = render_html(ReportData(sd.athlete(), sd.session(TestKind.GAIT), gait=a.to_dict()))
     row = re.search(r'<tr class="uncertain"><td class="name">Markkontakt', html)
     assert row, "the contact time row is marked"
-    assert "Osäkert: filmen har 25 bilder/s" in html
+    assert "Osäkert: filmen har 60 bilder/s" in html
     assert not re.search(r'<tr class="uncertain"><td class="name">Kadens', html)
     # an analysis stored before the frame-rate levels (none) is marked from its frame rate
     d = a.to_dict()

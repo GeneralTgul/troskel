@@ -21,16 +21,21 @@ def _swedish():
 def test_levels_follow_the_frame_rate():
     assert rel.levels(120) == {}
     assert rel.levels(None) == {}                           # unknown rate: as before
-    lv = rel.levels(25)
+    lv = rel.levels(60)                                     # the contact values were off already at 50 fps
     assert lv["ground_contact_ms"] == rel.UNCERTAIN
-    assert lv["knee_flex_contact_deg"] == rel.UNCERTAIN
     assert lv["foot_strike"] == rel.UNCERTAIN               # follows the foot angle
+    assert "knee_flex_contact_deg" not in lv and "overstride_cm" not in lv
+    lv = rel.levels(40)
+    assert lv["knee_flex_contact_deg"] == rel.UNCERTAIN and lv["overstride_cm"] == rel.UNCERTAIN
+    assert lv["ground_contact_ms"] == rel.HIDDEN
+    lv = rel.levels(25)                                     # the live webcam
+    assert lv["shin_angle_deg"] == rel.HIDDEN and lv["hip_extension_toe_off_deg"] == rel.UNCERTAIN
     for robust in ("cadence_spm", "vertical_oscillation_cm", "trunk_lean_deg", "knee_flex_midstance_deg"):
         assert robust not in lv
     low = rel.levels(12)
     assert low["ground_contact_ms"] == rel.HIDDEN and low["shin_angle_deg"] == rel.HIDDEN
     assert low["cadence_spm"] == rel.UNCERTAIN                 # robust values are marked, never left out
-    assert rel.min_fps_for_all() == 50
+    assert rel.min_fps_for_all() == 100
 
 
 def test_decimate_keeps_times_and_optionally_frame_numbers():
@@ -48,12 +53,12 @@ def _analysis(fps: float):
     return analyze_core(poses, p.height_cm, p.view, times=truth.times).analysis
 
 
-def test_analysis_at_25_fps_marks_the_landing_values():
-    a = _analysis(25)
+def test_analysis_at_60_fps_marks_the_landing_values():
+    a = _analysis(60)
     assert a.reliability["ground_contact_ms"] == rel.UNCERTAIN
     assert a.summary.ground_contact_ms is not None           # shown, marked
     w = " ".join(a.warnings)
-    assert "Markkontakten" in w and "50 bilder/s" in w
+    assert "Markkontakten" in w and "100 bilder/s" in w
     assert a.to_dict()["reliability"] == a.reliability
     from lopanalys.pose.types import GaitAnalysis
     assert GaitAnalysis.from_dict(a.to_dict()).reliability == a.reliability
@@ -85,7 +90,7 @@ def test_every_metric_has_a_name_in_both_languages():
 
 
 def test_findings_on_uncertain_values_are_marked():
-    a = _analysis(25)
+    a = _analysis(40)
     by = {f.code: f for f in a.findings}
     assert by["overstride"].uncertain                      # judged on the shin angle too
     assert not by["cadence"].uncertain
