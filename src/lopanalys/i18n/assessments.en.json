@@ -460,5 +460,13 @@
   "assessments.protocol.skierg.ski.desc": "{warmup} min warm-up that is not filmed, then {min} min at an even rate at {w} W. That stage is filmed from the side. The athlete holds the target shown on the TV and stands on the same taped spot every time, so that tests can be compared.",
   "assessments.css.error.missing": "Enter both times, 400 m and 200 m.",
   "assessments.css.error.range": "The time looks wrong: the 200 m should be between 1:40 and 10:00, and the 400 m between 3:20 and 20:00.",
-  "assessments.css.error.order": "The 400 m should take more than twice as long as the 200 m. Are the times swapped?"
+  "assessments.css.error.order": "The 400 m should take more than twice as long as the 200 m. Are the times swapped?",
+  "assessments.info.swim_css.title": "CSS test (swimming)",
+  "assessments.info.swim_css.measures": "Your critical swim speed (CSS): the pace per 100 m you can hold for a long time without tiring quickly. It is a measure of the threshold in the water and is used to steer the swim sessions.",
+  "assessments.info.swim_css.how": "You warm up well. Then you swim 400 m as fast as you can hold evenly, rest until you have recovered, and swim 200 m in the same way. Start in the water with a push off the wall both times. The times are taken with a watch and written into the program.",
+  "assessments.info.swim_css.time": "About 45 minutes with the warm-up and the rest.",
+  "assessments.info.swim_css.equipment": "A 25 or 50 m pool and a stopwatch. No equipment is connected to the program.",
+  "assessments.info.swim_css.standard": "CSS is calculated from the difference between the two times: the pace per 100 m is (the 400 m time minus the 200 m time) divided by 2. The method comes from Wakayoshi and others (1992) and is used in this form by Swim Smooth, among others.",
+  "assessments.info.swim_css.get": "Your CSS pace per 100 m. The training plan calculates the pace of the swim sessions from it, zone by zone.",
+  "assessments.info.swim_css.limits": "The test measures no heart rate and no lactate, and CSS is an estimate of the threshold. An uneven speed, too short a rest or different starts give a misleading value. The pace applies to the pool length the test was swum in."
 }

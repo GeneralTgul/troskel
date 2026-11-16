@@ -14,7 +14,7 @@ def _swedish():
 
 
 @pytest.mark.parametrize("lang", ["sv", "en"])
-@pytest.mark.parametrize("sport", ["run", "bike", "skierg"])
+@pytest.mark.parametrize("sport", ["run", "bike", "skierg", "swim"])
 def test_every_test_has_every_field(lang, sport):
     set_language(lang)
     info = catalog.tests_info(sport)

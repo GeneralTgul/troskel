@@ -1447,9 +1447,12 @@ def sport_tests(store: Store, athlete_id: int, sport: str) -> list[Session]:
 
 def sport_capacity(store: Store, athlete: Athlete, sport: str) -> Any:
     """The capacity of a sport in a plan with several sports: its newest test, else the max HR in the sport,
-    else nothing. None for a sport without tests in Tröskel (skis and swimming): the engine borrows for skis
-    (plan.models.BORROWS), and swimming is planned on effort."""
+    else nothing. None for skis, which have no tests in Tröskel: the engine borrows for them
+    (plan.models.BORROWS). Swimming takes its newest CSS test (``swim_capacity``); without one it is None and
+    swimming is planned on effort."""
     from lopanalys.plan.models import Capacity
+    if sport == Sport.SWIM.value:
+        return swim_capacity(store, athlete)
     if sport not in {s.value for s in Sport} or athlete.id is None:
         return None
     tests = sport_tests(store, athlete.id, sport)
@@ -1458,6 +1461,50 @@ def sport_capacity(store: Store, athlete: Athlete, sport: str) -> Any:
     mx = athlete.max_hr_for(sport)
     return Capacity(sport, zone_systems.Anchors(max_hr=mx, resting_hr=athlete.resting_hr, sport=sport)) if mx \
         else Capacity(sport)
+
+
+def css_tests(store: Store, athlete_id: int) -> list[Session]:
+    """The athlete's valid CSS tests (swimming, written in by hand), newest first."""
+    from lopanalys.assessments import css
+    return [s for s in store.history(athlete_id, TestKind.SWIM_CSS.value) if css.from_result(s.result) is not None]
+
+
+def css_test_of(session: Session | None) -> Any:
+    """The ``assessments.css.CssTest`` of a stored session, with its date; None when the session is not one."""
+    from lopanalys.assessments import css
+    if session is None or session.kind != TestKind.SWIM_CSS:
+        return None
+    return css.from_result(session.result, session.started.astimezone().date())
+
+
+def save_css_test(store: Store, athlete: Athlete, test: Any, session: Session | None = None,
+                  notes: str = "") -> Session:
+    """Save a CSS test as a manual session of the athlete: no steps and no samples, the two times in
+    ``session.result`` (assessments.css.to_result). With ``session`` the stored test is corrected."""
+    from datetime import datetime, time
+
+    from lopanalys.assessments import css
+    if athlete.id is None:
+        raise ValueError("the athlete is not saved")
+    day = test.tested or date.today()
+    when = datetime.combine(day, time(12, 0)).astimezone()
+    s = session if session is not None else Session(id=None, athlete_id=athlete.id, kind=TestKind.SWIM_CSS,
+                                                    started=when)
+    s.kind, s.sport, s.started, s.ended = TestKind.SWIM_CSS, Sport.SWIM, when, when
+    s.protocol_name, s.protocol, s.treadmill_mode, s.status = t("ui.css.name"), {}, "manual", "finished"
+    s.notes = notes
+    s.result = css.to_result(test)
+    return store.save_session(s)
+
+
+def swim_capacity(store: Store, athlete: Athlete) -> Any:
+    """Swimming's capacity for the plan: the pace per 100 m of the newest CSS test, or None without one."""
+    from lopanalys.assessments import css
+    if athlete.id is None:
+        return None
+    tests = css_tests(store, athlete.id)
+    test = css_test_of(tests[0]) if tests else None
+    return css.capacity(test, tests[0].protocol_name or t("ui.css.name")) if test is not None else None
 
 
 def plan_capacity(store: Store, athlete: Athlete, session: Session | None) -> Any:
