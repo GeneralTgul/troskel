@@ -1501,8 +1501,12 @@ class NewTestView(QWidget):
             (bool(mx), t("ui.check.maxhr_ok", n=mx) if mx else t(
                 "ui.check.maxhr_missing" if self.sport == "run" else "ui.check.maxhr_missing_sport"), False,
              self.kind not in TECHNIQUE_KINDS),     # bike fit and double poling do not use the max HR
-            *([(bool(a and a.weight_kg), t("ui.check.weight_ok", kg=num(a.weight_kg)) if a and a.weight_kg
-                else t("ui.check.weight_missing"), True)] if self.sport in WEIGHT_SPORTS else []),
+            # The weight is shown for every sport, so that a wrong weight is seen before the report (2026-11-16:
+            # a weight 10 kg off reached a report). It blocks only where W/kg needs it.
+            (bool(a and a.weight_kg),
+             t("ui.check.weight_ok" if self.sport in WEIGHT_SPORTS else "ui.check.weight_shown", kg=num(a.weight_kg))
+             if a and a.weight_kg else t("ui.check.weight_missing" if self.sport in WEIGHT_SPORTS
+                                          else "ui.check.weight_none"), self.sport in WEIGHT_SPORTS),
             (self.camera is not None, t("ui.check.camera_ok", name=self.camera.label) if self.camera is not None
              else t("ui.check.no_camera"), True, filmed),
             *([(True, t("ui.check.camera2_ok", name=self.camera2.label, view=t(f"ui.view.{self.view2}")), False, filmed)]

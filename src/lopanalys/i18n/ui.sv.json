@@ -735,6 +735,8 @@
   "ui.check.maxhr_missing_sport": "Maxpulsen i den här sporten saknas: pulsen visas utan zonfärg. Löpningens maxpuls används inte.",
   "ui.check.weight_ok": "Kroppsvikt {kg} kg, för W/kg",
   "ui.check.weight_missing": "Kroppsvikten saknas: W/kg kan inte räknas",
+  "ui.check.weight_shown": "Kroppsvikt {kg} kg, som står i rapporten. Stämmer den?",
+  "ui.check.weight_none": "Ingen kroppsvikt: rapporten visar ingen",
   "ui.check.bike_ok": "Trainern: {mode}",
   "ui.check.bike_missing": "Trainern är inte ansluten",
   "ui.check.skierg_ok": "SkiErgen: {mode}",

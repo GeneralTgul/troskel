@@ -127,7 +127,9 @@ def test_camera_step_only_for_tests_that_film(demo_window, qtbot):
     assert nt.stack.currentIndex() == 5 and nt.stepper.current == 4
     assert not nt.framing_card.isVisible() and nt._framing_label is None
     rows = [nt.check_box.itemAt(i).layout().itemAt(1).widget().text() for i in range(nt.check_box.count())]
-    assert len(rows) == 3 and not any("kamera" in r.lower() or "ramen" in r.lower() for r in rows), rows
+    assert len(rows) == 4 and not any("kamera" in r.lower() or "ramen" in r.lower() for r in rows), rows
+    # the weight is shown on the treadmill too, so a wrong weight is seen before it reaches the report
+    assert any("kroppsvikt" in r.lower() for r in rows), rows
     assert nt.ctl is not None and nt.ctl.plan.camera is None and nt.ctl.analyzer is None
     assert nt._ok_to_continue() == (True, "")
     nt._teardown_ctl()
@@ -146,7 +148,7 @@ def test_camera_step_only_for_tests_that_film(demo_window, qtbot):
     nt._next()
     assert nt.stack.currentIndex() == 5 and nt.framing_card.isVisible() and nt._framing_label is not None
     rows = [nt.check_box.itemAt(i).layout().itemAt(1).widget().text() for i in range(nt.check_box.count())]
-    assert len(rows) == 6
+    assert len(rows) == 7
     nt.back.click()
     nt.back.click()
     assert nt.stack.currentIndex() == 3                    # backwards the camera step is there too

@@ -160,7 +160,7 @@ Anslutningen till band och pulsband är *(inte provat på riktig hårdvara)*, se
 ![Steget Kontroll i Nytt test för ett test som filmas, steg 6 av 6: kamerabilden med ramen för idrottaren och listan Innan start](images/kontroll.png)
 
 - **Placera idrottaren:** hela kroppen ska synas inne i den streckade ramen, från *HUVUDET HÄR* till *FÖTTERNA HÄR*, även i flygfasen. Flytta kameran eller zooma ut tills raden om ramen i listan blir grön. Den här delen visas bara när testet filmas. Med två kameror visas den andra kamerans bild bredvid, med sin egen ram. Raden i listan gäller den första kameran.
-- **Innan start:** listan går igenom längden, maxpulsen, kameran, bandet och pulsbandet. Filmas testet inte står bara maxpulsen, bandet och pulsbandet där. En grön bock betyder klart. Gult betyder att testet går att köra men att något saknas, till exempel att pulsen visas utan zonfärg när maxpulsen saknas. Rött betyder att testtypen behöver det som saknas.
+- **Innan start:** listan går igenom längden, maxpulsen, kroppsvikten, kameran, bandet och pulsbandet. Filmas testet inte står bara maxpulsen, kroppsvikten, bandet och pulsbandet där. Kroppsvikten står i rapporten, så läs av den med idrottaren: är den fel, rätta den under *Idrottare*. Den krävs bara på cykel, där W/kg räknas. En grön bock betyder klart. Gult betyder att testet går att köra men att något saknas, till exempel att pulsen visas utan zonfärg när maxpulsen saknas. Rött betyder att testtypen behöver det som saknas.
 
 ![Steg 5 av 5 för ett maxpulstest: bara listan Innan start, utan kamerabild och ram](images/kontroll-utan-kamera.png)
 

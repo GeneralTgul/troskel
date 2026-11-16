@@ -735,6 +735,8 @@
   "ui.check.maxhr_missing_sport": "Max HR in this sport is missing: the heart rate is shown without zone colour. The running max HR is not used.",
   "ui.check.weight_ok": "Body weight {kg} kg, for W/kg",
   "ui.check.weight_missing": "The body weight is missing: W/kg cannot be computed",
+  "ui.check.weight_shown": "Body weight {kg} kg, as shown in the report. Is it right?",
+  "ui.check.weight_none": "No body weight: the report shows none",
   "ui.check.bike_ok": "The trainer: {mode}",
   "ui.check.bike_missing": "The trainer is not connected",
   "ui.check.skierg_ok": "The SkiErg: {mode}",
