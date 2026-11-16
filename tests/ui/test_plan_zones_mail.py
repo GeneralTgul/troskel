@@ -194,10 +194,10 @@ def test_send_the_plan_after_the_health_declaration(demo_window, smtp, no_pdf, m
     # the app's link on a line of its own, and the .troskel file beside: both the plan that was saved
     (line,) = [x for x in body.splitlines() if x.startswith("Öppna schemat i appen: ")]
     app_link = line.removeprefix("Öppna schemat i appen: ")
-    assert app_link.startswith(link.APP_URL + "#p=") and link.read_link(app_link) == link.stored_plan(stored.plan)
+    assert app_link.startswith(link.APP_URL + "#p=") and link.expand(link.read_link(app_link)) == link.stored_plan(stored.plan)
     files = {p.get_filename(): p for p in msg.iter_attachments()}
     assert set(files) == {f"traningsschema-{day}.pdf", f"traningsschema-{day}.ics", f"traningsschema-{day}.troskel"}
-    assert json.loads(files[f"traningsschema-{day}.troskel"].get_content()) == link.read_link(app_link)
+    assert json.loads(files[f"traningsschema-{day}.troskel"].get_content()) == link.expand(link.read_link(app_link))
     assert files[f"traningsschema-{day}.pdf"].get_content() == b"%PDF-1.7 schema"
     ics = files[f"traningsschema-{day}.ics"]
     assert ics.get_content_type() == "text/calendar"

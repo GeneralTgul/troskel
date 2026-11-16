@@ -6,6 +6,7 @@ the button gives the renewed plan."""
 from __future__ import annotations
 
 import importlib.util
+import json
 from datetime import timedelta
 from pathlib import Path
 
@@ -82,7 +83,9 @@ def test_to_the_app_after_the_health_declaration(demo_window, erik, tmp_path, sh
     # the QR code is the link, and the link is the saved plan with the athlete's name
     assert dlg.qr.pixmap() is not None and not dlg.too_long.isVisibleTo(dlg)
     assert _read_qr(dlg.image) == dlg.link and dlg.link_text.toPlainText() == dlg.link
-    payload = link.read_link(dlg.link)
+    short = link.read_link(dlg.link)
+    assert short["format"] == link.SHORT_FORMAT and "plan" not in short      # the app builds the workouts
+    payload = link.expand(short)
     assert payload == link.stored_plan(stored.plan) and payload["athlete"] == erik.name
     assert "Skanna med telefonens kamera" in " ".join(w.text() for w in dlg.findChildren(type(dlg.too_long)))
     # Kopiera and Spara som fil
@@ -106,6 +109,24 @@ def test_a_link_too_long_for_a_qr_code_points_to_the_mail_and_the_file(qtbot):
     assert str(len(s)) in dlg.too_long.text() and dlg.link_text.toPlainText() == s
 
 
+def test_a_plan_with_every_sport_gets_a_qr_code(qtbot, tmp_path):
+    """Four sports, two workouts a day and 30 weeks: the whole plan is too long for a QR code, the short link is not.
+    The code reads back to the plan, and the file holds the whole plan."""
+    from lopanalys.plan import build_plan
+    spec = importlib.util.spec_from_file_location("_plan_cases", Path(__file__).parents[1] / "plan" / "cases.py")
+    cases = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cases)
+    plan = build_plan(cases.MANY_SPORTS_30, plan_id="p1", today=cases.START)
+    stored = link.stored_plan(plan)
+    assert not qr.fits(link.plan_link(stored))
+    url, data = services.plan_app(plan)
+    dlg = plan_app.AppDialog(url, data, tmp_path / "schema.troskel")
+    qtbot.addWidget(dlg)
+    assert dlg.image is not None and dlg.qr.isVisibleTo(dlg) and not dlg.too_long.isVisibleTo(dlg)
+    assert len(url) < 2000 and _read_qr(dlg.image) == url
+    assert link.expand(link.read_link(url)) == stored == json.loads(data.decode("utf-8"))
+
+
 def test_after_renewing_the_button_gives_the_renewed_plan(demo_window, erik, shown):
     from datetime import date
     win = demo_window
@@ -115,11 +136,11 @@ def test_after_renewing_the_button_gives_the_renewed_plan(demo_window, erik, sho
     for cb in v.health.values():
         cb.setChecked(True)
     assert v.to_app()
-    first = link.read_link(shown[-1].link)
+    first = link.expand(link.read_link(shown[-1].link))
     assert first["plan"]["horizon"] == 4
     assert v.renew(today=v.stored.plan.start + timedelta(weeks=3)) and v.stored.plan.horizon == 7
     assert v.to_app()
-    renewed = link.read_link(shown[-1].link)
+    renewed = link.expand(link.read_link(shown[-1].link))
     # the same plan id and start, so the app takes it in place of the old one, now with three more weeks of workouts
     assert renewed["plan"]["horizon"] == 7 and renewed["plan"]["id"] == first["plan"]["id"]
     assert renewed["request"]["start"] == first["request"]["start"]

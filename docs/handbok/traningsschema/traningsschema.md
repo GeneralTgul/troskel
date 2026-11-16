@@ -190,7 +190,9 @@ Ett sparat schema ändras inte av att det öppnas, och inte av en ny programvers
 
 Appen sparar schemat i telefonen. Schemat skickas inte via någon server: allt står i länken, koden eller filen. Länken innehåller idrottarens namn och schemat, så ge den bara till idrottaren.
 
-En QR-kod rymmer en länk på cirka 2 900 tecken, ungefär ett schema på tolv veckor. Är länken längre står det i rutan i stället för koden: skicka då schemat med e-post, där länken och filen följer med, eller spara filen och ge idrottaren den.
+Länken och QR-koden bär underlaget för schemat (formuläret, testen, tiderna och målen), och appen bygger passen själv med samma regler som programmet. Därför ryms även ett långt schema med flera idrotter och två pass samma dag i en QR-kod. Filen har hela schemat. Är länken ändå för lång för en QR-kod (cirka 2 900 tecken) står det i rutan i stället för koden: skicka då schemat med e-post, där länken och filen följer med, eller spara filen och ge idrottaren den.
+
+Har idrottaren en äldre version av appen än programmet säger appen att den behöver uppdateras, i stället för att bygga ett annat schema.
 
 Efter [*Förnya*](#förnya-schemat) eller [*Lägg om schemat*](#efter-ett-nytt-test) ger *Till appen* det nya schemat. Appen har ett schema i taget, och ett nytt ersätter det gamla.
 

@@ -82,6 +82,7 @@
  "ui.load.loaded": "The plan is loaded.",
  "ui.load.error.not_a_plan": "That is not a plan from Tröskel.",
  "ui.load.error.too_new": "The plan was made in a newer version of Tröskel. Update the app.",
+ "ui.load.error.other_engine": "The plan was made with another version of Tröskel. Update the app.",
  "ui.load.error.broken": "The plan could not be read. Ask your coach to send it again.",
  "ui.load.new": "Receive a new plan",
  "ui.qr.title": "Point the camera at the QR code",

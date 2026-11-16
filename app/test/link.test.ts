@@ -1,5 +1,10 @@
+import { strFromU8, unzlibSync } from "fflate";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { decodeLink, encodeData, linkData, PlanError, readPlanText } from "../src/model/link";
+import { decodeData, decodeLink, encodeData, linkData, PlanError, readPlanText } from "../src/model/link";
+import type { StoredPlan } from "../src/model/types";
 import { demoPlan, fixture } from "./helpers";
 
 describe("the link from Tröskel", () => {
@@ -45,3 +50,54 @@ describe("the link from Tröskel", () => {
     expect(code(() => readPlanText("{oops"))).toBe("broken");
   });
 });
+
+describe("the short link (format 2): the app builds the plan with its engine", () => {
+  const fx = JSON.parse(gunzipSync(readFileSync(resolve(process.cwd(), "test/fixtures/engine.json.gz"))).toString("utf-8"));
+  const want = (name: string): Partial<StoredPlan> => {
+    const [kind, key] = name.split(":");
+    if (kind === "plan") return fx.plans[key];
+    if (kind === "build") {
+      const c = fx.build.find((b: { name: string }) => b.name === key);
+      return { request: c.request, plan: c.plan };
+    }
+    const c = fx.roll.cases.find((b: { name: string }) => b.name === key);
+    return { request: fx.roll.request, plan: c.plan };
+  };
+
+  it("has a link for every fixture but the plan with statuses", () => {
+    expect(Object.keys(fx.links).length).toBeGreaterThan(80);
+    expect(fx.links["plan:demo-done"]).toBeUndefined();
+    expect(fx.links["plan:four-sports"] ?? fx.links["build:four-sports"]).toBeDefined();
+  });
+
+  it.each(Object.keys(fx.links))("gives the plan Tröskel saved: %s", (name) => {
+    const got = decodeData(fx.links[name]);
+    const w = want(name);
+    if (name.startsWith("plan:")) expect(got).toEqual(w);
+    else {
+      expect(got.plan).toEqual(w.plan);
+      expect(got.request).toEqual(w.request);
+    }
+  });
+
+  it("is what the demo link holds, and the whole plan's link gives the same", () => {
+    const short = fixture("demo.link.txt").trim();
+    const whole = fixture("demo.full.link.txt").trim();
+    expect(short.length).toBeLessThan(whole.length / 4);
+    const raw = JSON.parse(strFromU8(unzlibSync(base64(linkData(short)!))));
+    expect([raw.kind, raw.format, raw.plan]).toEqual(["troskel.plan", 2, undefined]);
+    expect(decodeLink(short)).toEqual(decodeLink(whole));
+  });
+
+  it("asks for an update when another engine made it, rather than build another plan", () => {
+    const raw = JSON.parse(strFromU8(unzlibSync(base64(linkData(fixture("demo.link.txt"))!))));
+    const code = (f: () => unknown) => { try { f(); } catch (e) { return (e as PlanError).code; } return null; };
+    expect(code(() => readPlanText(JSON.stringify({ ...raw, v: "7" })))).toBe("other_engine");
+    expect(code(() => readPlanText(JSON.stringify({ ...raw, r: { ...raw.r, a: [] } })))).toBe("broken");
+    expect(code(() => readPlanText(JSON.stringify({ ...raw, format: 3 })))).toBe("too_new");
+  });
+});
+
+function base64(data: string): Uint8Array {
+  return new Uint8Array(Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64"));
+}

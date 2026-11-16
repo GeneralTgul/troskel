@@ -82,6 +82,7 @@
  "ui.load.loaded": "Schemat är inläst.",
  "ui.load.error.not_a_plan": "Det där är inget schema från Tröskel.",
  "ui.load.error.too_new": "Schemat är gjort i en nyare version av Tröskel. Uppdatera appen.",
+ "ui.load.error.other_engine": "Schemat är gjort med en annan version av Tröskel. Uppdatera appen.",
  "ui.load.error.broken": "Schemat gick inte att läsa. Be din coach skicka det igen.",
  "ui.load.new": "Ta emot ett nytt schema",
  "ui.qr.title": "Rikta kameran mot QR-koden",

@@ -41,14 +41,26 @@ Tröskel gör en länk av schemat:
 https://generaltgul.github.io/troskel/app/#p=<data>
 ```
 
-`<data>` är schemat som JSON, komprimerat med deflate och kodat som base64url. Allt efter `#` stannar i telefonen: webbläsaren skickar det aldrig till någon server. När appen har läst länken sparas schemat på enheten och tas bort ur adressfältet.
+`<data>` är JSON, komprimerat med deflate och kodat som base64url. Allt efter `#` stannar i telefonen: webbläsaren skickar det aldrig till någon server. När appen har läst länken sparas schemat på enheten och tas bort ur adressfältet.
+
+Länken bär **underlaget**, inte passen (format 2, `short_plan` i `lopanalys.plan.link`). Appen bygger schemat själv med planmotorn, samma regler som i Tröskel, och får exakt det schema som Tröskel sparade. Underlaget är:
+
+- begäran: formuläret, testen per idrott, tiderna och målen,
+- schemats id, startdatum, när det skapades och gränsen för passen i ett rullande schema,
+- motorns version (`v`),
+- det i schemat som motorn inte ger tillbaka som det sparades (`x`): till exempel det tidigare testet efter ett nytt test,
+- idrottarens namn och varje zons puls, fart, watt och simtempo, uträknade i Tröskel ur testen.
+
+Nycklarna är korta, och det som har sitt standardvärde utelämnas. Demoschemat på tolv veckor blir en länk på cirka 460 tecken (hela schemat: 2 860), och ett schema med fyra idrotter, två pass samma dag och 30 veckor cirka 800 tecken (hela schemat: 3 650, eller 6 100 när alla veckor har pass).
+
+Tröskel bygger schemat ur underlaget innan länken görs och jämför det med det sparade. Blir det inte samma schema, till exempel när ett pass har en status, bär länken hela schemat som förut (format 1). Appen läser båda formaten. Är länken gjord med en annan version av planmotorn bygger appen inget schema, utan visar raden *Schemat är gjort med en annan version av Tröskel. Uppdatera appen.*
 
 Samma data går också
 
-- som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Ett schema på tolv veckor ryms precis i en QR-kod; ett längre schema skickas som länk eller fil.
-- som fil, `<namn>.troskel`, som är samma JSON i läsbar form (*Öppna en fil*).
+- som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Även ett långt schema med flera idrotter ryms i en QR-kod.
+- som fil, `<namn>.troskel`, som alltid har hela schemat i läsbar form (format 1, *Öppna en fil*).
 
-Innehållet är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`), uträknade ur testet när coachen skickar schemat. Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `plan_link`, `plan_file`, `read_link`).
+Hela schemat är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`). Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts` och `app/src/model/short.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `short_plan`, `expand`, `plan_link`, `plan_file`, `read_link`). Vitest bygger schemat ur den korta länken för varje fixtur och jämför med Pythons sparade schema (`app/test/link.test.ts`).
 
 ### Från coach till idrottare
 
@@ -57,7 +69,7 @@ I Tröskel ger coachen idrottaren schemat på sidan *Träningsschema* ([handboke
 - ***Till appen*** visar en ruta med QR-koden, länken med *Kopiera* och *Spara som fil* (`.troskel`). Idrottaren skannar koden med telefonens kamera eller öppnar länken i telefonen.
 - ***Skicka till idrottaren*** mejlar schemat med raden *Öppna schemat i appen:* och länken, och med filen `.troskel` som bilaga bredvid PDF:en och kalenderfilen.
 
-Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och kalenderfilen. Länken, koden och filen görs ur samma payload (`stored_plan`), och QR-koden ritas med segno (`src/lopanalys/share/qr.py`). Den största QR-koden rymmer 2 953 tecken med lägsta felrättningen. En längre länk får ingen kod, och rutan hänvisar till mejlet eller filen.
+Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och kalenderfilen. Länken, koden och mejlets länk bär underlaget (`link_payload`), och filen hela schemat. QR-koden ritas med segno (`src/lopanalys/share/qr.py`). Den största QR-koden rymmer 2 953 tecken med lägsta felrättningen. En längre länk får ingen kod, och rutan hänvisar till mejlet eller filen.
 
 Efter *Förnya* eller ett nytt test ger *Till appen* det nya schemat, med samma schema-id och samma start. Appen har ett schema i taget: varje inläst schema ersätter det sparade (`setPlan` i `app/src/model/storage.ts`) och tar bort tider under *Mina tider* som inte har räknats in än.
 
