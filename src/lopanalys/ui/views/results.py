@@ -577,24 +577,31 @@ class ResultsView(QWidget):
         self.banner.show()
 
     def refresh_plan_card(self) -> None:
-        """Lactate and max HR tests carry the way to the training plan. When the athlete's plan is built
-        on an older test than this one, the card offers to lay the rest of the plan on this test."""
+        """Lactate, max HR and zones tests carry the way to the training plan, in running, on the bike and on the
+        SkiErg. When the athlete's plan takes the test's sport from an older test than this one, the card offers to
+        lay the rest of the plan on this test (only that sport's targets move)."""
         a, s = self.athlete, self.session
         self._plan_retest = False
-        if a is None or a.id is None or s is None or s.id is None or not services.plan_test_ok(s):
+        sport = services.test_sport(s) if s is not None else None
+        if a is None or a.id is None or s is None or s.id is None or sport is None:
             self.plan_card.hide()
             return
         text = t("ui.plan.res_none")
         try:
             stored = services.load_plan(self.ctx.store, a)
             if stored is not None:
-                cand = services.retest_candidate(self.ctx.store, a, stored)
-                cap = stored.plan.request.capacity_for(RUNNING)
-                if cand is not None and cand.id == s.id:
+                cands = services.retest_candidates(self.ctx.store, a, stored)
+                cap = stored.plan.request.own_capacity(sport)
+                tested = cap.tested.isoformat() if cap is not None and cap.tested else "–"
+                if any(c.id == s.id for c in cands):
                     self._plan_retest = True
-                    text = t("ui.plan.res_retest", name=a.first_name, date=cap.tested.isoformat() if cap.tested else "–")
-                else:
+                    text = (t("ui.plan.res_retest", name=a.first_name, date=tested) if sport == RUNNING else
+                            t("ui.plan.res_retest_sport", name=a.first_name, date=tested, sport=t(f"plan.sport.{sport}")))
+                elif sport == RUNNING:
                     text = t("ui.plan.res_same" if stored.session_id == s.id else "ui.plan.res_other")
+                else:
+                    same = cap is not None and cap.tested == s.started.astimezone().date()
+                    text = t("ui.plan.res_same" if same else "ui.plan.res_other")
         except Exception:
             log.exception("reading the training plan failed")
         self.plan_text.setText(text)
@@ -616,7 +623,7 @@ class ResultsView(QWidget):
             return
         self.refresh_plan_card()
         from datetime import date
-        QMessageBox.information(self, t("ui.plan.title"), t("ui.plan.retest_done", date=date.today().isoformat()))
+        QMessageBox.information(self, t("ui.plan.title"), services.retest_done_text(s, date.today()))
 
     def _forget(self, athlete_id: int) -> None:
         """The person shown here is being erased: nothing of the page is written back."""

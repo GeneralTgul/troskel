@@ -819,9 +819,7 @@ class PlanView(QWidget):
         self.retest_btn.setVisible(self._retest is not None)
         self.banner_renew.setVisible(self._retest is None and renew)
         if self._retest is not None:          # a new test renews too (services.apply_retest)
-            s = self._retest
-            self.banner_text.setText(t("ui.plan.retest_offer", test=s.protocol_name,
-                                       date=f"{s.started.astimezone():%Y-%m-%d}"))
+            self.banner_text.setText(services.retest_offer_text(self._retest))
         elif renew:
             assert self.stored is not None
             plan = self.stored.plan
@@ -1086,7 +1084,7 @@ class PlanView(QWidget):
             return
         self.stored = services.load_plan(self.ctx.store, a)
         self._fill(None)
-        QMessageBox.information(self, t("ui.plan.title"), t("ui.plan.retest_done", date=date.today().isoformat()))
+        QMessageBox.information(self, t("ui.plan.title"), services.retest_done_text(s, date.today()))
 
     def renew(self, today: date | None = None) -> bool:
         """*Förnya*: the saved plan gets its workouts up to four weeks from today; the form, the test and

@@ -1610,38 +1610,96 @@ def health_valid(health: dict[str, Any] | None, today: date | None = None) -> bo
     return set(HEALTH_ITEMS) <= set(h.get("confirmed", [])) and (today or date.today()) - day <= timedelta(HEALTH_VALID_DAYS)
 
 
-def retest_candidate(store: Store, athlete: Athlete, stored: StoredPlan | None = None) -> Session | None:
-    """The athlete's newest lactate, max HR or zones test when it is newer than the test the saved plan is
-    built on; None when there is no plan or nothing newer."""
+def test_sport(session: Session) -> str | None:
+    """The plan sport a test gives zones to: running, the bike or the SkiErg for a lactate, max HR or zones test,
+    swimming for a CSS test; None for any other test."""
+    if session.kind == TestKind.SWIM_CSS:
+        return Sport.SWIM.value
+    return sport_of(session.sport).value if session.kind in PLAN_TEST_KINDS else None
+
+
+def retest_candidates(store: Store, athlete: Athlete, stored: StoredPlan | None = None) -> list[Session]:
+    """The tests the saved plan can be laid on, one per sport of the plan, running first (#666): the newest
+    lactate, max HR or zones test in running, the bike or the SkiErg, or the newest CSS test, when it is newer than
+    the test the plan's targets in that sport come from. Skis take the SkiErg's (plan.models.BORROWS). Empty when
+    there is no plan or nothing newer."""
+    from lopanalys.plan.models import BORROWS, RUNNING
     stored = stored or load_plan(store, athlete)
     if stored is None or athlete.id is None:
-        return None
+        return []
+    out: list[Session] = []
     tests = plan_tests(store, athlete.id)
-    if not tests or tests[0].id == stored.session_id:
-        return None
-    basis = store.session(stored.session_id) if stored.session_id else None
-    if basis is not None and tests[0].started <= basis.started:
-        return None
-    return tests[0]
+    sports = stored.plan.request.plan_sports
+    if RUNNING in sports and tests and tests[0].id != stored.session_id:
+        basis = store.session(stored.session_id) if stored.session_id else None
+        if basis is None or tests[0].started > basis.started:
+            out.append(tests[0])
+    for sport in dict.fromkeys(BORROWS.get(sp, sp) for sp in sports if sp != RUNNING):
+        newest = (css_tests(store, athlete.id) if sport == Sport.SWIM.value
+                  else sport_tests(store, athlete.id, sport) if sport in {x.value for x in Sport} else [])
+        if not newest:
+            continue
+        own = stored.plan.request.own_capacity(sport)
+        day = newest[0].started.astimezone().date()
+        if own is None or own.tested is None or day > own.tested:
+            out.append(newest[0])
+    return out
+
+
+def retest_candidate(store: Store, athlete: Athlete, stored: StoredPlan | None = None) -> Session | None:
+    """The first of ``retest_candidates``: the newer test the plan page and the result offer, or None."""
+    found = retest_candidates(store, athlete, stored)
+    return found[0] if found else None
+
+
+def retest_capacity(store: Store, athlete: Athlete, session: Session) -> Any:
+    """The plan's capacity from a test: a CSS test's pace per 100 m, else the thresholds (``plan_capacity``)."""
+    from lopanalys.assessments import css
+    if session.kind == TestKind.SWIM_CSS:
+        test = css_test_of(session)
+        if test is None:
+            raise ValueError("not a valid CSS test")
+        return css.capacity(test, session.protocol_name or t("ui.css.name"))
+    return plan_capacity(store, athlete, session)
+
+
+def retest_offer_text(session: Session) -> str:
+    """The offer of a newer test on the plan page and after a CSS test: running as before, another sport by name."""
+    sport = test_sport(session)
+    when = f"{session.started.astimezone():%Y-%m-%d}"
+    if sport is None or sport == Sport.RUN.value:
+        return t("ui.plan.retest_offer", test=session.protocol_name, date=when)
+    return t("ui.plan.retest_offer_sport", test=session.protocol_name, date=when, sport=t(f"plan.sport.{sport}"))
+
+
+def retest_done_text(session: Session, today: date) -> str:
+    sport = test_sport(session)
+    if sport is None or sport == Sport.RUN.value:
+        return t("ui.plan.retest_done", date=today.isoformat())
+    return t("ui.plan.retest_done_sport", date=today.isoformat(), sport=t(f"plan.sport.{sport}"))
 
 
 def apply_retest(store: Store, athlete: Athlete, session: Session, today: date | None = None) -> StoredPlan:
-    """Lay the rest of the saved plan on a new test (plan.resolve.retest): from today on every workout
-    gets the targets of ``session``; earlier workouts keep theirs, and no workout changes its day."""
+    """Lay the rest of the saved plan on a new test (plan.resolve.retest): from today on every workout in the test's
+    sport gets the targets of ``session``; earlier workouts keep theirs, the other sports keep their tests, and no
+    workout changes its day. A test in running becomes the plan's test (``session_id``); a test in another sport
+    (the bike, the SkiErg, a CSS test) moves only that sport's targets, and the running test stays."""
     from lopanalys.plan import resolve, rolling
+    from lopanalys.plan.models import RUNNING
     stored = load_plan(store, athlete)
     if stored is None:
         raise ValueError("no plan")
     today = today or date.today()
-    cap = plan_capacity(store, athlete, session)
+    cap = retest_capacity(store, athlete, session)
     old = stored.plan.request.capacity_for(cap.sport)
     plan = resolve.retest(stored.plan, cap, from_date=today)
     plan = rolling.roll_forward(plan, today)             # the same path as Förnya: the next weeks get their workouts
-    save_plan(store, athlete, plan, session.id, None, "retest",
+    session_id = session.id if cap.sport == RUNNING else stored.session_id
+    save_plan(store, athlete, plan, session_id, None, "retest",
               {"from_session": stored.session_id, "to_session": session.id, "from_date": today.isoformat(),
-               "tested_before": old.tested.isoformat() if old.tested else None,
+               "sport": cap.sport, "tested_before": old.tested.isoformat() if old.tested else None,
                "horizon": [stored.plan.horizon, plan.horizon]})
-    return StoredPlan(plan, session.id, stored.health, stored.row_id)
+    return StoredPlan(plan, session_id, stored.health, stored.row_id)
 
 
 def renew_plan(store: Store, athlete: Athlete, today: date | None = None) -> StoredPlan:

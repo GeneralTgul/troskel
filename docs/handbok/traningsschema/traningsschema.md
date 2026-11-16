@@ -202,14 +202,17 @@ Efteråt står det bredvid knappen när schemat senast skickades. Programmet ant
 
 Schemat anger varje pass i en zon. Pulsen och farten räknas ur testet. Rättar du ett laktatvärde i testet som schemat bygger på följer målen med nästa gång schemat öppnas.
 
-När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest i löpning erbjuder programmet att lägga om schemat, på två ställen:
+När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest i en av schemats idrotter (löpning, cykel eller SkiErg), eller ett nytt [simtest](#simtestet-css) i ett schema med simning, erbjuder programmet att lägga om schemat:
 
-- **På resultatet av det nya testet:** raden under rubriken säger att idrottaren har ett schema som bygger på ett äldre test, med knappen *Lägg om schemat*.
-- **På sidan *Träningsschema*:** en gul rad överst säger att det finns ett nyare test, med samma knapp.
+- **På resultatet av det nya testet:** raden under rubriken säger att idrottaren har ett schema som bygger på ett äldre test, med knappen *Lägg om schemat*. I en annan idrott än löpning står idrotten i raden.
+- **På sidan *Träningsschema*:** en gul rad överst säger att det finns ett nyare test, med samma knapp. Finns nyare test i flera idrotter kommer löpningen först, och nästa visas när den första är omlagd.
+- **När simtestet sparas:** en fråga om schemat ska läggas om efter det.
+
+Ett test i en annan idrott än löpning flyttar bara den idrottens mål. Löpningens test under *Bygger på testet* och de andra idrotternas test ligger kvar. Ett SkiErg-test flyttar också skidornas mål, eftersom skidor lånar SkiErgens zoner. Ett test i en idrott som schemat inte har erbjuder ingen omläggning.
 
 *Lägg om schemat* gör så här:
 
-- **Passen från och med i dag** får mål i puls och fart ur det nya testet.
+- **Passen från och med i dag** får mål i puls och fart (watt på cykel och SkiErg, tempo i simning) ur det nya testet, i testets idrott.
 - **Passen före i dag** har kvar målen från testet de lämnades ut med.
 - **Inget pass byter dag,** varken bakåt eller framåt. Veckorna, blocken och passens innehåll är desamma.
 - **Schemat förnyas,** så att passen går till och med tre veckor efter den vecka du står i (som [*Förnya*](#förnya-schemat)).

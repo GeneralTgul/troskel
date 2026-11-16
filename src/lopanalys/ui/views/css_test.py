@@ -2,7 +2,8 @@
 
 The CSS test (assessments.css) has no measurements: it is saved as a manual session (services.save_css_test)
 and shown in the history, where it opens in this form again. The training plan takes swimming's pace per
-100 m from the athlete's newest CSS test (services.swim_capacity).
+100 m from the athlete's newest CSS test (services.swim_capacity). When the athlete's saved plan took swimming
+from an older test, or from none, saving offers to lay the rest of the plan on this one (services.apply_retest).
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ from datetime import date
 from typing import Any
 
 from PySide6.QtCore import QDate
-from PySide6.QtWidgets import QComboBox, QDateEdit, QDialog, QHBoxLayout, QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QDateEdit, QDialog, QHBoxLayout, QLineEdit, QMessageBox, QVBoxLayout, QWidget
 
 from lopanalys.assessments import css
 from lopanalys.core.i18n import t
@@ -126,4 +127,25 @@ class CssTestDialog(QDialog):
             self.error.setText(t("ui.err.db", detail=str(e)))
             return
         self.ctx.sessions_changed.emit()
+        self._offer_retest()
         self.accept()
+
+    def _offer_retest(self) -> None:
+        """The athlete's plan takes swimming from an older test (or none): offer to lay the rest of it on this one."""
+        s = self.saved
+        try:
+            if s is None or not any(c.id == s.id for c in services.retest_candidates(self.ctx.store, self.athlete)):
+                return
+        except Exception:
+            log.exception("looking for the athlete's plan failed")
+            return
+        ans = QMessageBox.question(self, t("ui.plan.title"), services.retest_offer_text(s))
+        if ans != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            services.apply_retest(self.ctx.store, self.athlete, s)
+        except Exception as e:
+            log.exception("retest failed")
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
+            return
+        QMessageBox.information(self, t("ui.plan.title"), services.retest_done_text(s, date.today()))

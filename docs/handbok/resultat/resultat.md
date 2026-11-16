@@ -22,7 +22,7 @@
 
 ## Öppna ett resultat
 
-Resultatet öppnas av sig självt när ett test är klart. Ett äldre test öppnas från [*Historik*](#historik-och-jämförelse). Sidan har tre flikar: *Laktat och zoner* (*Puls och zoner* efter testet *Puls- och fartzoner*), *Löpteknik* och *Rapport*. På ett laktattest, ett maxpulstest och *Puls- och fartzoner* finns en rad över flikarna med knappen *Träningsschema*, se [Träningsschema](../traningsschema/traningsschema.md). Bikefit och stakteknik har bara sin egen flik och *Rapport*, se [Bikefit](../bikefit/bikefit.md#resultatet) och [Stakteknik](../stakteknik/stakteknik.md#resultatet). Fliken *Löpteknik* beskrivs på sidan [Löpteknik](../lopteknik/lopteknik.md#resultatet).
+Resultatet öppnas av sig självt när ett test är klart. Ett äldre test öppnas från [*Historik*](#historik-och-jämförelse). Sidan har tre flikar: *Laktat och zoner* (*Puls och zoner* efter testet *Puls- och fartzoner*), *Löpteknik* och *Rapport*. På ett laktattest, ett maxpulstest och *Puls- och fartzoner*, i löpning, på cykel och på SkiErg, finns en rad över flikarna med knappen *Träningsschema*, se [Träningsschema](../traningsschema/traningsschema.md). Bygger idrottarens schema på ett äldre test i testets idrott erbjuder raden *Lägg om schemat* ([Efter ett nytt test](../traningsschema/traningsschema.md#efter-ett-nytt-test)). Bikefit och stakteknik har bara sin egen flik och *Rapport*, se [Bikefit](../bikefit/bikefit.md#resultatet) och [Stakteknik](../stakteknik/stakteknik.md#resultatet). Fliken *Löpteknik* beskrivs på sidan [Löpteknik](../lopteknik/lopteknik.md#resultatet).
 
 ![Resultatet av en laktattrappa: rutorna LT1, LT2, Högsta puls och Testtid, laktatkurvan och tabellen Stegen](images/laktat.png)
 
