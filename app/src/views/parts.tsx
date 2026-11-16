@@ -16,8 +16,9 @@ export const ZONE_COLORS: Record<ZoneCode, string> = {
 /** The zone a workout is shown with: none on a test day, where the warm-up's zone would say "easy" about a
  * test to exhaustion. */
 export const shownZone = (w: StoredWorkout): ZoneCode | null => (w.family === "test" ? null : mainZone(w));
-const TEST_COLOR = "var(--accent)";
-/** The colour of a workout's card: its zone's, the accent colour on a test day, grey without a zone. */
+/** A test day's colour (styles.css): not the accent, which in the dark mode is the orange of zone 4. */
+export const TEST_COLOR = "var(--test)";
+/** The colour of a workout's card: its zone's, the test colour on a test day, grey without a zone. */
 export const workoutColor = (w: StoredWorkout) => (w.family === "test" ? TEST_COLOR : zoneColor(mainZone(w)));
 
 export const zoneColor = (z: string | null | undefined) => (z && z in ZONE_COLORS ? ZONE_COLORS[z as ZoneCode] : "var(--rest)");

@@ -8,6 +8,8 @@
   --line: #dcd9d1;
   --accent: #b85c12;
   --accent-text: #ffffff;
+  /* A test day: violet, apart from the five zone colours (grey, blue, green, orange, red) in both modes. */
+  --test: #7c4dcc;
   --danger: #b42318;
   --rest: #c9c5bb;
   --today: #16181b;
@@ -26,6 +28,7 @@
     --line: #333a41;
     --accent: #f2994a;
     --accent-text: #14171a;
+    --test: #a66bff;
     --danger: #ff7a70;
     --rest: #4a525a;
     --today: #eef0f2;
