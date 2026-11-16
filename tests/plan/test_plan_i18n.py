@@ -34,6 +34,8 @@ def test_keys_built_at_run_time_exist():
     keys = []
     for tid in library.TEMPLATES:
         keys += [f"plan.workout.{tid}.{x}" for x in ("title", "purpose", "how")]
+    keys += [f"plan.tip.{k}" for v in library.TIPS.values() for k in v]
+    keys += [f"plan.drill.{k}" for v in library.DRILLS.values() for k in v]
     for b in BLOCK_KINDS:
         keys += [f"plan.block.{b}", f"plan.block_short.{b}", f"plan.reason.{b}"]
     keys += ["plan.reason.base_cycle", "plan.reason.build_cycle"]
@@ -55,6 +57,6 @@ def test_no_unused_keys():
                                                             *(ROOT / "report/templates").glob("plan*")])
     prefixes = ("plan.workout.", "plan.block", "plan.reason.", "plan.week.", "plan.level.", "plan.weekday.", "plan.month.",
                 "plan.pdf.rule.", "plan.part.", "plan.pdf.fact.goal_", "plan.start.", "plan.sport.",
-                "plan.note.borrowed.", "plan.note.no_test_sport.")
+                "plan.note.borrowed.", "plan.note.no_test_sport.", "plan.tip.", "plan.drill.")
     unused = sorted(k for k in SV if k not in text and not k.startswith(prefixes))
     assert not unused, unused

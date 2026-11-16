@@ -205,3 +205,62 @@ export function build(id: string, o: { minutes?: number | null; step?: number } 
   const rpe = ({ recovery: 2, long: 4 } as Record<string, number>)[kind] ?? 3;
   return [part("steady", o.minutes * MIN, "Z2", rpe)];
 }
+
+// ---- the guide to a workout: how it should feel, tips, and drills for the technique swim (library.TIPS,
+// library.DRILLS, library.feel). The texts are plan.tip.<id> and plan.drill.<id>. The fixtures check both tables.
+export const TIPS: Record<string, string[]> = {
+  easy: ["middle_zone", "too_easy"],
+  recovery: ["too_easy"],
+  long: ["carbs", "race_kit"],
+  long_progressive: ["carbs", "race_kit"],
+  threshold: ["even", "even_start", "jog_rest", "tired_z3"],
+  vo2max: ["even", "jog_rest", "relaxed"],
+  hills: ["treadmill_hills", "arms"],
+  opener: ["relaxed"],
+  race: ["nothing_new", "race_energy"],
+  bike_easy: ["cadence_drills"],
+  bike_recovery: ["too_easy"],
+  bike_long: ["carbs", "race_kit"],
+  bike_long_progressive: ["carbs"],
+  bike_sweetspot: ["seated"],
+  bike_threshold: ["even", "seated"],
+  bike_vo2max: ["even"],
+  bike_vo2_short: ["even"],
+  skierg_easy: ["pole_hips"],
+  skierg_recovery: ["pole_hips"],
+  skierg_long: ["pole_hips", "carbs", "race_kit"],
+  skierg_long_progressive: ["carbs"],
+  skierg_threshold: ["even_split"],
+  skierg_vo2max: ["even_split"],
+  skierg_fartlek: ["pole_hips"],
+  skierg_hills: ["pole_hips", "full_rest"],
+  swim_easy: ["breathe_three"],
+  swim_long: ["breathe_three"],
+  swim_intervals: ["even"],
+  swim_hard: ["even"],
+  swim_test: ["css_formula"],
+  strength_full: ["heavy_before"],
+  strength_legs: ["heavy_before"],
+  strength_maintenance: ["no_max"],
+};
+export const DRILLS: Record<string, string[]> = {
+  swim_technique: ["warmup", "catch_up", "fingertip", "single_arm", "six_kick", "fists", "sculling", "breathe_three",
+    "finish", "kit"],
+};
+/** The parts that say how a workout feels: not the warm-up, the cool-down or the mobility after strength. */
+const EASING = ["warmup", "cooldown", "mobility"];
+
+export interface Feel { zoneLow: ZoneCode | null; zoneHigh: ZoneCode | null; rpeLow: number; rpeHigh: number }
+
+/** library.feel: the lowest and highest zone and effort (RPE of 10) of the parts that carry the workout. Null for a
+ * race. */
+export function feel(parts: StoredPart[]): Feel | null {
+  const noRace = parts.filter((p) => p.kind !== "race");
+  const core = noRace.filter((p) => !EASING.includes(p.kind));
+  const main = core.length ? core : noRace;
+  if (!main.length) return null;
+  const zones = main.map((p) => p.zone).filter((z): z is ZoneCode => !!z).sort();
+  const rpes = main.map((p) => p.rpe);
+  return { zoneLow: zones[0] ?? null, zoneHigh: zones[zones.length - 1] ?? null, rpeLow: Math.min(...rpes),
+    rpeHigh: Math.max(...rpes) };
+}

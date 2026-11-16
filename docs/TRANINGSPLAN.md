@@ -323,6 +323,14 @@ Ett långt schema behöver följa tiden som går, utvecklingen och nya tester. D
 
 Passen är data i `plan/library.py`, inte kod. Varje mall har familj, hårdaste zon och antingen en stegring (fasta upplägg, lättast först) eller en längd som motorn sätter. Texterna (namn, syfte och hur passet ska kännas) ligger i `i18n/plan.sv.json` och `plan.en.json`.
 
+Varje pass har också en **guide** till idrottaren, som appens ruta för dagen visar:
+
+- **Känslan:** zonen och ansträngningen av 10 för de delar som bär passet, inte uppvärmningen och nedvarvningen (`library.feel`, `text.feel_line`): *Z4, ansträngning 7 av 10*, eller *Z2–Z3, ansträngning 4–6 av 10* i ett långpass med fartökning. Styrka har bara ansträngningen, och ett lopp ingen känsla.
+- **Tips:** `library.TIPS` ger varje mall noll till fyra tips (`plan.tip.<id>`), och samma tips kan stå i flera mallar, till exempel *Sista intervallet går lika fort som det första* i alla intervallpass.
+- **Övningar:** teknikpasset i simning har tio övningar att välja bland, från uppvärmningen till catch-up, enarmssim och sculling (`library.DRILLS`, `plan.drill.<id>`).
+
+Appen har samma tabeller i `app/src/engine/library.ts`, och fixturerna (`app/scripts/make_fixtures.py`) håller dem lika.
+
 | Mall | Upplägg | Stegring |
 |---|---|---|
 | Lugn löpning | 25–75 min i zon 2 | Tid |

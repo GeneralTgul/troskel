@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { DRILLS, TIPS } from "../src/engine/library";
 import { keys, setLang, t } from "../src/i18n";
 import {
-  duration, hours, hrText, mainTarget, paceStr, partLine, powerText, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, planTitle, plain,
+  duration, feelText, hours, hrText, mainTarget, workoutDrills, workoutTips, paceStr, partLine, powerText, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, planTitle, plain,
 } from "../src/model/plan";
 import type { StoredPlan } from "../src/model/types";
 import { daysFromSlots, slotsFromDays } from "../src/model/times";
@@ -88,8 +89,12 @@ describe("my times", () => {
 });
 
 describe("the bike's and the SkiErg's targets (#666, step 2)", () => {
-  interface TextCase { plan: string; key: string; lang: "sv" | "en"; title: string; lines: string[] }
-  const fx: { plans: Record<string, StoredPlan>; texts: TextCase[] } = JSON.parse(
+  interface TextCase {
+    plan: string; key: string; lang: "sv" | "en"; title: string; lines: string[]; feel: string; tips: string[];
+    drills: string[];
+  }
+  const fx: { plans: Record<string, StoredPlan>; texts: TextCase[];
+    guide: { tips: Record<string, string[]>; drills: Record<string, string[]> } } = JSON.parse(
     gunzipSync(readFileSync(resolve(process.cwd(), "test/fixtures/engine.json.gz"))).toString("utf-8"));
 
   it.each(fx.texts.map((c) => [`${c.plan} ${c.key} ${c.lang}`, c] as const))("shows %s as Python", (_, c) => {
@@ -98,6 +103,13 @@ describe("the bike's and the SkiErg's targets (#666, step 2)", () => {
     const w = stored.plan.weeks.flatMap((wk) => wk.workouts).find((x) => x.key === c.key)!;
     expect(planTitle(stored, w)).toBe(c.title);
     expect(workoutLines(stored, w).map(plain)).toEqual(c.lines);
+    expect([feelText(w), workoutTips(w), workoutDrills(w)]).toEqual([c.feel, c.tips, c.drills]);
+  });
+
+  it("has the tips and drills of the Python library", () => {
+    expect(TIPS).toEqual(fx.guide.tips);
+    expect(DRILLS).toEqual(fx.guide.drills);
+    expect(fx.texts.some((c) => c.drills.length === 10)).toBe(true);   // a technique swim among the cases
   });
 
   it("gives watt on the bike, watt and time per 500 m on the SkiErg, and heart rate only on skis", () => {
