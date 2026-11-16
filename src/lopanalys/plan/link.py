@@ -29,21 +29,30 @@ _TARGET_FIELDS = ("hr_low", "hr_high", "speed_low_kmh", "speed_high_kmh", "estim
                   "speed_high_approx", "speed_from_hr")
 
 
+# The bike's and the SkiErg's watt (#666, step 2): only in a target that has them, so a running plan's payload
+# is as before and an app without the fields reads it as before.
+_POWER_FIELDS = ("power_low_w", "power_high_w")
+
+
 def _target_dict(tg: Target) -> dict[str, Any]:
-    return {k: getattr(tg, k) for k in _TARGET_FIELDS}
+    d = {k: getattr(tg, k) for k in _TARGET_FIELDS}
+    if tg.power_low_w or tg.power_high_w:
+        d.update({k: getattr(tg, k) for k in _POWER_FIELDS})
+    return d
 
 
-def zone_targets(capacity: Capacity | None, system: str) -> dict[str, dict[str, Any]]:
-    """Zone code -> its targets as a dict; {} when nothing is known."""
-    return {z: _target_dict(tg) for z, tg in targets(capacity, system).items()}
+def zone_targets(capacity: Capacity | None, system: str, sport: str | None = None) -> dict[str, dict[str, Any]]:
+    """Zone code -> its targets as a dict, for workouts in ``sport`` (None: the test's); {} when nothing is known."""
+    return {z: _target_dict(tg) for z, tg in targets(capacity, system, sport).items()}
 
 
 def _targets(plan: Plan) -> dict[str, dict[str, dict[str, Any]]]:
-    """Targets per sport: each test's, and a sport without its own test with the test it borrows (skis: SkiErg)."""
+    """Targets per sport: each test's, and a sport without its own test with the test it borrows (skis: the
+    SkiErg's heart rates, without its watt)."""
     out = {c.sport: zone_targets(c, plan.zone_system) for c in plan.request.capacity}
     for sport in plan.request.plan_sports:
         if sport not in out and plan.request.capacity_for(sport).anchors is not None:
-            out[sport] = zone_targets(plan.request.capacity_for(sport), plan.zone_system)
+            out[sport] = zone_targets(plan.request.capacity_for(sport), plan.zone_system, sport)
     return out
 
 

@@ -114,6 +114,21 @@ export function paceStr(kmh: number | null | undefined): string {
 }
 
 const APPROX = "≈";
+const mark = (v: string, approx: boolean) => (v && approx ? APPROX : "") + v;
+
+/** Time per 500 m "m:ss" at a power on the SkiErg (Concept2: W = 2.80 / (s/m)^3), "" without one. */
+export function splitStr(watt: number | null | undefined): string {
+  if (!watt || watt <= 0) return "";
+  const sec = pyRound(500 * Math.cbrt(2.8 / watt));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+/** resolve._range: both ends, or one with the text for the easier or the harder end. */
+function range(lo: string, hi: string, key: string): string {
+  if (lo && hi) return t(`plan.target.${key}`, { lo, hi });
+  if (hi) return t(`plan.target.${key}_slower`, { v: hi });
+  return lo ? t(`plan.target.${key}_faster`, { v: lo }) : "";
+}
 
 export function hrText(tg: ZoneTarget): string {
   if (tg.hr_low && tg.hr_high) return t("plan.target.hr", { lo: tg.hr_low, hi: tg.hr_high });
@@ -121,19 +136,24 @@ export function hrText(tg: ZoneTarget): string {
   return tg.hr_low ? t("plan.target.hr_above", { lo: tg.hr_low }) : "";
 }
 
-export function paceText(tg: ZoneTarget): string {
-  let lo = paceStr(tg.speed_low_kmh);
-  let hi = paceStr(tg.speed_high_kmh);
-  lo = (lo && tg.speed_low_approx ? APPROX : "") + lo;
-  hi = (hi && tg.speed_high_approx ? APPROX : "") + hi;
-  if (lo && hi) return t("plan.target.pace", { lo, hi });
-  if (hi) return t("plan.target.pace_slower", { v: hi });
-  return lo ? t("plan.target.pace_faster", { v: lo }) : "";
+/** Running: min/km. The SkiErg: time per 500 m from the watt. The bike and the others: "" (resolve.Target.pace_text). */
+export function paceText(tg: ZoneTarget, sport = "run"): string {
+  if (sport === "skierg")
+    return range(mark(splitStr(tg.power_low_w), tg.speed_low_approx), mark(splitStr(tg.power_high_w), tg.speed_high_approx), "split");
+  if (sport !== "run") return "";
+  return range(mark(paceStr(tg.speed_low_kmh), tg.speed_low_approx), mark(paceStr(tg.speed_high_kmh), tg.speed_high_approx), "pace");
 }
 
-export function targetText(tg: ZoneTarget | undefined): string {
+/** "180–215 W", or "" without watt (resolve.Target.power_text). */
+export function powerText(tg: ZoneTarget): string {
+  const lo = tg.power_low_w ? String(tg.power_low_w) : "";
+  const hi = tg.power_high_w ? String(tg.power_high_w) : "";
+  return range(mark(lo, tg.speed_low_approx), mark(hi, tg.speed_high_approx), "power");
+}
+
+export function targetText(tg: ZoneTarget | undefined, sport = "run"): string {
   if (!tg) return "";
-  return [hrText(tg), paceText(tg)].filter(Boolean).join(" · ");
+  return [hrText(tg), powerText(tg), paceText(tg, sport)].filter(Boolean).join(" · ");
 }
 
 export function zoneName(zone: string): string {
@@ -147,29 +167,34 @@ export interface PartLine {
   zone: string;
   zoneName: string;
   hr: string;
+  power: string;
   pace: string;
   target: string;
   rest: string;
   rpe: string;
 }
 
-export function partLine(part: StoredPart, targets: ZoneTargets): PartLine {
+/** Parts whose name says running ("Löpning", "Nedjogg", "lugn jogg"): another sport takes the word without it. */
+const RUN_WORDED_PARTS = ["steady", "cooldown"];
+
+export function partLine(part: StoredPart, targets: ZoneTargets, sport = "run"): PartLine {
   const tg = part.zone ? targets[part.zone] : undefined;
   let what = part.duration_s ? duration(part.duration_s) : "";
   if (part.repeat > 1) what = t("plan.fmt.repeat", { n: part.repeat, each: what });
+  const any = sport === "run" ? "" : "_any";
   let rest = "";
   if (part.repeat > 1 && part.rest_s)
-    rest = t(part.rest_zone === "Z2" ? "plan.part.rest_jog" : "plan.part.rest", { d: duration(part.rest_s) });
+    rest = t(part.rest_zone === "Z2" ? `plan.part.rest_jog${any}` : "plan.part.rest", { d: duration(part.rest_s) });
   return {
-    kind: t(`plan.part.${part.kind}`), what, zone: part.zone ?? "", zoneName: part.zone ? zoneName(part.zone) : "",
-    hr: tg ? hrText(tg) : "", pace: tg ? paceText(tg) : "", target: targetText(tg), rest,
-    rpe: t("plan.part.rpe", { v: part.rpe }),
+    kind: t(`plan.part.${part.kind}${RUN_WORDED_PARTS.includes(part.kind) ? any : ""}`), what, zone: part.zone ?? "",
+    zoneName: part.zone ? zoneName(part.zone) : "", hr: tg ? hrText(tg) : "", power: tg ? powerText(tg) : "",
+    pace: tg ? paceText(tg, sport) : "", target: targetText(tg, sport), rest, rpe: t("plan.part.rpe", { v: part.rpe }),
   };
 }
 
 export function workoutLines(stored: StoredPlan, w: StoredWorkout): PartLine[] {
   const tg = targetsOn(stored, w.sport, w.date);
-  return w.parts.map((p) => partLine(p, tg));
+  return w.parts.map((p) => partLine(p, tg, w.sport));
 }
 
 /** A part as one line: "Intervaller: 4 × 6 min i Z4 (170–174 slag/min · 4:21–4:10 min/km), vila 1 min". */

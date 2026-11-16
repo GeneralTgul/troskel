@@ -1,4 +1,5 @@
-"""The workout library for running, as data. Every workout in a plan comes from a template here.
+"""The workout library, as data: running, and the bike and the SkiErg in the places of the running templates.
+Every workout in a plan comes from a template here.
 
 A template refers to zones, never to heart rates or paces. Quality templates carry their progression
 as ``steps`` (total work time grows step by step); the engine picks the step, it never invents a
@@ -23,6 +24,7 @@ class Template:
     min_minutes: int = 20
     max_minutes: int = 240
     sport: str = RUNNING
+    base: str = ""                    # the running template this one takes the place of in another sport
 
 
 def _set(warm_min: int, reps: int, work_s: int, rest_s: int, zone: str, rpe: int, cool_min: int = 10,
@@ -65,6 +67,94 @@ TEMPLATES: dict[str, Template] = {tpl.id: tpl for tpl in (
 )}
 
 
+def _fit(like: tuple[Part, ...], warm_min: int, reps: int, work_s: int, rest_s: int, zone: str, rpe: int,
+         rest_zone: str = "Z1") -> tuple[Part, ...]:
+    """An interval set as long as the running step ``like``: the cool-down takes what the set leaves."""
+    total = sum(p.total_s for p in like)
+    cool = total - warm_min * MIN - reps * work_s - (reps - 1) * rest_s
+    if cool < 5 * MIN:
+        raise ValueError("the cool-down would be shorter than five minutes")
+    return (Part("warmup", warm_min * MIN, "Z2", 3),
+            Part("work", work_s, zone, rpe, repeat=reps, rest_s=rest_s, rest_zone=rest_zone),
+            Part("cooldown", cool, "Z2", 2))
+
+
+def _steps(run_id: str, *sets: tuple) -> tuple[tuple[Part, ...], ...]:
+    """One step per running step, each as long as the running step (``_fit``)."""
+    run = TEMPLATES[run_id].steps
+    if len(sets) != len(run):
+        raise ValueError(f"{run_id}: {len(run)} steps")
+    return tuple(_fit(like, *s) for like, s in zip(run, sets))
+
+
+def _like(run_id: str, new_id: str, steps: tuple[tuple[Part, ...], ...] | None = None) -> Template:
+    """A template of another sport in the place of a running template: the same family, effort and limits."""
+    tpl = TEMPLATES[run_id]
+    top = tpl.top_zone if steps is None else max(p.zone for st in steps for p in st if p.zone)
+    return Template(new_id, tpl.family, tpl.quality, top, tpl.steps if steps is None else steps,
+                    tpl.min_minutes, tpl.max_minutes, new_id.split("_")[0], base=run_id)
+
+
+# ---- the other sports (#666, step 2)
+# The engine fills the week with the running templates above; when a workout gets its sport (engine._sports) it
+# takes the sport's template in the same place (``in_sport``): the same family and the same number of steps,
+# each step exactly as long as the running step, so the week keeps its minutes. The hard minutes may differ:
+# the engine checks the week again with the sport's templates. A test and a race stay as they are.
+# Bike: Z2 rides, sweet spot (the upper part of the zone between the thresholds), threshold and VO2 intervals.
+# SkiErg: easy double poling and intervals in the running structures. Skis and roller skis use the SkiErg's.
+_BIKE = (
+    _like("easy", "bike_easy"), _like("recovery", "bike_recovery"), _like("long", "bike_long"),
+    _like("long_progressive", "bike_long_progressive"),
+    # Sweet spot: long blocks just below the threshold zone, easy spinning between. Total work 20 -> 36 min.
+    _like("fartlek", "bike_sweetspot", _steps(
+        "fartlek", (10, 2, 10 * MIN, 3 * MIN, "Z3", 6, "Z2"), (10, 2, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"),
+        (10, 3, 10 * MIN, 2 * MIN, "Z3", 6, "Z2"), (10, 2, 15 * MIN, 3 * MIN, "Z3", 6, "Z2"),
+        (10, 3, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"))),
+    # Threshold: longer intervals than running, the legs carry no impact. Total work 24 -> 45 min.
+    _like("threshold", "bike_threshold", _steps(
+        "threshold", (12, 3, 8 * MIN, 3 * MIN, "Z4", 7), (10, 3, 10 * MIN, 3 * MIN, "Z4", 7),
+        (12, 3, 12 * MIN, 3 * MIN, "Z4", 7), (12, 2, 20 * MIN, 5 * MIN, "Z4", 7),
+        (10, 4, 10 * MIN, 3 * MIN, "Z4", 7), (12, 3, 15 * MIN, 4 * MIN, "Z4", 7))),
+    # VO2: three to four minutes hard with as long an easy spin between. Total work 12 -> 24 min.
+    _like("vo2max", "bike_vo2max", _steps(
+        "vo2max", (15, 4, 3 * MIN, 3 * MIN, "Z5", 9), (15, 5, 3 * MIN, 3 * MIN, "Z5", 9),
+        (15, 4, 4 * MIN, 4 * MIN, "Z5", 9), (15, 5, 4 * MIN, 3 * MIN, "Z5", 9),
+        (15, 5, 4 * MIN, 4 * MIN, "Z5", 9), (15, 6, 4 * MIN, 4 * MIN, "Z5", 9))),
+    # Short VO2 intervals, one minute on and one off, in the place of the hills.
+    _like("hills", "bike_vo2_short", _steps(
+        "hills", (15, 8, MIN, MIN, "Z5", 8), (15, 10, MIN, MIN, "Z5", 8), (15, 12, MIN, MIN, "Z5", 8),
+        (15, 14, MIN, MIN, "Z5", 8), (15, 16, MIN, MIN, "Z5", 8))),
+    _like("opener", "bike_opener", _steps("opener", (10, 3, 2 * MIN, 2 * MIN, "Z4", 6))),
+)
+_SKIERG = tuple(_like(run_id, f"skierg_{run_id}") for run_id in (
+    "easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills", "opener"))
+TEMPLATES.update({tpl.id: tpl for tpl in _BIKE + _SKIERG})
+# Sport -> running template -> the sport's template. A sport not here (swimming) keeps the running templates.
+SPORT_TEMPLATES: dict[str, dict[str, str]] = {
+    "bike": {tpl.base: tpl.id for tpl in _BIKE},
+    "skierg": {tpl.base: tpl.id for tpl in _SKIERG},
+}
+SPORT_TEMPLATES["ski"] = SPORT_TEMPLATES["skierg"]
+
+
+def for_sport(template_id: str, sport: str) -> str:
+    """The sport's template in the place of a running template (the same id when the sport has none)."""
+    return SPORT_TEMPLATES.get(sport, {}).get(template_id, template_id)
+
+
+def in_sport(parts: list[Part], template_id: str, sport: str) -> tuple[str, list[Part]]:
+    """A running workout's template and parts moved to ``sport``: a fixed template at the same step, a
+    workout of a free length with the same minutes. Unchanged when the sport has no template of its own."""
+    new = for_sport(template_id, sport)
+    if new == template_id:
+        return template_id, parts
+    run = TEMPLATES[template_id]
+    if run.steps:
+        step = next(i for i, st in enumerate(run.steps) if list(st) == list(parts))
+        return new, build(new, step=step)
+    return new, build(new, minutes=sum(p.total_s for p in parts) // MIN)
+
+
 def get(template_id: str) -> Template:
     return TEMPLATES[template_id]
 
@@ -86,7 +176,8 @@ def build(template_id: str, *, minutes: int | None = None, step: int = 0) -> lis
         return list(tpl.steps[max(0, min(step, len(tpl.steps) - 1))])
     if minutes is None:
         raise ValueError(f"{template_id} needs a length")
-    if template_id == "long_progressive":
+    kind = tpl.base or template_id
+    if kind == "long_progressive":
         return [Part("steady", (minutes - 20) * MIN, "Z2", 4), Part("steady", 20 * MIN, "Z3", 6)]
-    rpe = {"recovery": 2, "long": 4}.get(template_id, 3)
+    rpe = {"recovery": 2, "long": 4}.get(kind, 3)
     return [Part("steady", minutes * MIN, "Z2", rpe)]

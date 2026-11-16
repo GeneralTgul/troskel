@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
 import { render } from "preact";
 import { act } from "preact/test-utils";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App, TABS, type Tab } from "../src/App";
 import { EngineMissing, engine, stub, type Engine, type NewAvailability } from "../src/engine";
@@ -73,6 +76,23 @@ describe("today", () => {
     const big = root.querySelector(".workout.big")!;
     expect(big.querySelector(".targets")!.textContent).toMatch(/slag\/min.*min\/km/);
   });
+  it.each([["bike_threshold", /Puls.*slag\/min.*Watt\d+–\d+ W$/], ["skierg_easy", /Watt.*W.*Tid per 500 m.*\/500 m/]] as const)(
+    "shows watt (and time per 500 m) on a %s day", async (tid, re) => {
+      const fx = JSON.parse(gunzipSync(readFileSync(resolve(process.cwd(), "test/fixtures/engine.json.gz"))).toString("utf-8"));
+      const p: StoredPlan = fx.plans["bike-skierg-tested"];
+      const day = p.plan.weeks.flatMap((wk) => wk.workouts).find((w) => w.template_id === tid)!.date;
+      const store = memoryStore();
+      store.setPlan(p);
+      store.setSettings({ lang: "sv" });
+      root = document.createElement("div");
+      document.body.append(root);
+      await act(async () => {
+        render(<App store={store} engine={stub} now={() => new Date(`${day}T08:00:00Z`)} timeZone={TZ} loadDemo={async () => ""} />, root);
+      });
+      const targets = root.querySelector(".workout.big .targets")!.textContent!;
+      expect(targets).toMatch(re);
+      expect(targets).not.toMatch(/min\/km/);
+    });
 });
 
 describe("the week", () => {

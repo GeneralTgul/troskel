@@ -159,6 +159,10 @@ export interface ZoneTarget {
   speed_low_approx: boolean;
   speed_high_approx: boolean;
   speed_from_hr: boolean;
+  /** The bike and the SkiErg: watt from the test, the easier end first (missing in a running target and in
+   * plans sent before #666 step 2). The speed_*_approx flags mark them as they mark the pace. */
+  power_low_w?: number | null;
+  power_high_w?: number | null;
 }
 
 export type ZoneTargets = Partial<Record<ZoneCode, ZoneTarget>>;

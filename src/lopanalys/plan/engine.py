@@ -17,6 +17,9 @@ The rules (docs/TRANINGSPLAN.md):
     behind its share of the week among the sports its slot allows. The shares shift towards the main sport
     in the peak (half of the rest) and the taper (three quarters). A maintenance sport gets at most one
     workout a week and never a hard one, and running grows by at most 10 % a week of its own minutes.
+    The week is filled with the running templates; a workout in the bike, the SkiErg or on skis then takes
+    the sport's own template in the same place, just as long (library.in_sport), and the week is checked
+    again (the hard share) with them.
   - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
     (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
     block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them
@@ -33,7 +36,8 @@ from .models import (BORROWS, EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Pla
                      WeekSketch, Workout)
 from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5
 
-ENGINE_VERSION = "4"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports
+ENGINE_VERSION = "5"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
+                               # 5: the bike's and the SkiErg's own workouts
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -263,7 +267,6 @@ class _Filler:
             if result is not None:
                 break
         workouts, used_steps, long_minutes = result if result else ([], {}, None)
-        self._sports(spec, workouts, {s.weekday: s for s in chosen})
         for g in spec.goals:
             workouts.append(self._workout(g.date, "race", None, goal=g))
         workouts.sort(key=lambda w: (w.date, w.key))
@@ -288,15 +291,20 @@ class _Filler:
         return week
 
     def _sports(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
-        """Gives every workout of the week (races not among them) its sport, in place.
+        """Gives every workout of the week (races not among them) its sport, in place, and then the sport's
+        template in the place of the running one (library.in_sport: the same minutes).
 
         The long run and the test first, in the main sport; then the hard sessions by date and the easy ones,
         longest first: each to the sport furthest behind its share of the week's minutes, among the sports its
         slot allows (ties: the order of the roles). A maintenance sport is never hard and gets one workout a
         week, and running is left out once it would pass 10 % above its biggest week, as long as the slot
         allows another sport."""
-        if len(self.roles) < 2:
-            return
+        if len(self.roles) >= 2:
+            self._assign(spec, workouts, slot_of)
+        for w in workouts:
+            w.template_id, w.parts = library.in_sport(w.parts, w.template_id, w.sport)
+
+    def _assign(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
         share = shares(self.roles, spec.block)
         total = sum(w.minutes for w in workouts)
         done = {r.sport: 0 for r in self.roles}
@@ -386,6 +394,8 @@ class _Filler:
                 long_minutes += min(spare, floor5(room))
                 i = next(i for i, w in enumerate(workouts) if w.family == "long")
                 workouts[i] = self._workout(workouts[i].date, workouts[i].template_id, self.long_slot, minutes=long_minutes)
+        # Every workout in its sport, before the checks: another sport's template may hold more hard minutes.
+        self._sports(spec, workouts, by_wd)
         if sum(w.minutes for w in workouts) > ceiling or _hard_share(workouts) > MAX_HARD_SHARE:
             return None
         return workouts, used, long_minutes
