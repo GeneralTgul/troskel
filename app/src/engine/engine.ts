@@ -22,6 +22,9 @@ export const STRENGTH_CLEAR_DAYS = 3;
 /** The key suffix of a day's second workout, and its weight when the easy minutes are shared (engine.SECOND). */
 export const SECOND = "-2";
 export const SECOND_WEIGHT = 0.7;
+/** A supporting sport's smaller long workout: at least this long, at most this share of the long run. */
+export const SUPPORT_LONG_MIN = 60;
+export const SUPPORT_LONG_OF_MAIN = 0.75;
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -49,6 +52,7 @@ interface State {
   load_target: number;
   load_actual: number;
   max_run: number;
+  support_i: number;
 }
 
 /** Smallest distance in days between any two of the weekdays, around the week. */
@@ -180,7 +184,7 @@ class Filler {
   readonly goal: StoredGoal | null;
   readonly state: State = {
     steps: new Map(), last_long: null, max_minutes: null, base_i: 0, build_i: 0, sunday_hard: false,
-    load_target: 0, load_actual: 0, max_run: 0,
+    load_target: 0, load_actual: 0, max_run: 0, support_i: 0,
   };
   readonly blocked = new Set<IsoDate>();
   readonly capped = new Map<IsoDate, number>();
@@ -266,6 +270,9 @@ class Filler {
     const cands = chosen.filter((s) => !(wantLong && s === this.longSlot) && !this.blocked.has(day.get(s.weekday)!)
       && s.max_minutes >= QUALITY_MIN_SLOT && mod(longWd - s.weekday, 7) !== 1 && !(s.weekday === 0 && st.sunday_hard));
     const fixedHard = [...new Set([...raceDays, ...(wantLong ? [longWd] : [])])].sort((a, b) => a - b);
+    const support = this.roles.slice(1).find((r) => r.role === "support")?.sport ?? null;
+    const supportLong = wantLong && spec.kind === "load" && (spec.block === "base" || spec.block === "build")
+      && !spec.goals.length && st.support_i % 2 === 0 ? support : null;
 
     let result: Assembled | null = null;
     for (let q = Math.min(qualityCount(spec, n, final), cands.length); q >= 0; q--) {
@@ -274,7 +281,7 @@ class Filler {
       const fams = families(spec, q, st, this.goal, early);
       const downs = fams.length ? Math.max(...fams.map((f) => library.get(f).steps.length)) : 1;
       for (let down = 0; down < downs; down++) {
-        result = this.assemble(spec, chosen, day, qSlots, fams, down, ceiling, wantLong, seconds, doubles);
+        result = this.assemble(spec, chosen, day, qSlots, fams, down, ceiling, wantLong, seconds, doubles, supportLong);
         if (result !== null) break;
       }
       if (result !== null) break;
@@ -298,6 +305,7 @@ class Filler {
       st.load_actual = weekMinutes(week);
       st.base_i += spec.block === "base" ? 1 : 0;
       st.build_i += spec.block === "build" ? 1 : 0;
+      st.support_i += (spec.block === "base" || spec.block === "build") && !spec.goals.length ? 1 : 0;
     }
     st.max_minutes = Math.max(st.max_minutes ?? 0, weekMinutes(week));
     st.max_run = Math.max(st.max_run, sportMinutes(week).get(RUNNING) ?? 0);
@@ -351,19 +359,21 @@ class Filler {
 
   /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place, and then the
    * sport's template in the place of the running one (library.inSport: the same minutes). */
-  sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>): void {
-    if (this.roles.length >= 2) this.assign(spec, workouts, slotOf, secondOf);
+  sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>,
+    pinned: Map<string, string>): void {
+    if (this.roles.length >= 2) this.assign(spec, workouts, slotOf, secondOf, pinned);
     for (const w of workouts) [w.template_id, w.parts] = library.inSport(w.parts, w.template_id, w.sport);
   }
 
-  assign(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>): void {
+  assign(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>,
+    pinned: Map<string, string>): void {
     const share = shares(this.roles, spec.block);
     const total = sum(workouts.map(minutes));
     const done = new Map(this.roles.map((r) => [r.sport, 0]));
     const count = new Map(this.roles.map((r) => [r.sport, 0]));
     const runCap = this.state.max_run ? floor5((1 + MAX_WEEKLY_INCREASE) * this.state.max_run) : null;
-    const mainFirst = (w: StoredWorkout) => w.family === "long" || w.template_id === "test";
-    const order = sortedBy(workouts, (w) => [mainFirst(w) ? 0 : w.quality ? 1 : 2,
+    const mainFirst = (w: StoredWorkout) => (w.family === "long" && !pinned.has(w.key)) || w.template_id === "test";
+    const order = sortedBy(workouts, (w) => [mainFirst(w) || pinned.has(w.key) ? 0 : w.quality ? 1 : 2,
       mainFirst(w) || w.quality ? 0 : -minutes(w), w.date]);
     const or = <T>(xs: T[], els: T[]) => (xs.length ? xs : els);
     const dayOf = new Map<IsoDate, StoredWorkout[]>();
@@ -384,7 +394,7 @@ class Filler {
       let cands = or(w.quality ? allowed.filter((r) => r.role !== "maintenance") : allowed, allowed);
       cands = or(cands.filter((r) => r.role !== "maintenance" || count.get(r.sport) === 0), cands);
       cands = or(cands.filter((r) => r.sport !== RUNNING || runCap === null || done.get(RUNNING)! + minutes(w) <= runCap), cands);
-      const pick = mainFirst(w) && cands.some((r) => r.sport === this.main) ? this.main
+      const pick = pinned.has(w.key) ? pinned.get(w.key)! : mainFirst(w) && cands.some((r) => r.sport === this.main) ? this.main
         : maxBy(cands, (r) => [share.get(r.sport)! * total - done.get(r.sport)!, -this.roles.indexOf(r)]).sport;
       w.sport = pick;
       done.set(pick, done.get(pick)! + minutes(w));
@@ -396,7 +406,8 @@ class Filler {
   }
 
   assemble(spec: WeekSpec, chosen: StoredSlot[], day: Map<number, IsoDate>, qSlots: StoredSlot[], fams: string[],
-    down: number, ceiling: number, wantLong: boolean, seconds: StoredSlot[], doubles: number): Assembled | null {
+    down: number, ceiling: number, wantLong: boolean, seconds: StoredSlot[], doubles: number,
+    supportLong: string | null = null): Assembled | null {
     const st = this.state;
     const level = this.level;
     const workouts: StoredWorkout[] = [];
@@ -429,6 +440,29 @@ class Filler {
         workouts.push(this.workout(day.get(this.longSlot.weekday)!, progressive ? "long_progressive" : "long",
           this.longSlot, { minutes: want }));
         left -= want;
+      }
+    }
+
+    // ---- a smaller long workout in the supporting sport, away from the long run (engine.py)
+    const pinned = new Map<string, string>();
+    if (supportLong && longMinutes) {
+      const near = new Set([-1, 0, 1].map((k) => mod(this.longSlot.weekday + k, 7)));
+      const busy = new Set(workouts.map((w) => w.date));
+      const hard = new Set(workouts.filter((w) => w.quality).map((w) => w.date));
+      if (st.sunday_hard) hard.add(addDays(spec.monday, -1));
+      const free = chosen.filter((s) => !near.has(s.weekday) && !busy.has(day.get(s.weekday)!)
+        && !hard.has(addDays(day.get(s.weekday)!, -1)) && s.sports.includes(supportLong)
+        && !this.blocked.has(day.get(s.weekday)!) && !this.capped.has(day.get(s.weekday)!));
+      if (free.length) {
+        const slot = maxBy(free, (s) => [s.max_minutes, s.weekday]);
+        const part = shares(this.roles, spec.block).get(supportLong)! * ceiling;
+        const want = floor5(Math.min(slot.max_minutes, level.long_cap, SUPPORT_LONG_OF_MAIN * longMinutes, part, left));
+        if (want >= SUPPORT_LONG_MIN) {
+          const w = this.workout(day.get(slot.weekday)!, "long", slot, { minutes: want });
+          workouts.push(w);
+          pinned.set(w.key, supportLong);
+          left -= want;
+        }
       }
     }
 
@@ -465,13 +499,13 @@ class Filler {
     }
     const byWd = new Map(chosen.map((s) => [s.weekday, s]));
     const secondOf = new Map(extra.map((s) => [s.weekday, s]));
-    const shares = share(Math.max(0, left), items);
-    for (const [k, m] of shares) {
+    const split = share(Math.max(0, left), items);
+    for (const [k, m] of split) {
       if (k < 7) workouts.push(this.workout(day.get(k)!, kinds.get(k)!, byWd.get(k)!, { minutes: m }));
       else workouts.push(this.workout(day.get(k - 7)!, kinds.get(k)!, secondOf.get(k - 7)!, { minutes: m, suffix: SECOND }));
     }
     // With few slots the easy runs fill up: what is left goes to the long run, within its own limits.
-    const spare = floor5(left - [...shares.values()].reduce((a, b) => a + b, 0));
+    const spare = floor5(left - [...split.values()].reduce((a, b) => a + b, 0));
     if (longMinutes && spec.kind === "load" && st.last_long && spare >= 5) {
       const room = Math.min(this.longSlot.max_minutes, level.long_cap, st.last_long + LONG_STEP) - longMinutes;
       if (room >= 5) {
@@ -481,7 +515,7 @@ class Filler {
       }
     }
     // Every workout in its sport, before the checks: another sport's template may hold more hard minutes.
-    this.sports(spec, workouts, byWd, secondOf);
+    this.sports(spec, workouts, byWd, secondOf, pinned);
     if (workouts.reduce((s, w) => s + minutes(w), 0) > ceiling || hardShare(workouts) > MAX_HARD_SHARE) return null;
     return [workouts, used, longMinutes];
   }

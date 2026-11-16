@@ -59,6 +59,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Styrka (0–3 pass i veckan ovanpå uthållighetsveckan) och simning på ansträngning eller på ett manuellt CSS-test | Byggt i motorn och i appen (steg 3 av 4), se [Styrka](#styrka) och [Simning](#simning). Antalet styrkepass väljs i formuläret, och simtestet skrivs in från *Historik* |
 | Idrotterna i formuläret och utskriften: roll och andel, idrotterna per veckodag, en färg per idrott, idrottstabellen, watt i zonerna, veckans tid per idrott och belastningen | Byggt (steg 4 av 4), se [Utskriften](#4-utskriften). Inte provat på Windows ([PROV.md](PROV.md)) |
 | Två pass samma dag: en andra tid på en veckodag ger ett lugnt pass i en annan idrott | Byggt, se [Två pass samma dag](#två-pass-samma-dag) |
+| Ett mindre långpass i en stödjande idrott varannan vecka | Byggt, se [Flera idrotter](#flera-idrotter) |
 | Återhämtningsblock efter ett mål, passkort | Inte byggt |
 
 ## 1. Datamodellen
@@ -217,6 +218,7 @@ Idrottaren anger idrotterna med en roll och en andel av veckotiden (`PlanRequest
 - **Sedan får varje pass sin idrott** (`engine._Filler._sports`): långpasset och testet i huvudidrotten, de hårda passen i datumordning och de lugna med det längsta först, var och ett till den idrott som ligger längst efter sin andel av veckans minuter bland de idrotter platsen tillåter. Ett lopp är i målets idrott.
 - **Närmare målet** tar huvudidrotten hälften av de andra idrotternas andel i toppen och tre fjärdedelar i nedtrappningen (`engine.SHARE_SHIFT`).
 - **Underhållsidrotten** får högst ett pass i veckan och aldrig ett hårt.
+- **Ett mindre långpass i den stödjande idrotten** (`engine.SUPPORT_LONG_MIN`, `SUPPORT_LONG_OF_MAIN`): varannan belastningsvecka i grund och uppbyggnad, utan lopp i veckan, får den första stödjande idrotten ett lugnt långpass, till exempel ett längre cykelpass för en löpare. Det läggs i den längsta platsen som tillåter idrotten, aldrig på huvudidrottens långpassdag, dagen före eller dagen efter den (också över veckogränsen), aldrig dagen efter ett hårt pass och inte runt ett lopp. Det är högst tre fjärdedelar av långpasset och högst idrottens andel av veckan, och minst 60 minuter, annars blir det inget. Det räknas i idrottens andel och i veckans tak som andra pass. Veckorna räknas från den första belastningsveckan, så schemat börjar med ett.
 - **Löpningen har ett eget tak:** löpminuterna växer högst 10 % över den största löpveckan före, så länge platsen tillåter en annan idrott.
 - **Passen i idrottens egna mallar (steg 2):** veckan fylls med löpningens mallar. När ett pass får sin idrott tar det idrottens mall på samma plats (`library.in_sport`): samma familj och steg, och varje steg exakt lika långt som löpningens, så veckans minuter står kvar. Cykelns och SkiErgens mallar kan ha fler hårda minuter, så taket på en fjärdedel över LT1 prövas igen med dem, och går veckan över stegar motorn ned som förut. Skidor och rullskidor har SkiErgens mallar, simning löpningens med idrottens namn först i titeln (*Simning: lugnt pass*) tills steg 3. Testet och loppet är desamma i alla idrotter. Se [Passbiblioteket](#passbiblioteket).
 - **Zonerna och målen per idrott:** varje idrott får puls ur sitt eget test, och målet i testets belastning (`resolve.targets`): löpning fart i min/km, cykel watt och SkiErg watt och tid per 500 m (Concept2: W = 2,80 / (s/m)³, `core.sport`). Watten avrundas till hela watt. Skidor lånar SkiErgens pulszoner tills ett eget test finns (`models.BORROWS`), men inte watten, och planen säger det. En idrott utan test får zon och ansträngning, och planen säger det, så simning går på upplevd ansträngning (RPE).
@@ -274,7 +276,7 @@ En veckodag kan ha en andra plats (`periodize.second_slots`): en kärnplats till
 - **Två idrotter:** dagens två pass får olika idrotter. Varje pass får sin idrott som förut (`engine._Filler._assign`), men inte den idrott dagens andra pass redan fått, och inte en som lämnar det andra utan idrott. Går det ändå inte stryks det andra passet.
 - **Hårda dagar:** aldrig två hårda pass samma dag, och en dag med två pass är hård om något av dem är hårt. Styrkan räknar en dag med två pass som en hård dag när den väljer dagar.
 
-**Inte byggt:** belastningen som tak för veckan och ett mindre långpass i en stödjande idrott.
+**Inte byggt:** belastningen som tak för veckan.
 
 ### Delmål och planer utan mål
 

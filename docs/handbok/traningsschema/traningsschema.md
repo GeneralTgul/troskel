@@ -55,7 +55,7 @@ Datum skrivs som `2027-05-22` eller väljs i kalendern bredvid fältet.
 
 Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är förvald som huvudidrott. Kryssa i de idrotter schemat ska ha och välj för var och en:
 
-- **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
+- **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* (varannan vecka ett mindre, lugnt långpass när tiden räcker, aldrig dagen före eller efter huvudidrottens långpass) eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
 - **Andel:** hur stor del av veckans tid idrotten får, i tiotal procent. Rollen fyller i 60, 30 eller 10 %. Andelarna räknas mot varandra, så 60 och 30 ger två tredjedelar och en tredjedel.
 
 Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner. Simning tar tempot per 100 m ur idrottarens senaste [simtest](#simtestet-css), och går på upplevd ansträngning när det inte finns något. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.

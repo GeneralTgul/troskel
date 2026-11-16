@@ -39,7 +39,7 @@ describe("strength and swimming in the app", () => {
     all(moved).find((w) => w.key === day[1].key)!.start = "07:00:00";
     expect(workoutsOn(moved, "2026-11-16").map((w) => w.sport)).toEqual(["strength", "run"]);
     const tri = workoutsOn(fx.plans["triathlon-css"], "2026-11-16");
-    expect(tri.map((w) => [w.sport, w.start])).toEqual([["run", null], ["strength", null]]);
+    expect(tri.map((w) => [w.sport, w.start])).toEqual([["swim", null], ["strength", null]]);
   });
 
   it("shows strength without zones or targets, with its sport first", () => {

@@ -94,10 +94,17 @@ def test_every_workout_has_a_sport_its_slot_allows(plan):
 
 
 def test_the_long_run_and_the_test_are_in_the_main_sport(plan):
+    """The week's long run is in the main sport; a second long workout is the supporting sport's smaller one."""
     main = plan.request.main_sport
-    for w in plan.workouts:
-        if w.family == "long" or w.template_id == "test":
-            assert w.sport == main, w
+    support = next((r.sport for r in plan.request.plan_roles()[1:] if r.role == "support"), None)
+    for wk in plan.weeks:
+        longs = sorted((w for w in wk.workouts if w.family == "long"), key=lambda w: -w.minutes)
+        if longs:
+            assert longs[0].sport == main, longs[0]
+        assert all(w.sport == support and w.minutes < longs[0].minutes for w in longs[1:]), longs
+        for w in wk.workouts:
+            if w.template_id == "test":
+                assert w.sport == main, w
 
 
 def test_a_race_is_in_the_goal_sport():

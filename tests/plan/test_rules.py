@@ -98,7 +98,9 @@ def test_progression_is_careful(plan):
         assert wk.minutes <= 1.10 * biggest, f"week {wk.index}: {wk.minutes} after {biggest}"
         assert wk.minutes <= wk.target_minutes
         biggest = max(biggest, wk.minutes)
-    longs = [next((w.minutes for w in wk.workouts if w.family == "long"), None) for wk in plan.weeks if wk.kind == "load"]
+    main = plan.request.main_sport           # a supporting sport's smaller long workout is not the long run
+    longs = [next((w.minutes for w in wk.workouts if w.family == "long" and w.sport == main), None)
+             for wk in plan.weeks if wk.kind == "load"]
     longs = [m for m in longs if m]
     assert all(b - a <= 15 for a, b in zip(longs, longs[1:]))
     assert all(m <= level.long_cap for m in longs)

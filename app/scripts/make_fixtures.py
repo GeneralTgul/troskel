@@ -185,6 +185,12 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
         ("two-a-day-rolling", replace(demo.demo_request(20), availability=sl(DEMO_SLOTS + MORNING_BIKE), level="trained",
                                       roles=(SportRole("run", "main"), SportRole("bike", "support"))), date(2026, 12, 2)),
     ]
+    # A smaller long workout in a supporting sport (#666): a longer bike ride every other week for a runner.
+    out += [
+        ("support-long", replace(base, availability=sl(tuple((d, 90 if d < 5 else 150, None, "core", rb) for d in range(7))),
+                                 level="trained", recent_weekly_minutes=360,
+                                 roles=(SportRole("run", "main"), SportRole("bike", "support"))), None),
+    ]
     return out
 
 
