@@ -151,6 +151,8 @@
 
 {# ============================== one page per week ============================== #}
 {% for w in weeks %}
+{# rows in the table: one per workout, one per rest day. A full week (two workouts on a day) is drawn smaller. #}
+{% set rows = namespace(n=0) %}{% for d in w.days %}{% set rows.n = rows.n + ([d.workouts | length, 1] | max) %}{% endfor %}
 <section class="week">
   <div class="week-head">
     <div>
@@ -161,7 +163,7 @@
     <div class="sum"><b class="num">{{ w.total }} {{ t("plan.pdf.unit.hours") }}</b>{{ t("plan.pdf.week_sum", n=w.sessions, pct=w.easy_pct) }}</div>
   </div>
   <div class="week-focus">{% for n in w.notes %}<p>{{ n }}</p>{% endfor %}</div>
-  <table class="days">
+  <table class="days{% if rows.n >= 8 %} dense{% endif %}">
     <colgroup><col class="c-day"><col class="c-what"><col><col class="c-done"></colgroup>
     <thead><tr><th class="first">{{ t("plan.pdf.col.day") }}</th><th>{{ t("plan.pdf.col.workout") }}</th>
       <th>{{ t("plan.pdf.col.parts") }}</th><th class="last">{{ t("plan.pdf.col.done") }}</th></tr></thead>
@@ -193,16 +195,18 @@
     </tbody>
   </table>
   <div class="week-foot">
-  {% if w.zone_bar %}
+  <div class="bars{% if w.zone_bar and w.sport_bar %} two{% endif %}">
+  {% if w.zone_bar %}<div>
     <h2>{{ t("plan.pdf.week_zones") }}</h2>
     <div class="zb">{% for z in w.zone_bar %}<i style="background: {{ z.color }}; flex: {{ "%.2f" | format(z.pct) }} 0 0"></i>{% endfor %}</div>
     <div class="zl">{% for z in w.zone_bar %}<span><i style="background: {{ z.color }}"></i>{{ z.code }} {{ t("plan.fmt.minutes", m=z.minutes) }}</span>{% endfor %}</div>
-  {% endif %}
-  {% if w.sport_bar %}
-    <h2 class="sb-h">{{ t("report.plan.week_sports") }}</h2>
+  </div>{% endif %}
+  {% if w.sport_bar %}<div>
+    <h2>{{ t("report.plan.week_sports") }}</h2>
     <div class="zb sb">{% for s in w.sport_bar %}<i style="background: {{ s.color }}; flex: {{ "%.2f" | format(s.pct) }} 0 0"></i>{% endfor %}</div>
     <div class="zl">{% for s in w.sport_bar %}<span><i style="background: {{ s.color }}"></i>{{ s.name }} {{ t("plan.fmt.minutes", m=s.minutes) }}</span>{% endfor %}</div>
-  {% endif %}
+  </div>{% endif %}
+  </div>
   {% if w.load %}<div class="week-load"><b>{{ t("report.plan.load") }}</b> <span class="num">{{ w.load }}</span> · {{ t("report.plan.load_note") }}</div>{% endif %}
   </div>
 </section>

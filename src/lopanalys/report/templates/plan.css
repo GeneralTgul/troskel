@@ -33,25 +33,35 @@
 .rules li { margin-bottom: 0.8mm; }
 
 /* ---------- one page per week ---------- */
+/* A week sheet is one page, also with several sports and strength (#666): the table is dense and the foot's two
+   bars stand side by side. A week too full for one page breaks inside the table, between two workouts and with
+   the column heads repeated: the head and the foot never stand alone on a page. */
 .week { break-before: page; }
-.week-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 6mm; padding-bottom: 3mm; border-bottom: 0.4mm solid var(--ink); }
+.week-head, .week-focus { break-after: avoid; }
+.days { break-inside: auto; }
+.days thead { break-inside: avoid; }
+.week-foot { break-before: avoid; }
+/* Eight rows or more (a second workout on some day): the table is drawn at 92 %, which holds the sheet on one page
+   in both languages. tests/report/test_report_plan_week_sheets.py reads the pages. */
+.days.dense { zoom: 0.92; }
+.week-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 6mm; padding-bottom: 2.2mm; border-bottom: 0.4mm solid var(--ink); }
 .week-head h2 { font-size: 22pt; line-height: 1.05; margin-top: 2mm; letter-spacing: -0.015em; }
 .week-head .dates { color: var(--ink-2); font-size: 10pt; margin-top: 1mm; }
 .week-head .sum { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.35; white-space: nowrap; }
 .week-head .sum b { display: block; font-size: 17pt; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; line-height: 1.1; }
-.week-focus { margin: 3.5mm 0 4mm; color: var(--ink-2); font-size: 9.5pt; }
+.week-focus { margin: 2.5mm 0 3mm; color: var(--ink-2); font-size: 9.5pt; }
 .week-focus p { margin: 0 0 0.8mm; }
 .days { table-layout: fixed; }
-.days col.c-day { width: 16mm; } .days col.c-what { width: 48mm; } .days col.c-done { width: 35mm; }
-.days tbody td { vertical-align: top; padding-top: 2.6mm; padding-bottom: 2.6mm; border-bottom: 0.2mm solid var(--rule); }
+.days col.c-day { width: 13mm; } .days col.c-what { width: 53mm; } .days col.c-done { width: 30mm; }
+.days tbody td { vertical-align: top; padding-top: 1.4mm; padding-bottom: 1.4mm; border-bottom: 0.2mm solid var(--rule); }
 .days td.day b { display: block; font-size: 10pt; font-weight: 600; }
 .days td.day span { color: var(--muted); font-size: 8pt; }
 .days .w-title { font-weight: 600; font-size: 10.5pt; line-height: 1.25; display: flex; align-items: baseline; gap: 1.8mm; }
 .days .w-title i { flex: none; display: inline-block; width: 1.1mm; height: 3.6mm; border-radius: 0.5mm; transform: translateY(0.5mm); }
 .days .w-meta { font-size: 8.5pt; color: var(--ink); font-weight: 600; margin: 0.3mm 0 0 2.9mm; font-variant-numeric: tabular-nums; }
 .days .w-meta span { color: var(--muted); font-weight: 400; }
-.days .w-purpose { font-size: 8pt; color: var(--muted); line-height: 1.3; margin: 0.6mm 0 0 2.9mm; }
-.days .line { display: grid; grid-template-columns: 20mm 1fr; gap: 0 2mm; font-size: 8.5pt; line-height: 1.35; padding: 0.35mm 0; }
+.days .w-purpose { font-size: 8pt; color: var(--muted); line-height: 1.25; margin: 0.4mm 0 0 2.9mm; }
+.days .line { display: grid; grid-template-columns: 18mm 1fr; gap: 0 2mm; font-size: 8.5pt; line-height: 1.35; padding: 0.35mm 0; }
 .days .line .k { color: var(--muted); }
 .days .line .v b { font-weight: 600; }
 .days .line .zc { font-weight: 600; margin: 0 0.8mm 0 1mm; white-space: nowrap; }
@@ -64,7 +74,8 @@
 .days .box { flex: none; width: 4.2mm; height: 4.2mm; border: 0.3mm solid var(--ink-2); border-radius: 0.7mm; }
 .days .write { flex: 1; }
 .days .write i { display: block; height: 4.6mm; border-bottom: 0.2mm solid var(--rule); }
-.week-foot { margin-top: 5mm; break-inside: avoid; }
+.week-foot { margin-top: 3mm; break-inside: avoid; }
+.week-foot .bars.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 7mm; }
 .week-foot .zb { display: flex; height: 3.2mm; gap: 0.5mm; }
 .week-foot .zb i { display: block; border-radius: 0.5mm; min-width: 0.6mm; }
 .week-foot .zl { display: flex; flex-wrap: wrap; gap: 0.8mm 5mm; font-size: 8pt; color: var(--ink-2); margin-top: 1.5mm; }
@@ -91,8 +102,7 @@
 .plan-cover .cz-sport .cz-hr { color: var(--ink); font-weight: 600; }
 .plan-cover .cz-sport-name { font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 1.3mm; }
 .plan-cover .cz-sport-name i { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 0.6mm; }
-.week-foot .sb-h { margin-top: 3mm; }
-.week-load { margin-top: 3mm; font-size: 8.5pt; color: var(--ink-2); }
+.week-load { margin-top: 2.5mm; font-size: 8.5pt; color: var(--ink-2); }
 .week-load b { color: var(--ink); font-weight: 600; }
 /* A plan with several sports has the sports table and more zones on the cover: the rest is drawn smaller. */
 .multi .plan-cover .hero { padding-top: 1mm; }

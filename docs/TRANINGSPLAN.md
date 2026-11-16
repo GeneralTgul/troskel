@@ -384,4 +384,5 @@ Utskriften byggs i rapportmotorn (`report/plan_builder.py` och mallen `plan.html
 - **Skissen** (sist, bara i ett rullande schema): veckorna utan pass, en rad var med block, typ av vecka, tid och antal pass. I översikten är skissveckornas staplar bleka.
 - **Kalenderfilen** (`plan/ics.py`) har en händelse per pass i veckorna med pass, med passets delar och mål i beskrivningen. En plats med klockslag ger en händelse vid den tiden, annars en heldagshändelse. Händelsens id är passets fasta nyckel, så att en ny import skriver över i stället för att dubblera.
 - **Inte byggt:** passkort (ett pass per halvsida) och utskrift av ett block i taget.
-- Utskriften på Windows är inte provad än ([PROV.md](PROV.md)). Sidbrytningarna i veckobladen väntar på det provet.
+- **Veckobladet på en sida:** ett blad ryms på en A4-sida också med flera idrotter och styrka. Tabellen är tät, foten har veckans tid per zon och per idrott bredvid varandra, och en vecka med åtta rader eller fler (två pass någon dag) ritas med tabellen i 92 % (`.days.dense` i `plan.css`). En vecka som ändå inte ryms bryts inne i tabellen mellan två pass, med kolumnrubrikerna upprepade: huvudet och foten står aldrig ensamma på en sida. Provet `tests/report/test_report_plan_week_sheets.py` läser PDF:en sida för sida på svenska och engelska.
+- Utskriften på Windows är inte provad än ([PROV.md](PROV.md)).
