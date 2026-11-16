@@ -109,6 +109,9 @@ jobs:
     needs: web
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      # write only for the fixed link: the APK is put on the release android-test.
+      contents: write
     env:
       HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
       HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
@@ -165,6 +168,30 @@ jobs:
             app/android/app/build/outputs/apk/debug/*.apk
             app/android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
+
+      - name: Fast länk till APK:n (releasen android-test)
+        # The artifact needs a GitHub login and comes as a zip, so the newest APK from main (or a tag) is also put
+        # on one pre-release with a fixed address that a tablet can open directly:
+        # https://github.com/GeneralTgul/troskel/releases/download/android-test/troskel.apk
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/app-v')
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.web.outputs.version }}
+        run: |
+          apk=app/android/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$apk" || { echo "::error::$apk saknas"; exit 1; }
+          cp "$apk" "$RUNNER_TEMP/troskel.apk"
+          link="https://github.com/$GITHUB_REPOSITORY/releases/download/android-test/troskel.apk"
+          notes="Testbygget av appen för Android, utan Google Play: version $VERSION, körning $GITHUB_RUN_NUMBER, commit ${GITHUB_SHA::7}, $(date -u +%F).
+
+          Öppna $link på plattan eller telefonen och tillåt installation från webbläsaren. En ny version installeras ovanpå den gamla, och appens data ligger kvar. Hur det går till: docs/app/app.md, avsnittet Appen utan butiken."
+          if gh release view android-test >/dev/null 2>&1; then
+            gh release edit android-test --prerelease --title "Android-testbygget" --notes "$notes"
+          else
+            gh release create android-test --prerelease --target "$GITHUB_SHA" --title "Android-testbygget" --notes "$notes"
+          fi
+          gh release upload android-test "$RUNNER_TEMP/troskel.apk" --clobber
 
       - name: Till Play (internt test, som utkast)
         # Play's API accepts a bundle only after the first one has been uploaded by hand in Play Console.

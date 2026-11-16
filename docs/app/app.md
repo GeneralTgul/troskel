@@ -151,8 +151,22 @@ Proven står i `app/test/storage.test.ts`. I en riktig telefon är lagringen int
 
 ## Appen utan butiken
 
-- **Android:** varje körning av bygget *App* gör en APK (artefakten `android-<version>-<körning>`), som går att installera direkt på en telefon eller surfplatta, utan Google Play. Android frågar en gång om installation från den källan får ske. Testbyggena skrivs under med samma nyckel, `app/android/app/troskel-test.p12`, så att en ny APK installeras ovanpå den gamla och appens data ligger kvar. Nyckeln skriver bara under testbyggen, aldrig AAB-filen till Play.
-- **iPhone och iPad:** appens sida i Safari, *Dela → Lägg till på hemskärmen*. Den byggda iOS-appen kräver Xcode på en Mac eller ett utvecklarkonto hos Apple (TestFlight).
+Appen behöver ingen butik för att provas. På Android installeras APK:n från en fast länk, och på iPhone och iPad läggs webbappen på hemskärmen.
+
+**Android (telefon eller surfplatta):** den senaste APK:n från `main` ligger alltid på samma adress:
+
+<https://github.com/GeneralTgul/troskel/releases/download/android-test/troskel.apk>
+
+1. Öppna länken i Chrome på plattan. Ingen inloggning behövs. Chrome varnar för att filen kan vara skadlig; välj *Ladda ned ändå*.
+2. Tryck på filen när den är hämtad. Första gången säger Android att Chrome inte får installera okända appar: tryck på *Inställningar*, slå på *Tillåt från den här källan* och gå tillbaka.
+3. Tryck på *Installera*. Play Protect kan fråga om appen ska skannas; *Installera ändå* går bra, eftersom appen kommer från vårt eget bygge.
+4. Slå av *Tillåt från den här källan* igen under *Inställningar → Appar → Chrome → Installera okända appar*, så att bara den här filen fick gå in.
+
+En ny version installeras på samma sätt, ovanpå den gamla, och appens data ligger kvar: testbyggena skrivs under med samma nyckel, `app/android/app/troskel-test.p12`, som bara skriver under testbyggen, aldrig AAB-filen till Play. På en platta som visar en kiosk-app (som Fully Kiosk) lämnas kiosken först, så att Chrome och installationen syns.
+
+Länken pekar på förhandsreleasen `android-test`, som jobbet *Android* i bygget *App* skriver över vid varje körning på `main` eller en tagg `app-v…`. Releasens text säger version, körning och commit. Varje körning sparar också APK:n och AAB-filen som artefakten `android-<version>-<körning>`, men den kräver inloggning på GitHub och kommer som zip.
+
+**iPhone och iPad:** öppna <https://generaltgul.github.io/troskel/app/> i Safari, tryck på *Dela* (rutan med pilen) och *Lägg till på hemskärmen*. Appen startar sedan från ikonen, utan adressfält. Att den fungerar utan nät är inte provat i en telefon ([PROV.md](../PROV.md#appen-i-telefonen)). Den byggda iOS-appen kräver Xcode på en Mac eller ett utvecklarkonto hos Apple (TestFlight).
 
 ## Bygga och köra lokalt
 
