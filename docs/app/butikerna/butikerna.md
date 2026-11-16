@@ -77,13 +77,17 @@ Integritetspolicyn är `app/public/privacy.html`, som följer med bygget och lig
 
 `app/store/screenshots.mjs` fotograferar appen med exempelschemat, på svenska och engelska, i varje storlek som butikerna vill ha: iPhone 6,9 och 6,5 tum, iPad 13 tum, Android-telefon och surfplattor på 7 och 10 tum. Klockan står still på torsdagen i exempelschemats första vecka, en dag med ett kvalitetspass, så att första bilden visar ett pass och bilderna blir likadana varje gång. Bilderna läggs i `app/store/screenshots/`, som git ignorerar: de laddas upp i butikerna, inte i repot.
 
+Exempelschemat (`app/public/demo.troskel`) är svenskt. I de engelska bilderna byter skriptet därför exempelidrottarens, loppens och testets namn mot engelska (`NAMES_EN` i skriptet). Får exempelschemat ett nytt namn läggs det till där.
+
+Skriptet kontrollerar också varje vy det fotograferar: menyns namn ska stå på en rad, och ingen rubrik, inget mål och ingen siffra får sticka ut ur sitt kort eller utanför skärmen. Ett fel avbryter körningen med en lista. `node store/screenshots.mjs --check` gör bara kontrollen, utan bilder, och provar dessutom en telefon på 320 punkter och en med större text.
+
 ```bash
 cd app
 npm i --no-save playwright@1.65.1 && npx playwright install chromium
 TROSKEL_BASE=./ npx vite build && node store/screenshots.mjs
 ```
 
-På en maskin där Playwrights Chromium inte går att ladda ned pekar `CHROMIUM_PATH` på en Chromium som redan finns, till exempel en äldre i `~/.cache/ms-playwright`. Med ett minnestak, på en maskin som delas:
+På en maskin där Playwrights Chromium inte går att ladda ned pekar `CHROMIUM_PATH` på en Chromium som redan finns, till exempel en äldre i `~/.cache/ms-playwright`. Ligger Playwright i en annan katalog än appens `node_modules` pekar `PLAYWRIGHT_PATH` på paketet (`…/node_modules/playwright`). Med ett minnestak, på en maskin som delas:
 
 ```bash
 CHROMIUM_PATH=~/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell \

@@ -1,14 +1,26 @@
-import { mainSport } from "../engine/models";
+import { mainSport, planSports } from "../engine/models";
 import { t } from "../i18n";
 import { addDays, daysBetween, dayMonth, mondayOf } from "../model/dates";
 import { hours, noteText, planEnd, planStart, targetText, weekMinutes, weekZoneMinutes, zoneName } from "../model/plan";
 import { ZONES, type IsoDate, type StoredPlan, type StoredWorkout } from "../model/types";
-import { dayLabel, zoneColor } from "./parts";
+import { dayLabel, distanceText, zoneColor } from "./parts";
 
 function relative(day: IsoDate, today: IsoDate): string {
   const n = daysBetween(today, day);
   if (n === 0) return t("ui.plan.today");
   return n > 0 ? t("ui.plan.days_left", { n }) : t("ui.plan.passed");
+}
+
+/** Whether a sport has a target in some zone (a test of its own, or a borrowed one). */
+function hasTargets(stored: StoredPlan, sport: string): boolean {
+  const zt = stored.targets[sport] ?? {};
+  return ZONES.some((z) => targetText(zt[z], sport) !== "");
+}
+
+/** Every how-manyth week gets its number under the bar, so that the numbers of a long plan do not run together:
+ * every week up to 12, every other up to 24, then every fourth. */
+export function labelStep(weeks: number): number {
+  return weeks > 24 ? 4 : weeks > 12 ? 2 : 1;
 }
 
 /** The whole plan: goals, test days, the blocks and a bar per week with the time in each zone. */
@@ -21,8 +33,10 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
   const end = planEnd(stored);
   const thisWeek = mondayOf(today);
   const main = mainSport(stored.request);
-  const cap = stored.request.capacity.find((c) => c.sport === main);
-  const zt = stored.targets[main] ?? {};
+  // The zones of every sport in the plan that has targets of its own: the main sport first (always shown), then
+  // the others, so that the bike's watt and the pool's time per 100 m stand beside the running paces.
+  const sports = [main, ...planSports(stored.request).filter((s) => s !== main && hasTargets(stored, s))];
+  const step = labelStep(weeks.length);
   return (
     <section class="view overview two-col">
       <div class="col">
@@ -40,7 +54,7 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
                 <span class="grow">
                   <b>{g.name}</b>
                   <span class="muted small">
-                    {dayLabel(g.date)}{g.distance_km ? ` · ${t("plan.goal.distance", { km: String(g.distance_km) })}` : ""}
+                    {dayLabel(g.date)}{g.distance_km ? ` · ${distanceText(g.distance_km)}` : ""}
                     {g.target ? ` · ${g.target}` : ""}
                   </span>
                 </span>
@@ -79,7 +93,7 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
 
       <div class="col">
         <h3>{t("ui.plan.weeks")}</h3>
-        <div class="bars" role="img" aria-label={t("ui.plan.weeks")}>
+        <div class={`bars ${step > 1 ? "many" : ""}`} role="img" aria-label={t("ui.plan.weeks")}>
           {weeks.map((w) => {
             const zm = weekZoneMinutes(w);
             const total = weekMinutes(w);
@@ -91,27 +105,37 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
                   {[...ZONES].reverse().map((z) =>
                     zm[z] ? <i key={z} style={{ flexGrow: zm[z], background: zoneColor(z) }} /> : null)}
                 </div>
-                <span class="bar-label">{w.index}</span>
+                <span class="bar-label">{(w.index - 1) % step === 0 ? w.index : "\u00a0"}</span>
               </div>
             );
           })}
         </div>
 
         <h3>{t("ui.plan.zones")}</h3>
-        <ul class="list zones">
-          {ZONES.map((z) => (
-            <li key={z} style={{ "--zc": zoneColor(z) }}>
-              <span class="swatch" />
-              <span class="grow"><span><b>{z}</b> {zoneName(z)}</span><span class="muted small">{targetText(zt[z], main)}</span></span>
-            </li>
-          ))}
-        </ul>
-        {cap?.tested ? (
-          <p class="muted small">
-            {cap.source ? t("ui.plan.tested_source", { date: dayMonth(cap.tested), source: cap.source })
-              : t("ui.plan.tested", { date: dayMonth(cap.tested) })}
-          </p>
-        ) : null}
+        {sports.map((sport) => {
+          const zt = stored.targets[sport] ?? {};
+          const cap = stored.request.capacity.find((c) => c.sport === sport);
+          return (
+            <div key={sport} class="zone-sport" data-sport={sport}>
+              {sports.length > 1 ? <h4>{t(`plan.sport.${sport}`)}</h4> : null}
+              <ul class="list zones">
+                {ZONES.map((z) => (
+                  <li key={z} style={{ "--zc": zoneColor(z) }}>
+                    <span class="swatch" />
+                    <span class="grow"><span><b>{z}</b> {zoneName(z)}</span>
+                      <span class="muted small">{targetText(zt[z], sport)}</span></span>
+                  </li>
+                ))}
+              </ul>
+              {cap?.tested ? (
+                <p class="muted small">
+                  {cap.source ? t("ui.plan.tested_source", { date: dayMonth(cap.tested), source: cap.source })
+                    : t("ui.plan.tested", { date: dayMonth(cap.tested) })}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
         {stored.plan.notes.map((n, i) => <p key={i} class="small">{noteText(n)}</p>)}
         {onCalendar ? (
           <div class="calendar">

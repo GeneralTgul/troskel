@@ -30,6 +30,7 @@
  "ui.workout.pace": "Pace",
  "ui.workout.power": "Power",
  "ui.workout.split": "Time per 500 m",
+ "ui.workout.swim_pace": "Time per 100 m",
  "ui.workout.no_targets": "No heart rate or pace targets: go by effort.",
  "ui.week.title": "Week {n}",
  "ui.week.prev": "Previous week",
