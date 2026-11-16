@@ -2,8 +2,18 @@ import { useState } from "preact/hooks";
 import { t } from "../i18n";
 import { addDays, dayMonth, isoWeek, mondayOf, weekDays, weekdayShort } from "../model/dates";
 import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSeconds, workoutsOn, planTitle } from "../model/plan";
-import type { IsoDate, StoredPlan } from "../model/types";
+import type { IsoDate, StoredPlan, StoredWorkout, ZoneCode } from "../model/types";
 import { clock, zoneColor, ZoneChip } from "./parts";
+
+/** The zone a day's card is coloured by: its first workout that has one, so that strength before a run (no zone)
+ * does not make the day look like a rest day. */
+export function dayZone(ws: StoredWorkout[]): ZoneCode | null {
+  for (const w of ws) {
+    const z = mainZone(w);
+    if (z) return z;
+  }
+  return null;
+}
 
 /** The week as a board on the wall: seven cards, today marked, rest days plain. */
 export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today: IsoDate; onCalendar?: () => void }) {
@@ -17,8 +27,8 @@ export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today:
         <div class="week-title">
           <h2>{t("ui.week.title", { n: isoWeek(monday) })}</h2>
           <p class="muted">
-            {dayMonth(monday)} – {dayMonth(addDays(monday, 6))}
-            {wk ? ` · ${t("ui.week.plan_week", { i: wk.index, n: stored.plan.weeks.length })}` : ""}
+            <span class="week-dates">{dayMonth(monday)} – {dayMonth(addDays(monday, 6))}</span>
+            {wk ? <span class="week-of">{t("ui.week.plan_week", { i: wk.index, n: stored.plan.weeks.length })}</span> : null}
           </p>
         </div>
         <button class="ghost" aria-label={t("ui.week.next")} onClick={() => setMonday(addDays(monday, 7))}>›</button>
@@ -40,7 +50,7 @@ export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today:
           const isToday = day === today;
           return (
             <li key={day} class={`day ${isToday ? "is-today" : ""} ${ws.length ? "" : "is-rest"} ${day < today ? "is-past" : ""}`}
-              style={{ "--zc": zoneColor(ws[0] ? mainZone(ws[0]) : null) }} aria-current={isToday ? "date" : undefined}>
+              style={{ "--zc": zoneColor(dayZone(ws)) }} aria-current={isToday ? "date" : undefined}>
               <div class="day-head">
                 <span class="dow">{weekdayShort(i)}</span>
                 <span class="dom">{dayMonth(day)}</span>

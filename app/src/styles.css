@@ -61,9 +61,13 @@ main {
 }
 .tabs .brand { display: none; }
 .tabs button {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px;
-  border: 0; background: none; color: var(--muted); font: inherit; font-size: .72rem; border-radius: 12px; cursor: pointer;
+  flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px;
+  border: 0; background: none; color: var(--muted); font: inherit; border-radius: 12px; cursor: pointer;
+  /* Five labels on one line down to 320 px: each tab is as wide as its label plus an equal share of what is left,
+     and the text never grows past what the bar holds. */
+  min-width: 0; padding: 0 2px; font-size: min(.72rem, 3.3vw);
 }
+.tabs button span { white-space: nowrap; }
 .tabs svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tabs button.on { color: var(--text); font-weight: 600; }
 .tabs button.on svg { stroke: var(--accent); }
@@ -102,6 +106,8 @@ button:disabled { opacity: .5; cursor: default; }
 }
 .workout.rest { border-left-color: var(--rest); }
 .workout h3 { margin: 2px 0 6px; font-size: 1.2rem; }
+/* A long title ("Cykel: återhämtningspass") breaks inside the card, with a hyphen where the language has one. */
+.workout h3, .day-title { overflow-wrap: anywhere; hyphens: auto; }
 .workout.big h3 { font-size: 1.7rem; }
 .kicker { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: .92rem; flex-wrap: wrap; }
 .tag { border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; font-size: .78rem; }
@@ -112,7 +118,8 @@ button:disabled { opacity: .5; cursor: default; }
   background: var(--surface-2); font-size: .85rem;
 }
 .chip b { background: var(--zc); color: #fff; border-radius: 999px; padding: 0 7px; font-size: .78rem; }
-.targets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 6px; }
+/* A target gets a column when its text fits on one line ("4:33 min/km eller lugnare"), otherwise a row of its own. */
+.targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5em), 1fr)); gap: 8px; margin: 14px 0 6px; }
 .targets div { background: var(--surface-2); border-radius: 12px; padding: 8px 12px; }
 .targets dt { font-size: .78rem; color: var(--muted); }
 .targets dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 1.05rem; }
@@ -131,6 +138,9 @@ button:disabled { opacity: .5; cursor: default; }
 .week-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .week-title { text-align: center; flex: 1; }
 .week-title h2 { margin: 0; }
+.week-title p { margin: 0; }
+.week-of { display: block; }
+@media (min-width: 760px) { .week-of { display: inline; } .week-of::before { content: " · "; } }
 .week-sum { text-align: center; margin: 4px 0 12px; }
 .week-sum .num { font-size: 1.4rem; }
 .board { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
@@ -144,10 +154,15 @@ button:disabled { opacity: .5; cursor: default; }
 .day-head { display: flex; flex-direction: column; }
 .dow { font-weight: 700; font-size: 1.1rem; }
 .dom { color: var(--muted); font-size: .85rem; }
+.day-w { min-width: 0; }
 .day-w + .day-w { margin-top: 8px; grid-column: 2; }
+/* The zone's name gives way before the chip grows out of a narrow card. */
+.chip { max-width: 100%; }
+.chip .zn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-title { font-weight: 600; }
 .rest-label { color: var(--muted); font-weight: 500; align-self: center; }
-.day-meta { display: flex; gap: 10px; color: var(--muted); font-size: .92rem; margin: 2px 0 4px; }
+.day-meta { display: flex; flex-wrap: wrap; gap: 0 10px; color: var(--muted); font-size: .92rem; margin: 2px 0 4px; }
+.day-meta span { white-space: nowrap; }
 .day-meta .num { color: var(--text); }
 .week-notes { margin-top: 12px; color: var(--muted); font-size: .95rem; }
 .calendar { margin-top: 20px; }
@@ -163,7 +178,11 @@ button:disabled { opacity: .5; cursor: default; }
 .bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; position: relative; min-width: 0; }
 .stack { display: flex; flex-direction: column; border-radius: 4px 4px 0 0; overflow: hidden; min-height: 2px; }
 .stack i { display: block; min-height: 1px; }
-.bar-label { text-align: center; font-size: .72rem; color: var(--muted); margin-top: 4px; }
+/* The number is centred under its bar also when it is wider than the bar. */
+.bar-label { display: flex; flex-direction: column; align-items: center; white-space: nowrap; font-size: .72rem; color: var(--muted); margin-top: 4px; }
+.bars.many { gap: 2px; }
+.zone-sport h4 { margin: 1rem 0 0; font-size: 1rem; }
+.zone-sport + .zone-sport { margin-top: 1.25rem; }
 .bar-val { display: none; }
 .bar.is-now .bar-label { color: var(--text); font-weight: 700; }
 .bar.is-now .stack { outline: 2px solid var(--today); outline-offset: 1px; }
@@ -203,15 +222,19 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 .qr { max-width: 560px; margin: 0 auto; text-align: center; }
 .qr video { width: 100%; border-radius: var(--radius); background: #000; aspect-ratio: 1; object-fit: cover; }
 
-/* Tablet and wide screens: a rail on the left, two columns, the week as seven cards in a row. */
+/* Tablet and wide screens: a rail on the left, two columns, the week as cards in rows. */
 @media (min-width: 760px) {
   .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; align-items: start; }
   .overview.two-col { grid-template-columns: 1fr 1fr; }
-  .board { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  .day { grid-template-columns: 1fr; min-height: 170px; align-content: start; }
+  .board { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .day { grid-template-columns: minmax(0, 1fr); min-height: 170px; align-content: start; padding: 12px 6px 12px 8px; }
+  .day .chip { font-size: .76rem; gap: 3px; padding: 2px 5px 2px 3px; }
+  .day .chip b { font-size: .72rem; padding: 0 6px; }
   .day-w + .day-w { grid-column: 1; }
   .bars { height: 260px; }
 }
+/* Seven cards in a row need 900 px for the longest zone name ("Z4 Threshold"); a narrower tablet gets four and three. */
+@media (min-width: 900px) { .board { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 @media (min-width: 900px) and (orientation: landscape), (min-width: 1100px) {
   .app.has-tabs { padding-left: 96px; }
   .app.has-tabs main { padding-bottom: 24px; }

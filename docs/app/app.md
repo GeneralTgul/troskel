@@ -20,13 +20,13 @@
 
 Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
-- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m), varje del av passet och varför det görs. Under det kommer morgondagens pass.
-- *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. Pilarna bläddrar vecka för vecka.
-- *Schemat*: målen och testdagarna, blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo.
+- *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och varför det görs. Ett styrkepass har ingen zon. Under det kommer morgondagens pass.
+- *Veckan*: sju kort från måndag till söndag, som en tavla på väggen. Dagens kort är markerat, vilodagarna är tomma och varje pass har sin zonfärg. En dag med två pass, till exempel löpning och styrka, har färgen från passet som har en zon. Pilarna bläddrar vecka för vecka.
+- *Schemat*: målen och testdagarna, blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
 - *Om appen*: språket, integriteten, licensen och knappen som tar bort all data på enheten.
 
-Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner.
+Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Veckans sju kort står i en rad från 900 punkters bredd, och i två rader på en smalare surfplatta. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
 *Lägg passen i kalendern* (under *Veckan* och *Schemat*) laddar ner en kalenderfil med passen från i dag. Filen är samma som den Tröskel gör, och passen har samma nycklar, så att en ny fil uppdaterar passen i stället för att lägga in dem två gånger.
 

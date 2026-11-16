@@ -1,5 +1,5 @@
 /** Small pieces the views share: zone colours, a zone chip, a workout card and the targets of a zone. */
-import { t } from "../i18n";
+import { getLang, t } from "../i18n";
 import { dayMonth, weekdayLong } from "../model/dates";
 import {
   duration, mainZone, targetsOn, workoutHow, workoutLines, workoutPurpose, workoutSeconds, planTitle, zoneName,
@@ -18,9 +18,15 @@ export const zoneColor = (z: string | null | undefined) => (z && z in ZONE_COLOR
 export function ZoneChip({ zone }: { zone: string }) {
   return (
     <span class="chip" style={{ "--zc": zoneColor(zone) }}>
-      <b>{zone}</b> {zoneName(zone)}
+      <b>{zone}</b> <span class="zn">{zoneName(zone)}</span>
     </span>
   );
+}
+
+/** A race's distance as the printout writes it: "21,1 km" in Swedish, "21.1 km" in English. */
+export function distanceText(km: number): string {
+  const n = String(Math.round(km * 10) / 10);
+  return t("plan.goal.distance", { km: getLang() === "sv" ? n.replace(".", ",") : n });
 }
 
 export const clock = (start: string | null) => (start ? start.slice(0, 5) : "");
@@ -32,6 +38,9 @@ export function when(w: StoredWorkout): string {
 export function dayLabel(day: IsoDate): string {
   return `${weekdayLong(weekday(day))} ${dayMonth(day)}`;
 }
+
+/** What the pace of a sport is called: per km in running, per 500 m on the SkiErg and per 100 m in the pool. */
+export const PACE_LABEL: Record<string, string> = { skierg: "ui.workout.split", swim: "ui.workout.swim_pace" };
 
 /** The workout as the big card of the day: title, length, the main zone's targets and every part. */
 export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w: StoredWorkout; big?: boolean }) {
@@ -57,13 +66,13 @@ export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w:
         <dl class="targets">
           {hrText(tg) ? (<div><dt>{t("ui.workout.hr")}</dt><dd>{hrText(tg)}</dd></div>) : null}
           {powerText(tg) ? (<div><dt>{t("ui.workout.power")}</dt><dd>{powerText(tg)}</dd></div>) : null}
-          {paceText(tg, w.sport) ? (<div><dt>{t(w.sport === "skierg" ? "ui.workout.split" : "ui.workout.pace")}</dt>
+          {paceText(tg, w.sport) ? (<div><dt>{t(PACE_LABEL[w.sport] ?? "ui.workout.pace")}</dt>
             <dd>{paceText(tg, w.sport)}</dd></div>) : null}
         </dl>
       ) : zone && big ? <p class="muted">{t("ui.workout.no_targets")}</p> : null}
       {w.goal ? (
         <p class="purpose">
-          {[w.goal.distance_km ? t("plan.goal.distance", { km: String(w.goal.distance_km) }) : "", w.goal.target]
+          {[w.goal.distance_km ? distanceText(w.goal.distance_km) : "", w.goal.target]
             .filter(Boolean).join(" · ") || t("plan.workout.race.purpose")}
         </p>
       ) : null}
