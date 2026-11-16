@@ -86,7 +86,8 @@ src/lopanalys/
                 runner.py, lactate.py, zones.py, max_hr.py,
                 hr_zones.py (Puls- och fartzoner: stabil puls per steg, sambandet puls–fart och zonernas fart),
                 zone_systems.py (zonsystemen som data, omräkning och Garmin-värden), vo2max.py (uppskattat VO2max),
-                catalog.py (texterna om testerna), cadence.py (pulsbandets kadens före kamerans)
+                catalog.py (texterna om testerna), cadence.py (pulsbandets kadens före kamerans),
+                css.py (simtestet: CSS ur 400 m och 200 m, sparas som ett manuellt test)
   plan/         models.py, library.py (passbiblioteket), periodize.py (block och veckor), engine.py (build_plan),
                 resolve.py (zon till puls och fart, omtest), text.py, ics.py (kalenderfil),
                 codec.py (schemat som JSON för lagringen), demo.py (exempelschema)
