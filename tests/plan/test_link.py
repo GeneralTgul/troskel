@@ -69,3 +69,10 @@ def test_the_apps_files_from_python_are_up_to_date():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert [p.relative_to(ROOT).as_posix() for p in mod.stale()] == []
+
+
+def test_the_engine_fixtures_are_written_in_swedish():
+    """The fixtures were once built while the English texts were set, so the running test's source was English."""
+    import gzip
+    raw = gzip.decompress((ROOT / "app" / "test" / "fixtures" / "engine.json.gz").read_bytes()).decode("utf-8")
+    assert "Lactate step test" not in raw and '"source":"Laktattrappa"' in raw
