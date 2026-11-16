@@ -109,6 +109,26 @@ describe("a plan with several sports in the views", () => {
 });
 
 describe("a test day", () => {
+  it("says which sport a test day tests when the plan has several sports", () => {
+    const days = (name: string) =>
+      [...show(<Overview stored={fx.plans[name]} today="2026-11-18" />).querySelectorAll("li[data-sport]")].map((l) => l.textContent!);
+    setLang("sv");
+    const tri = days("triathlon-css");
+    expect(tri.length).toBeGreaterThan(0);
+    for (const line of tri) expect(line).toMatch(/ · Löpning/);
+    render(null, root!);
+    setLang("en");
+    expect(days("triathlon-css")[0]).toMatch(/ · Running/);
+    render(null, root!);
+    // One sport, with or without strength: only the date.
+    for (const name of ["demo", "run-strength"]) {
+      const one = days(name);
+      expect(one.length, name).toBeGreaterThan(0);
+      for (const line of one) expect(line, name).not.toMatch(/ · /);
+      render(null, root!);
+    }
+  });
+
   it("has no zone and no target of its own, in the card and in the week", () => {
     setLang("sv");
     for (const name of ["demo", "ski-main", "swim-alone-cycle"]) {
