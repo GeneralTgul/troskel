@@ -253,6 +253,10 @@ def main(argv: list[str] | None = None) -> int:
     if "--selfcheck" in argv:
         i = argv.index("--selfcheck")
         return selfcheck(argv[i + 1] if len(argv) > i + 1 else None)
+    if "--ble-scan" in argv:      # what the Bluetooth devices nearby advertise, to a file (FTMS before START?)
+        i = argv.index("--ble-scan")
+        from lopanalys.devices._scan import ble_report
+        return ble_report(argv[i + 1] if len(argv) > i + 1 else "ble-scan.txt")
     from PySide6.QtCore import QLockFile, Qt
     from PySide6.QtGui import QGuiApplication
     from PySide6.QtWidgets import QApplication, QMessageBox

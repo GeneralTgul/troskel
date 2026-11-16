@@ -126,8 +126,14 @@ class DeviceManager:
 
     # --- scanning --------------------------------------------------------------------------------
     def scan_treadmills(self, timeout_s: float = 8.0) -> list[DeviceInfo]:
-        """FTMS treadmills nearby (service 0x1826), strongest first."""
-        return scan_sync([FTMS_SERVICE], timeout_s, self._scanner_cls, accept=not_only_bike)
+        """FTMS treadmills nearby, strongest first: those advertising the service 0x1826, and the treadmill
+        used before even when its advertisement leaves the service out (the Recoil before START).
+
+        While QZ runs it holds the treadmill, so the scan would find nothing: it says so instead."""
+        if self.qz_running():
+            raise DeviceError(t("devices.ftms.qz_has_it"))
+        known = [d for d in (self.last_device("treadmill"),) if d is not None]
+        return scan_sync([FTMS_SERVICE], timeout_s, self._scanner_cls, accept=not_only_bike, known=known)
 
     def scan_ergometers(self, sport: Any = None, timeout_s: float = 8.0) -> list[DeviceInfo]:
         """The Bluetooth ergometers of a sport nearby, strongest first: FTMS treadmills, FTMS
@@ -160,7 +166,7 @@ class DeviceManager:
             log.info("treadmill (%s): connecting", mode)
             if mode == "ftms":
                 if self.qz_running():
-                    raise DeviceError(t("devices.ftms.close_qz"))
+                    raise DeviceError(t("devices.ftms.qz_has_it"))
                 device = device or self.last_device("treadmill") or self._first(self.scan_treadmills(),
                                                                                  "treadmill")
                 if isinstance(old, FtmsTreadmill):

@@ -259,6 +259,21 @@ class _Targets:
     running_wanted: bool = False
 
 
+def require_ftms(client: Any) -> None:
+    """Raise when the connected device has no FTMS service (a device found by its name or address, not
+    by the service): the message says the device cannot be controlled, instead of a later timeout."""
+    services = getattr(client, "services", None)
+    get = getattr(services, "get_service", None)
+    if get is None:
+        return
+    try:
+        found = get(FTMS_SERVICE)
+    except Exception:  # noqa: BLE001 - a backend that cannot list services: the characteristics decide
+        return
+    if found is None:
+        raise RuntimeError("FTMS service 0x1826 missing after connecting")
+
+
 class FtmsTreadmill(SupervisedConnection):
     """A treadmill over Bluetooth FTMS. Thread-safe sync API (``devices.base.Treadmill``).
 
@@ -381,6 +396,7 @@ class FtmsTreadmill(SupervisedConnection):
         cls = self._client_cls or _default_client_cls()
         self._client = cls(self._device.address, disconnected_callback=on_disconnect)
         await self._client.connect()
+        require_ftms(self._client)
         await self._read_ranges()
         await self._client.start_notify(TREADMILL_DATA, self._on_treadmill_data)
         try:

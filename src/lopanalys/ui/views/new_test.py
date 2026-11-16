@@ -26,7 +26,7 @@ from lopanalys.assessments.protocol import Protocol, gait_compatible
 from lopanalys.core import simulated
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Athlete
-from lopanalys.core.sport import profile
+from lopanalys.core.sport import Sport, profile
 from lopanalys.devices.base import DeviceInfo
 from lopanalys.ui import demo, services, theme
 from lopanalys.ui.bridge import run_async
@@ -1308,6 +1308,8 @@ class NewTestView(QWidget):
         self.tm_scan.setVisible(needs_scan)
         self.tm_list.setVisible(needs_scan)
         self.tm_list.clear()
+        if needs_scan:
+            self._add_remembered_tm([])     # the device used last time: Anslut works without a scan
         self.tm_device = None
         self.tm_connected = False
         self.tm_status.set(t("ui.dev.not_connected"), "idle")
@@ -1336,10 +1338,29 @@ class NewTestView(QWidget):
                 it = QListWidgetItem(theme.icon("bluetooth", "accent2"), self._dev_label(d))
                 it.setData(Qt.ItemDataRole.UserRole, d)
                 self.tm_list.addItem(it)
-            if found:
+            self._add_remembered_tm(found)
+            if self.tm_list.count():
                 self.tm_list.setCurrentRow(0)
         sport = self.sport
         self._scan(lambda: self.ctx.devices.scan_ergometers(sport), self.tm_status, self.tm_scan, show)
+
+    def _remembered_tm(self) -> DeviceInfo | None:
+        """The Bluetooth ergometer of this sport used last time (the treadmill, the trainer, the SkiErg)."""
+        kind = "treadmill" if self.sport == Sport.RUN.value else self.sport
+        try:
+            return self.ctx.devices.last_device(kind)
+        except Exception:  # noqa: BLE001 - a broken setting: scan as before
+            return None
+
+    def _add_remembered_tm(self, found: list[Any]) -> None:
+        """List the device used last time when the scan did not find it: a treadmill that leaves FTMS out
+        of its advertisement until START is still one click away (2026-11-16)."""
+        d = self._remembered_tm()
+        if d is None or any(getattr(f, "address", "").lower() == d.address.lower() for f in found):
+            return
+        it = QListWidgetItem(theme.icon("bluetooth", "accent2"), t("ui.dev.last_used", name=d.name or d.address))
+        it.setData(Qt.ItemDataRole.UserRole, d)
+        self.tm_list.addItem(it)
 
     def _scan_hr(self) -> None:
         self._scan(self.ctx.devices.scan_heart_rate, self.hr_status, self.hr_scan, self._fill_hr_list)

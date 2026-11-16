@@ -168,6 +168,7 @@
   "ui.dev.none_found": "Inget hittades. Är enheten på och nära?",
   "ui.dev.scan_failed": "Sökningen misslyckades",
   "ui.dev.connect": "Anslut",
+  "ui.dev.last_used": "{name} (använt förut)",
   "ui.dev.use_mode": "Använd",
   "ui.dev.connecting": "Ansluter …",
   "ui.dev.connected": "Ansluten",

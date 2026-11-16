@@ -46,7 +46,7 @@ from lopanalys.devices.ftms import (_RESULT_NAMES, CONTROL_POINT, FTMS_SERVICE, 
                                     ST_CONTROL_PERMISSION_LOST, ST_RESET,
                                     ST_STARTED_OR_RESUMED_BY_USER, ST_STOPPED_BY_SAFETY_KEY,
                                     ST_STOPPED_OR_PAUSED_BY_USER, FtmsTreadmill, Range, _default_client_cls,
-                                    _Reader, _snap, cmd_start, cmd_stop)
+                                    _Reader, _snap, cmd_start, cmd_stop, require_ftms)
 
 log = logging.getLogger(__name__)
 
@@ -297,6 +297,7 @@ class FtmsBike(FtmsTreadmill):
         cls = self._client_cls or _default_client_cls()
         self._client = cls(self._device.address, disconnected_callback=on_disconnect)
         await self._client.connect()
+        require_ftms(self._client)
         await self._read_ranges()
         await self._client.start_notify(INDOOR_BIKE_DATA, self._on_bike_data)
         try:

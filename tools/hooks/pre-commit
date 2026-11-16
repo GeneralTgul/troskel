@@ -11,6 +11,12 @@ else PY=python; fi
 
 staged=$(git -c core.quotepath=off diff --cached --name-only --diff-filter=ACMRD)
 
+# The repository is public: no private data in any staged file (the rules of tests/tools/test_no_private_data.py).
+if ! "$PY" tools/private_check.py; then
+  echo "pre-commit: STOPPED, private data in a staged file (see above)." >&2
+  exit 1
+fi
+
 # The screenshots are not taken here (that needs the whole program), so only a reminder.
 if echo "$staged" | grep -Eq '^src/lopanalys/(ui/|i18n/.*\.sv\.json)'; then
   echo "pre-commit: the interface changed. Update the screenshots: python tools/docs_shots.py" >&2

@@ -53,3 +53,18 @@ def test_same_mode_keeps_the_connection_and_says_ansluten(demo_window, qtbot):
     qtbot.waitUntil(lambda: nt.tm_connected and nt.tm_connect.isEnabled(), timeout=5000)
     assert nt.ctx.devices.treadmill is tm
     assert t("ui.dev.connected_mode", mode="X").startswith(t("ui.dev.connected"))
+
+
+def test_the_treadmill_used_before_is_listed_without_a_scan(demo_window, qtbot, monkeypatch):
+    """The Recoil leaves FTMS out of its advertisement until START: the treadmill used last time is in
+    the list at once, so Anslut connects to its address without a scan (2026-11-16)."""
+    from lopanalys.devices.base import DeviceInfo
+    nt = _to_devices(demo_window, qtbot)
+    monkeypatch.setattr(nt.ctx.devices, "last_device",
+                        lambda kind: DeviceInfo("AA:01", "SW1000EAI-0001") if kind == "treadmill" else None)
+    nt._mode_chosen([m for m, _ in nt.modes].index("ftms"))
+    assert nt.tm_list.count() == 1
+    d = nt.tm_list.item(0).data(256)
+    assert d.address == "AA:01" and "SW1000EAI-0001" in nt.tm_list.item(0).text()
+    nt._add_remembered_tm([DeviceInfo("aa:01", "SW1000EAI-0001", -60)])    # found by the scan: not twice
+    assert nt.tm_list.count() == 1

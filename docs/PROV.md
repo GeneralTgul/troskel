@@ -97,7 +97,8 @@ Analysen är byggd och provad mot syntetiska cyklister och stakare, där sanning
 | Bandet över FTMS | Stå still 10 min ansluten | Bandet somnar inte | |
 | Bandet över FTMS | Dra ur säkerhetsnyckeln under gång | Programmet visar att bandet stannat | |
 | Bandet över FTMS | Slå av bandet och på igen under ett test | Programmet ansluter igen och skickar farten på nytt | |
-| Bandet över FTMS | Försök ansluta med QZ igång | Programmet visar "Stäng QZ först, bandet tar bara en anslutning åt gången." | |
+| Bandet över FTMS | Försök söka eller ansluta med QZ igång | Programmet visar "Bandet används av QZ. Välj läget QZ, eller stäng QZ för att ansluta direkt." | |
+| Bandet över FTMS | Slå på bandet utan START, med QZ stängt. Välj Bluetooth (FTMS) | Bandet som anslöts förra gången står i listan direkt, *Anslut* fungerar, och *Sök* hittar det före START | |
 | Pulsbandet | Anslut HRM-Pro+ | Puls och RR syns, batteriet visas | |
 | Pulsbandet | Ta av bandet en stund | Meddelandet om hudkontakt syns, inga nollvärden | |
 | Pulsbandet: kadensen (RSC) | Anslut HRM-Pro+ och spring 2 min på 10 och 13 km/h med Zwift igång. Att bandet sänder löpdata över Bluetooth med tjänsten RSC (0x1814, mätvärdet 0x2A53) är Garmins uppgift och inte kontrollerat mot källa | Loggen säger *running cadence (RSC) available*; rutan heter *Kadens (pulsbandet)* och visar samma steg/min som Zwift (±2), inte halva (en fot); resultatet och rapporten säger *Kadens (pulsbandet)*. Utan RSC: rutan heter *Kadens* och kamerans värde visas | 2026-11-14: RSC finns på HRM-Pro+ (loggen), men kadensen visade 84 vid 10 km/h: bandet sänder varv (en fot). Fördubblas sedan dess under 125. Kvar: jämför med Zwift |

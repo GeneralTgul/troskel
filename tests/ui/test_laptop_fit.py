@@ -1,4 +1,4 @@
-"""A laptop screen (Tom 2026-11-16): the pages fit the width, a page that does not gets a visible scroll
+"""A laptop screen (2026-11-16): the pages fit the width, a page that does not gets a visible scroll
 bar, and the mouse wheel scrolls the page instead of changing a list box that was not clicked."""
 from __future__ import annotations
 

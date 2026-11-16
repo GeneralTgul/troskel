@@ -140,7 +140,7 @@ Steget heter efter sporten: *Trainer och puls* för cykel och *SkiErg och puls* 
 
 | Läge | Så fungerar det | Så ansluter du |
 |---|---|---|
-| *Bluetooth (FTMS)* | Programmet styr bandet direkt | Tryck på *Sök*, välj bandet i listan och tryck på *Anslut* |
+| *Bluetooth (FTMS)* | Programmet styr bandet direkt | Tryck på *Sök*, välj bandet i listan och tryck på *Anslut*. Bandet du anslöt förra gången står i listan direkt, så *Anslut* fungerar utan sökning, även när bandet inte syns förrän du trycker START. Har QZ bandet säger programmet det: välj läget *QZ* |
 | *QZ* | Styr via QZ-appen på samma nät | Starta QZ med bandet anslutet och tryck på *Anslut* |
 | *Manuellt* | Du ställer farten på bandet, och programmet säger till när det är dags | Tryck på *Använd* |
 | *Simulerat* | För demo och övning, inget band behövs | Tryck på *Använd* |

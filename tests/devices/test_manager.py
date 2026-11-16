@@ -70,7 +70,8 @@ def test_ftms_refused_while_qz_runs():
     m, ble, _store = manager(qz=True)
     with pytest.raises(DeviceError) as exc:
         m.connect_treadmill("ftms")
-    assert str(exc.value) == t("devices.ftms.close_qz") == "Stäng QZ först, bandet tar bara en anslutning åt gången."
+    assert str(exc.value) == t("devices.ftms.qz_has_it")
+    assert "QZ" in str(exc.value) and "läget QZ" in str(exc.value)
     assert ble.clients == []
 
 

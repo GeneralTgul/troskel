@@ -17,6 +17,7 @@
   "devices.mode.sim": "Simulated (demo)",
   "devices.ftms.default_name": "The treadmill",
   "devices.ftms.close_qz": "Close QZ first: the treadmill accepts only one connection at a time.",
+  "devices.ftms.qz_has_it": "The treadmill is in use by QZ. Choose the QZ mode, or close QZ to connect directly.",
   "devices.ftms.not_ftms": "{name} cannot be controlled over Bluetooth (no FTMS).",
   "devices.ftms.press_start": "Press START on the treadmill.",
   "devices.ftms.control_denied": "The treadmill does not accept control right now. Press START on the treadmill and try again.",

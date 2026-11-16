@@ -17,6 +17,7 @@
   "devices.mode.sim": "Simulerat (demo)",
   "devices.ftms.default_name": "Löpbandet",
   "devices.ftms.close_qz": "Stäng QZ först, bandet tar bara en anslutning åt gången.",
+  "devices.ftms.qz_has_it": "Bandet används av QZ. Välj läget QZ, eller stäng QZ för att ansluta direkt.",
   "devices.ftms.not_ftms": "{name} går inte att styra över Bluetooth (FTMS saknas).",
   "devices.ftms.press_start": "Tryck START på bandet.",
   "devices.ftms.control_denied": "Bandet tar inte emot styrning just nu. Tryck START på bandet och försök igen.",
