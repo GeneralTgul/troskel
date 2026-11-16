@@ -193,6 +193,7 @@ Analysen är byggd och provad mot syntetiska cyklister och stakare, där sanning
 | Riktiga bilder | Löpteknikrapport från en riktig GoPro-film | Stillbilderna skarpa i utskrift, ringarna syns, bildtexterna stämmer | |
 | Träningsschemat | Sidan *Träningsschema* på gymdatorn: fyll i, förhandsvisa, spara som PDF och skriv ut | Förstasidan ryms på en sida, varje vecka har ett eget blad utan avhuggna rader, zonfärgerna syns | |
 | Kalenderfilen | Spara *Kalenderfil* från sidan *Träningsschema* och öppna den i en iPhone och en Android-telefon | Passen hamnar på rätt dag och klockslag, med å, ä och ö rätt i beskrivningen. En ny import dubblerar inget | |
+| Träningsschemat med flera idrotter | Sidan *Träningsschema* på gymdatorn: kryssa i cykel och SkiErg, välj roller och andelar, begränsa en dag till cykel, förhandsvisa, spara, öppna igen och spara som PDF | Raden *Idrotter* och knappen per dag ryms i formuläret, allt läses tillbaka, förstasidan med idrottstabellen och watten under *Dina zoner* ryms på en sida och idrottsfärgerna syns i utskriften | |
 | Schemat med e-post | *Skicka till idrottaren* på sidan *Träningsschema* till en egen inkorg, och öppna bilagorna i en iPhone och en Android-telefon | Mejlet kommer fram (inte i skräpposten) med PDF:en och kalenderfilen. Kalenderfilen går att öppna ur mejlet med anvisningen i texten | |
 | Om testerna | Sidan *Testerna*: skriv ut *Om testerna* och spara som PDF, för *Löpning*, *Cykel* och *SkiErg* | Varje sport får plats på en A4, texten går att läsa på papper | |
 

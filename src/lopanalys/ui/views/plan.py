@@ -29,7 +29,7 @@ from typing import Any
 from PySide6.QtCore import QRegularExpression, Qt, Signal
 from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLineEdit, QMenu,
-                               QMessageBox, QToolButton, QVBoxLayout, QWidget)
+                               QMessageBox, QPushButton, QToolButton, QVBoxLayout, QWidget)
 
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Athlete
@@ -195,14 +195,14 @@ class SportRow(QWidget):
         return (self.on, self.role.currentData(), self.share.currentData())
 
 
-class DaySports(QToolButton):
-    """The sports one weekday allows: *Alla* (every sport of the plan) or the ticked ones."""
+class DaySports(QPushButton):
+    """The sports one weekday allows: *Alla* (every sport of the plan) or the ticked ones, from a menu."""
 
     changed = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(t("ui.plan.day_sports_tip"))
         self.menu_ = QMenu(self)
         self.actions_: dict[str, Any] = {}
@@ -581,14 +581,14 @@ class PlanView(QWidget):
         for sp, r in self.sport_rows.items():
             text = ""
             if sp != RUNNING and a is not None:
-                if sp in BORROWS:
+                try:
+                    cap = services.sport_capacity(self.ctx.store, a, BORROWS.get(sp, sp))
+                except Exception:
+                    log.exception("reading the sport's test failed")
+                    cap = None
+                if sp in BORROWS and cap is not None and cap.anchors is not None:
                     text = t("ui.plan.sport_basis.borrow", sport=t(f"plan.sport.{BORROWS[sp]}"))
                 else:
-                    try:
-                        cap = services.sport_capacity(self.ctx.store, a, sp)
-                    except Exception:
-                        log.exception("reading the sport's test failed")
-                        cap = None
                     text = _basis_text(cap, sp)
             r.basis.setText(text)
             r._enable()

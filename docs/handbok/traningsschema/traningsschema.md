@@ -1,12 +1,13 @@
 # Träningsschema
 
-*Bygga ett träningsschema på ett test, spara det på idrottaren, förnya det fyra veckor i taget, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
+*Bygga ett träningsschema på ett test, i en idrott eller flera, spara det på idrottaren, förnya det fyra veckor i taget, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
 
 <!-- toc -->
 ## Innehåll
 
 - [Öppna träningsschemat](#öppna-träningsschemat)
 - [Fyll i formuläret](#fyll-i-formuläret)
+  - [Flera idrotter](#flera-idrotter)
   - [Vad testet ger schemat](#vad-testet-ger-schemat)
 - [Förhandsvisa schemat](#förhandsvisa-schemat)
 - [Förnya schemat](#förnya-schemat)
@@ -32,17 +33,32 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 
 | Del | Fält | Vad det styr |
 |---|---|---|
-| *Underlag* | *Bygger på testet* | Testet som zonerna räknas ur. Välj *Inget test* för ett schema med zon och ansträngning, utan puls och fart. Har idrottaren en maxpuls men inget test blir zonerna uppskattade |
+| *Underlag* | *Bygger på testet* | Löpningens test, som zonerna räknas ur. Välj *Inget test* för ett schema med zon och ansträngning, utan puls och fart. Har idrottaren en maxpuls men inget test blir zonerna uppskattade. Fältet syns bara när löpning är med i schemat |
 | | *Nivå* | *Nybörjare*, *Motionär* eller *Vältränad*. Styr var schemat börjar och hur många hårda pass en vecka får |
 | | *Tränar nu* | Minuter löpning i veckan i snitt de senaste 4–6 veckorna. Schemat börjar där. Tomt betyder nivåns förval (2, 3 eller 5 timmar), men aldrig mer än 70 % av den tillgängliga tiden |
+| *Idrotter* | En rad per idrott | Idrotterna i schemat, med roll och andel av veckans tid, se [Flera idrotter](#flera-idrotter) |
 | *Tillgänglig tid* | Minuter per veckodag | Så länge idrottaren kan träna den dagen, 20–480 minuter. En tom dag får inget pass |
 | | Klockslag | Valfritt. Passet får den tiden i kalenderfilen, annars blir det en heldagshändelse |
+| | Idrotterna den dagen | Bara med flera idrotter: *Alla* eller de idrotter som går den dagen, till exempel bara cykel en dag utan löpband |
 | *Mål* | *Schemat slutar med ett mål (lopp)* | Namn, datum, distans och måltid. Schemat räknas bakåt från loppet |
 | | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig. Ett *Träningslopp* ersätter ett av veckans hårda pass |
 | | *Inget mål: ange längd* | Antal veckor, minst 4. Schemat slutar med ett nytt test |
 | | *Startdatum* | Schemat börjar första måndagen från och med datumet. Tomt betyder i dag |
 
 Datum skrivs som `2027-05-22` eller väljs i kalendern bredvid fältet.
+
+### Flera idrotter
+
+Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är förvald som huvudidrott. Kryssa i de idrotter schemat ska ha och välj för var och en:
+
+- **Roll:** *Huvudidrott* (målets idrott, som får långpasset och testet), *Stödjande* eller *Underhåll* (högst ett lugnt pass i veckan). Det finns en huvudidrott: väljer du en ny blir den förra stödjande.
+- **Andel:** hur stor del av veckans tid idrotten får, i tiotal procent. Rollen fyller i 60, 30 eller 10 %. Andelarna räknas mot varandra, så 60 och 30 ger två tredjedelar och en tredjedel.
+
+Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner, och simning går på upplevd ansträngning eftersom Tröskel inte har något simtest. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
+
+![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, och tisdagen bara för cykel](images/idrotter.png)
+
+Hur motorn fördelar passen över idrotterna står i [Träningsplanen → Flera idrotter](../../TRANINGSPLAN.md#flera-idrotter).
 
 ### Vad testet ger schemat
 
@@ -66,11 +82,18 @@ Tryck *Förhandsvisa*. Översikten till höger visar:
 - fyra rutor: *Längd*, *Pass i veckan*, *Tid i veckan* (i belastningsveckorna, från den första till den största) och *Lugn träning* (andelen av tiden i zon 1–2),
 - blocken som ett band över en stapel per vecka, med tiden per zon i klockans färger. *lätt*, *test*, *lopp* och *mål* står under veckorna. Veckorna i skissen har bleka staplar,
 - under staplarna två linjer med en egen axel i minuter: **det längsta passet** varje vecka (blå) och **de hårda minuterna**, tiden i zon 3–5 (röd). Siffran står vid den första veckan och vid den största. Linjerna visar ökningen även när staplarna är lika höga, till exempel när dagarna inte rymmer mer tid och schemat i stället gör passen längre och hårdare,
-- zonerna med puls och fart ur testet.
+- zonerna med puls och fart ur testet, i huvudidrotten. Är huvudidrotten cykel eller SkiErg står watt, och för SkiErgen också tiden per 500 m.
 
 Schemat börjar på det idrottaren tränar nu och växer mot den tillgängliga tiden, högst nivåns takt (5, 7 eller 8 %) per belastningsvecka. Ligger starten nära den tillgängliga tiden växer det långsammare, så att hela tiden nås först i slutet av uppbyggnaden. Tränar idrottaren mer än dagarna rymmer börjar schemat på all tillgänglig tid och står still i tid; ökningen ligger då i passen. Samma diagram med linjerna finns på utskriftens första sida.
 
-Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter.
+Saknas något i formuläret står det i rött under översikten, till exempel *Välj nivå*. Ändrar du formuläret efter en förhandsvisning säger en gul rad att översikten inte visar ändringarna än. *Visa utskriften* öppnar hela utskriften: översikten, läsanvisningen, ett blad per vecka med pass och sist skissen över veckorna efter. Veckobladet har dagens pass i tidsordning och veckans belastning längst ned (minuter × zon × idrott, för att jämföra veckorna).
+
+Med flera idrotter har utskriften också:
+
+- **en tabell över idrotterna** på första sidan: roll, andel av tiden och testet zonerna bygger på, med datum,
+- **en rad per idrott med watt under *Dina zoner***: cykelns watt, och SkiErgens watt och tid per 500 m, zon för zon,
+- **en färg per idrott** bredvid passets namn på veckobladet. Färgerna skiljer sig från zonernas,
+- **veckans tid per idrott** som en stapel längst ned på veckobladet.
 
 Hur schemat räknas fram (block, lätta veckor, andelen lugn träning) står i [Träningsplanen](../../TRANINGSPLAN.md#2-planmotorn).
 
@@ -127,7 +150,7 @@ Efteråt står det bredvid knappen när schemat senast skickades. Programmet ant
 
 Schemat anger varje pass i en zon. Pulsen och farten räknas ur testet. Rättar du ett laktatvärde i testet som schemat bygger på följer målen med nästa gång schemat öppnas.
 
-När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest erbjuder programmet att lägga om schemat, på två ställen:
+När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest i löpning erbjuder programmet att lägga om schemat, på två ställen:
 
 - **På resultatet av det nya testet:** raden under rubriken säger att idrottaren har ett schema som bygger på ett äldre test, med knappen *Lägg om schemat*.
 - **På sidan *Träningsschema*:** en gul rad överst säger att det finns ett nyare test, med samma knapp.
@@ -143,4 +166,4 @@ Skriv ut schemat igen eller spara en ny kalenderfil efteråt, så får idrottare
 
 ## Det som inte är provat
 
-Utskriften på en riktig skrivare, kalenderfilen i en telefon och schemat med e-post till en riktig inkorg är inte provade än. Läget står i [PROV.md](../../PROV.md).
+Utskriften på en riktig skrivare, kalenderfilen i en telefon och schemat med e-post till en riktig inkorg är inte provade än, och inte heller formuläret och utskriften med flera idrotter på Windows. Läget står i [PROV.md](../../PROV.md).

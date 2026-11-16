@@ -142,7 +142,7 @@ def test_goal_is_in_the_main_sport(demo_window, erik):
 
 def test_the_basis_of_each_sport_is_shown_under_it(demo_window, erik):
     win = demo_window
-    erik.sport_max_hr = {"bike": 184}
+    erik.sport_max_hr = {"bike": 184, "skierg": 186}
     win.open_plan(erik)
     v = win.plan
     rows = v.sport_rows
@@ -150,8 +150,12 @@ def test_the_basis_of_each_sport_is_shown_under_it(demo_window, erik):
         _tick(v, sp)
     assert rows["run"].basis.isHidden()
     assert rows["bike"].basis.text() == "Inget test: zonerna uppskattas ur maxpulsen"
-    assert rows["skierg"].basis.text() == "Inget test och ingen maxpuls: zon och ansträngning"
+    assert rows["skierg"].basis.text() == "Inget test: zonerna uppskattas ur maxpulsen"
     assert rows["ski"].basis.text() == "Lånar zonerna från SkiErg"
+    erik.sport_max_hr = {}                                   # nothing to borrow
+    v._sport_basis()
+    assert rows["ski"].basis.text() == "Inget test och ingen maxpuls: zon och ansträngning"
+    assert rows["skierg"].basis.text() == rows["ski"].basis.text()
     assert rows["swim"].basis.text() == "Inget test i Tröskel: upplevd ansträngning"
     assert all(rows[sp].basis.isVisibleTo(v) for sp in ("bike", "skierg", "ski", "swim"))
 

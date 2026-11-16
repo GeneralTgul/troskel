@@ -43,7 +43,7 @@ DEMO_TEST_DATES = (datetime(2026, 4, 14, 8, 30, tzinfo=timezone.utc),
 VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost", "testerna", "testerna-cykel",
          "historik",
          "jamforelse", "resultat-laktat", "resultat-zoner", "resultat-klocka", "resultat-vo2max", "skicka",
-         "traningsschema", "traningsschema-mal",
+         "traningsschema", "traningsschema-idrotter", "traningsschema-mal",
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
          "protokoll-lopteknik", "nytt-test-kamera", "nytt-test-band-och-puls", "nytt-test-kontroll",
          "nytt-test-kontroll-utan-kamera",
@@ -515,6 +515,18 @@ class Studio:
 
     def traningsschema(self) -> Any:
         self._plan()
+        return self.win
+
+    def traningsschema_idrotter(self) -> Any:
+        """The form with running and cycling: the sports' rows and the button per weekday, the plan previewed."""
+        v = self._plan()
+        v.sport_rows["bike"].check.setChecked(True)
+        v.day_sports[1].actions_["bike"].setChecked(True)
+        assert v.preview(), v.error.text()
+        self.wait(100)
+        bar = v.form_scroll.verticalScrollBar()
+        bar.setValue(v.sport_rows["run"].y() - 120)
+        self.wait(300)
         return self.win
 
     def traningsschema_mal(self) -> Any:

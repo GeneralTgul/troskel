@@ -92,7 +92,7 @@
 .week-load { margin-top: 3mm; font-size: 8.5pt; color: var(--ink-2); }
 .week-load b { color: var(--ink); font-weight: 600; }
 /* A plan with several sports has the sports table and more zones on the cover: the rest is drawn smaller. */
-.multi .plan-cover .hero { padding-top: 3mm; }
+.multi .plan-cover .hero { padding-top: 1mm; }
 .multi .plan-cover .hero h1 { font-size: 22pt; }
 .multi .plan-cover .hero .athlete { font-size: 13pt; }
 .multi .plan-cover .facts { margin-top: 2.5mm; gap: 1.8mm 7mm; }
@@ -100,6 +100,6 @@
 .multi .plan-cover .tile .value { font-size: 17pt; }
 .multi .plan-cover .tile .label { min-height: 0; }
 .multi .plan-overview { margin-top: 3mm; }
-.multi .plan-chart { height: 52mm; }
+.multi .plan-chart { height: 46mm; }
 .multi .plan-cover .cover-zones { margin-top: 3mm; }
 .multi .plan-cover .plan-promise { margin-top: 3mm; }

@@ -230,7 +230,8 @@ def _sports(plan: Plan) -> list[dict[str, Any]]:
     out = []
     for r in roles:
         own = req.own_capacity(r.sport)
-        if own is None and r.sport in BORROWS:
+        lent = req.own_capacity(BORROWS[r.sport]) if r.sport in BORROWS else None
+        if own is None and lent is not None and lent.anchors is not None:
             basis = t("report.plan.sports.borrows", sport=_sport_name(BORROWS[r.sport]))
         elif own is None and r.sport == "swim":
             basis = t("report.plan.sports.effort")

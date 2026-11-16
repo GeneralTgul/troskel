@@ -61,7 +61,7 @@ def test_sports_table_with_share_role_and_test(plans):
     # shares are weights: 60/30/20/10 of 120
     assert "Löpning Huvudidrott 50 % Laktattrappa · 13 november 2026" in cover
     assert "Cykel Stödjande 25 % Inget test" in cover
-    assert "Skidor Stödjande 17 % Lånar zonerna från SkiErg" in cover
+    assert "Skidor Stödjande 17 % Inget test" in cover                # the SkiErg has no test to lend
     assert "Simning Underhåll 8 % Inget test: upplevd ansträngning" in cover
     assert "Bygger på" not in cover                                   # said per sport in the table
     cover = _text(_cover(render_plan_html(plans["run_bike_12"])))
