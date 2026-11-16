@@ -20,6 +20,13 @@ The rules (docs/TRANINGSPLAN.md):
     The week is filled with the running templates; a workout in the bike, the SkiErg or on skis then takes
     the sport's own template in the same place, just as long (library.in_sport), and the week is checked
     again (the hard share) with them.
+  - Strength (#666, step 3): the coach sets 0-3 sessions a week (PlanRequest.strength_sessions). They come on
+    top of the endurance week, which is filled first and never changes for them (``_Filler._strength``):
+    never on a race day, the day before a race or the three days before an A or B race; at most one in the race
+    week; and on the days that are easiest for the legs: first never the day before a hard day or the long run,
+    then at least a day between two strength sessions, then on a day without endurance training, then after an
+    easy one. A strength session is not a hard day and holds no zone time. The taper and the race week get the
+    lighter maintenance session. A missed strength session is never made up for: no rule moves a workout.
   - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
     (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
     block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them
@@ -32,12 +39,12 @@ from datetime import date, datetime, time, timedelta, timezone
 from itertools import combinations
 
 from . import library
-from .models import (BORROWS, EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, SportRole, Week,
-                     WeekSketch, Workout)
+from .models import (BORROWS, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot,
+                     SportRole, Week, WeekSketch, Workout)
 from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5
 
-ENGINE_VERSION = "5"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
-                               # 5: the bike's and the SkiErg's own workouts
+ENGINE_VERSION = "6"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
+                               # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -51,6 +58,7 @@ PROGRESSIVE_FROM_KM = 20.0    # goals from here get race-pace minutes in the lon
 STEP_BACK = 2                 # steps an easy or taper week goes back in a progression
 DETAIL_WEEKS = 4              # weeks with workouts in a rolling plan: the week of the day and three more
 SHARE_SHIFT = {"peak": 0.5, "taper": 0.75}   # the part of the other sports' share the main sport takes
+STRENGTH_CLEAR_DAYS = 3       # no strength in the days before an A or B race
 
 
 def floor5(minutes: float) -> int:
@@ -188,6 +196,14 @@ class _Filler:
         self.roles = request.plan_roles()
         self.main = request.main_sport
         self.slots = core_slots(request)
+        # Strength: the days of the slots that allow it, else every day with an endurance slot (as a session of its own).
+        own = {}
+        for s in request.availability:
+            if s.role == "core" and STRENGTH in s.sports and s.max_minutes > 0 and 0 <= s.weekday <= 6:
+                if s.weekday not in own or s.max_minutes > own[s.weekday].max_minutes:
+                    own[s.weekday] = s
+        self.strength_slots: dict[int, Slot | None] = (dict(sorted(own.items())) if own
+                                                       else {s.weekday: None for s in self.slots})
         # The long run has one home all through the plan: the longest slot of the main sport, the later day on a tie.
         self.long_slot = long_slot(self.slots, self.main)
         self.state = _State()
@@ -269,6 +285,7 @@ class _Filler:
         workouts, used_steps, long_minutes = result if result else ([], {}, None)
         for g in spec.goals:
             workouts.append(self._workout(g.date, "race", None, goal=g))
+        workouts += self._strength(spec, workouts)
         workouts.sort(key=lambda w: (w.date, w.key))
 
         week = Week(spec.index, spec.monday, spec.block, spec.kind, spec.target_minutes, workouts,
@@ -289,6 +306,58 @@ class _Filler:
         st.max_run = max(st.max_run, week.sport_minutes().get(RUNNING, 0))
         st.sunday_hard = any(w.quality and w.date.weekday() == 6 for w in workouts)
         return week
+
+    def _strength(self, spec: WeekSpec, workouts: list[Workout]) -> list[Workout]:
+        """The week's strength sessions on the days easiest for the legs (the rule in the module's docstring).
+
+        Among the allowed days the n days are chosen by, in order: the fewest that come the day before a hard day
+        or the long run, the most days between them (two is enough), the least endurance on the days themselves
+        (none, then easy, then hard or long), the earliest days. The legs session takes the chosen day with the
+        most room, the other sessions follow in date order."""
+        n = self.request.strength_count
+        if spec.kind == "race":
+            n = min(n, 1)
+        if n == 0:
+            return []
+        days = {wd: spec.monday + timedelta(days=wd) for wd in self.strength_slots}
+        closed: set[date] = set()
+        for g in self.request.goals:
+            closed |= {g.date, g.date - timedelta(days=1)}
+            if g.priority in ("A", "B"):
+                closed |= {g.date - timedelta(days=k) for k in range(1, STRENGTH_CLEAR_DAYS + 1)}
+            if g is self.goal:     # nothing after the plan's goal
+                closed |= {g.date + timedelta(days=k) for k in range(1, 7)}
+        cands = [wd for wd in sorted(days) if days[wd] not in closed]
+        if not cands:
+            return []
+        on = {w.date: w for w in workouts if w.goal is None}
+        heavy = {w.date for w in workouts if w.quality or w.family == "long" or w.goal is not None}
+        before_hard = {wd: days[wd] + timedelta(days=1) in heavy for wd in cands}
+
+        def own(wd: int) -> int:
+            w = on.get(days[wd])
+            return 0 if w is None else 2 if (w.quality or w.family == "long") else 1
+
+        best, best_key = None, None
+        for combo in combinations(cands, min(n, len(cands))):
+            key = (sum(before_hard[wd] for wd in combo), -min(_gap(list(combo)), 2) if len(combo) > 1 else 0,
+                   sum(own(wd) for wd in combo))
+            if best_key is None or key < best_key:
+                best, best_key = combo, key
+        assert best is not None
+        if spec.kind in ("taper", "race"):
+            ids = [library.STRENGTH_TAPER] * len(best)
+        else:
+            ids = list(library.STRENGTH_WEEK[len(best)])
+        roomiest = min(best, key=lambda wd: (before_hard[wd], own(wd), wd))
+        order = [roomiest] + [wd for wd in best if wd != roomiest]
+        out = []
+        for wd, tid in zip(order, ids):
+            slot = self.strength_slots[wd]
+            tpl = library.get(tid)
+            out.append(Workout(self._key(days[wd], "-strength"), days[wd], STRENGTH, tid, tpl.family, tpl.quality,
+                               library.build(tid), slot.start if slot else None))
+        return out
 
     def _sports(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
         """Gives every workout of the week (races not among them) its sport, in place, and then the sport's
@@ -419,7 +488,7 @@ def sketch_of(week: Week) -> Week:
         return week
     zm = week.zone_minutes()
     sketch = WeekSketch(week.minutes, week.sessions, week.quality_sessions, week.longest_minutes,
-                        tuple((z, round(m, 2)) for z, m in sorted(zm.items())))
+                        tuple((z, round(m, 2)) for z, m in sorted(zm.items())), week.strength_sessions)
     return replace(week, workouts=[w for w in week.workouts if w.goal is not None], sketch=sketch)
 
 
@@ -446,7 +515,9 @@ def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime
         weeks = [wk if wk.index <= horizon else sketch_of(wk) for wk in weeks]
     notes = list(skeleton.notes)
     cap = request.capacity_for(request.main_sport)
-    if cap.anchors is None:
+    if cap.anchors is None and cap.css_s100 is not None:
+        pass                          # swimming as the main sport with a CSS test: paces per 100 m
+    elif cap.anchors is None:
         notes.append(Note.of("plan.note.no_test"))
     elif cap.speed_from_hr:
         notes.append(Note.of("plan.note.speed_from_hr"))

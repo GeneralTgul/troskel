@@ -14,7 +14,8 @@ from lopanalys.plan.models import RUNNING
 
 from . import cases as c
 
-RUN_TEMPLATES = [tid for tid, tpl in library.TEMPLATES.items() if not tpl.base and tid not in ("test", "race")]
+RUN_TEMPLATES = [tid for tid, tpl in library.TEMPLATES.items()
+                 if not tpl.base and tpl.sport == RUNNING and tid not in ("test", "race")]
 
 
 @pytest.fixture(autouse=True)
@@ -31,10 +32,9 @@ def _plan(name: str):
 # ---------------------------------------------------------------- the library
 
 
-@pytest.mark.parametrize("sport", ["bike", "skierg", "ski"])
+@pytest.mark.parametrize("sport", ["bike", "skierg", "ski", "swim"])
 def test_every_running_template_has_one_in_the_bike_and_the_skierg(sport):
     assert sorted(library.SPORT_TEMPLATES[sport]) == sorted(RUN_TEMPLATES)
-    assert library.for_sport("easy", "swim") == "easy"          # swimming keeps the running templates (step 3)
     assert library.for_sport("test", sport) == "test" and library.for_sport("race", sport) == "race"
 
 
@@ -45,12 +45,12 @@ def test_a_sport_template_takes_the_place_of_its_running_template(tid):
     tpl, run = library.get(tid), library.get(library.get(tid).base)
     assert (tpl.family, tpl.quality, tpl.min_minutes, tpl.max_minutes) == (run.family, run.quality, run.min_minutes,
                                                                             run.max_minutes)
-    assert tpl.sport == ("bike" if tid.startswith("bike_") else "skierg")
+    assert tpl.sport == tid.split("_")[0] and tpl.sport in ("bike", "skierg", "swim")
     assert len(tpl.steps) == len(run.steps)
     for own, theirs in zip(tpl.steps, run.steps):
         assert sum(p.total_s for p in own) == sum(p.total_s for p in theirs)
         assert own[-1].kind != "cooldown" or own[-1].duration_s >= 5 * 60
-    if not tpl.steps:
+    if not tpl.steps and tid != "swim_technique":      # drills: one part of its own, just as long
         assert library.build(tid, minutes=90) == library.build(run.id, minutes=90)
 
 
@@ -209,7 +209,7 @@ def test_an_older_plan_with_running_templates_in_the_bike_still_reads_and_shows_
     d["engine_version"] = "4"
     old = codec.plan_from_dict(d, codec.request_from_dict(codec.request_to_dict(p.request), "Exempel"))
     w = next(w for w in old.workouts if w.sport == "bike" and w.family == "threshold")
-    assert w.template_id == "threshold" and w.title == "Cykel: Tröskelintervaller"
+    assert w.template_id == "threshold" and w.title == "Cykel: tröskelintervaller"
     assert any(x["target"].endswith(" W") for x in text.workout_lines(w, old.capacity_on("bike", w.date), old.zone_system))
 
 

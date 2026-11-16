@@ -47,18 +47,18 @@ def test_weeks_are_whole_and_in_order(plan):
 def test_availability_is_respected(plan):
     slots = {s.weekday: s for s in core_slots(plan.request)}
     for w in plan.workouts:
-        if w.goal:
+        if w.goal or w.strength:
             continue
         slot = slots[w.date.weekday()]           # KeyError: a workout on a day without a slot
         assert w.minutes <= slot.max_minutes, w
         assert w.start == slot.start
-    days = [w.date for w in plan.workouts]
-    assert len(days) == len(set(days)), "two workouts on one day"
+    days = [w.date for w in plan.workouts if not w.strength]
+    assert len(days) == len(set(days)), "two endurance workouts on one day"
     assert len({w.key for w in plan.workouts}) == len(plan.workouts)
 
 
 def test_never_two_hard_days_in_a_row_and_none_before_the_long_run(plan):
-    by_day = {w.date: w for w in plan.workouts}
+    by_day = {w.date: w for w in plan.workouts if not w.strength}
     for d, w in by_day.items():
         nxt = by_day.get(d + timedelta(days=1))
         if w.quality and nxt is not None:
@@ -102,7 +102,7 @@ def test_mostly_easy(plan):
     assert plan.easy_share >= 0.78
     for wk in plan.weeks:
         assert wk.easy_share >= 0.75, (wk.index, wk.easy_share)
-        n = len([w for w in wk.workouts if not w.goal])
+        n = len([w for w in wk.endurance if not w.goal])
         hard = [w for w in wk.workouts if w.quality]
         assert len(hard) <= 2 and (n >= 4 or len(hard) <= 1 or any(w.goal for w in hard))
 

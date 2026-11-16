@@ -457,5 +457,8 @@
   "assessments.protocol.bike.bikefit.name": "Bikefit landsväg",
   "assessments.protocol.bike.bikefit.desc": "{warmup} min uppvärmning i ERG-läge som inte filmas, sedan {min} min på {w} W med händerna på bromsgreppen. Det steget filmas från sidan, och framifrån med en andra kamera. Ställningen ändras med belastningen, så effekten ska vara en som cyklisten tränar på, inte lätt trampande.",
   "assessments.protocol.skierg.ski.name": "Stakteknik",
-  "assessments.protocol.skierg.ski.desc": "{warmup} min uppvärmning som inte filmas, sedan {min} min i jämn takt på {w} W. Det steget filmas från sidan. Åkaren håller målet som visas på TV:n och står på samma tejpade plats varje gång, så att testerna går att jämföra."
+  "assessments.protocol.skierg.ski.desc": "{warmup} min uppvärmning som inte filmas, sedan {min} min i jämn takt på {w} W. Det steget filmas från sidan. Åkaren håller målet som visas på TV:n och står på samma tejpade plats varje gång, så att testerna går att jämföra.",
+  "assessments.css.error.missing": "Skriv in båda tiderna, 400 m och 200 m.",
+  "assessments.css.error.range": "Tiden ser fel ut: 200 m ska vara mellan 1:40 och 10:00, och 400 m mellan 3:20 och 20:00.",
+  "assessments.css.error.order": "400 m ska ta mer än dubbelt så lång tid som 200 m. Har tiderna bytt plats?"
 }

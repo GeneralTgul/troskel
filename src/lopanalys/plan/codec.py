@@ -12,6 +12,10 @@ plan where every week is detailed. ``engine_version`` says which rules built it 
 The sports' roles and shares (``PlanRequest.roles``, several sports) came after format 2 and are stored
 under ``roles``; a request saved without them reads back with none, which means the sports in ``sports``.
 
+Step 3 of several sports (#666) added ``strength_sessions`` to the request, ``css_s100`` (a swimming test) to a
+capacity and ``strength`` to a sketched week. Each is written only when it is set, so a plan without strength or
+a swimming test is stored as before, and a plan saved before reads back with none.
+
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
@@ -54,6 +58,8 @@ def capacity_to_dict(c: Capacity) -> dict[str, Any]:
     d = {"sport": c.sport, "anchors": anchors, "tested": _d(c.tested), "source": c.source}
     if c.speed_line is not None:       # only a zones test has one: older plans are stored without the key
         d["speed_line"] = {k: getattr(c.speed_line, k) for k in _LINE_FIELDS}
+    if c.css_s100 is not None:
+        d["css_s100"] = c.css_s100
     return d
 
 
@@ -63,7 +69,7 @@ def capacity_from_dict(d: dict[str, Any]) -> Capacity:
                                                 for k in _ANCHOR_FIELDS if k in a or k != "sport"})
     ln = d.get("speed_line")
     line = None if not ln else SpeedLine(**{k: ln[k] for k in _LINE_FIELDS if k in ln})
-    return Capacity(_sport(d["sport"]), anchors, _pd(d.get("tested")), d.get("source", ""), line)
+    return Capacity(_sport(d["sport"]), anchors, _pd(d.get("tested")), d.get("source", ""), line, d.get("css_s100"))
 
 
 def _goal_to_dict(g: Goal) -> dict[str, Any]:
@@ -86,7 +92,7 @@ def _note_from_dict(d: dict[str, Any]) -> Note:
 
 def request_to_dict(r: PlanRequest) -> dict[str, Any]:
     """The request without the athlete's name."""
-    return {
+    d = {
         "format": FORMAT, "start": _d(r.start), "sports": list(r.sports),
         "availability": [{"weekday": s.weekday, "max_minutes": s.max_minutes, "sports": list(s.sports),
                           "start": s.start.isoformat() if s.start else None, "role": s.role} for s in r.availability],
@@ -94,6 +100,9 @@ def request_to_dict(r: PlanRequest) -> dict[str, Any]:
         "duration_weeks": r.duration_weeks, "level": r.level, "recent_weekly_minutes": r.recent_weekly_minutes,
         "roles": [{"sport": x.sport, "role": x.role, "share": x.share} for x in r.roles],
     }
+    if r.strength_sessions:
+        d["strength_sessions"] = r.strength_sessions
+    return d
 
 
 def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
@@ -105,7 +114,7 @@ def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
                        tuple(_goal_from_dict(g) for g in d.get("goals", [])), d.get("duration_weeks"),
                        d.get("level", "recreational"), d.get("recent_weekly_minutes"),
                        tuple(SportRole(_sport(x["sport"]), x.get("role", "main"), x.get("share", 0))
-                             for x in d.get("roles", [])))
+                             for x in d.get("roles", [])), d.get("strength_sessions", 0))
 
 
 def _workout_to_dict(w: Workout) -> dict[str, Any]:
@@ -146,13 +155,15 @@ def _week_to_dict(w: Week) -> dict[str, Any]:
         k = w.sketch
         d["sketch"] = {"minutes": k.minutes, "sessions": k.sessions, "quality": k.quality, "longest": k.longest,
                        "zones": [[z, m] for z, m in k.zones]}
+        if k.strength:
+            d["sketch"]["strength"] = k.strength
     return d
 
 
 def _week_from_dict(w: dict[str, Any]) -> Week:
     k = w.get("sketch")
     sketch = WeekSketch(k["minutes"], k["sessions"], k["quality"], k["longest"],
-                        tuple((z, float(m)) for z, m in k.get("zones", []))) if k else None
+                        tuple((z, float(m)) for z, m in k.get("zones", [])), k.get("strength", 0)) if k else None
     return Week(w["index"], date.fromisoformat(w["monday"]), w["block"], w["kind"], w["target_minutes"],
                 [_workout_from_dict(x) for x in w["workouts"]], [_note_from_dict(n) for n in w.get("notes", [])], sketch)
 

@@ -39,3 +39,9 @@ def t(key: str, **fmt: object) -> str:
     module = key.split(".", 1)[0]
     text = _load(module, _lang).get(key) or _load(module, "sv").get(key) or key
     return text.format(**fmt) if fmt else text
+
+
+def has(key: str) -> bool:
+    """True when the key has a text in the current language or in Swedish."""
+    module = key.split(".", 1)[0]
+    return bool(_load(module, _lang).get(key) or _load(module, "sv").get(key))
