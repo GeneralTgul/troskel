@@ -12,6 +12,7 @@ Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
 - [1. Datamodellen](#1-datamodellen)
 - [2. Planmotorn](#2-planmotorn)
   - [Blocken](#blocken)
+  - [Nivåerna](#nivåerna)
   - [Intensitetsfördelningen](#intensitetsfördelningen)
   - [Flera idrotter](#flera-idrotter)
   - [Delmål och planer utan mål](#delmål-och-planer-utan-mål)
@@ -76,15 +77,20 @@ PlanRequest                      det idrottaren och coachen anger
   sports: [str]                  idrotterna när roles är tomt; den första (eller A-målets) är huvudidrott
   roles: [SportRole]             idrotterna med roll och andel; tomt i scheman sparade före flera idrotter
   strength_sessions: int         styrkepass i veckan, 0–3 (coachen anger); sparas bara när det är satt
+  hard_days: [HardDay]           fasta hårda dagar (coachen anger); sparas bara när de finns
   goals: [Goal]                  tomt = plan utan tävlingsmål
   duration_weeks: int | None     längden när inget A-mål finns (förval 12)
-  level: "beginner" | "recreational" | "trained"
+  level: "beginner" | "recreational" | "trained" | "high"
   recent_weekly_minutes          snitt de senaste 4–6 veckorna, om känt
 
 Slot                             ett tillfälle i veckan
   weekday, max_minutes, start: time | None
   sports: [str]                  vad som går att träna då
   role: "core" | "extra"         bara kärnplatser fylls
+
+HardDay                          en fast hård dag, till exempel ett gruppass
+  weekday: int                   0 = måndag
+  sport: str                     kvalitetspassets idrott; "" = motorn väljer
 
 SportRole                        en idrott i planen
   sport: str                     "run", "bike", "skierg", "ski" eller "swim" (models.PLAN_SPORTS)
@@ -143,7 +149,7 @@ Note                             en text som nyckel och värden, så att planen 
 
 `PlanRequest.plan_roles()` ger idrotterna i ordning med huvudidrotten först, en gång var och med exakt en huvudidrott: den första som angetts som huvudidrott, annars A-målets idrott, annars den första. `Workout.load` och `Week.load` är belastningen: minuter × zonfaktor (Z1 0,5, Z2 1, Z3 1,5, Z4 2,5, Z5 3,5; ett test räknas som Z4) × idrottsfaktor (löpning, SkiErg och skidor 1,0, cykel och simning 0,7, styrka 0,8).
 
-**Inte i modellen än:** utrustning per plats och gruppträningar med fast innehåll.
+**Inte i modellen än:** utrustning per plats och gruppträningar med fast innehåll. En fast hård dag (`HardDay`) säger bara att dagen är hård och i vilken idrott, inte vad gruppen gör: passet kommer ur motorns mallar.
 
 **Tre regler i modellen:**
 
@@ -158,7 +164,7 @@ Note                             en text som nyckel och värden, så att planen 
 | `plans` | En rad per idrottare (`athlete_id` är unik): `session_id` (testet schemat bygger på), `request_json` (tillgänglighet, mål, delmål, längd, nivå, veckovolym och testets trösklar), `plan_json` (schemat som det byggdes: block, veckor, pass och loggen över tidigare tester), `health_json` (hälsodeklarationens rutor och datum), `engine_version`, `created`, `updated` |
 | `plan_events` | Loggen: tid, händelse (`saved`, `changed`, `retest`, `renewed`) och detaljer, till exempel vilka två tester ett omtest gick mellan |
 
-- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass. Idrotternas roller sparas under `roles` i det som angavs. Ett schema som sparades före dem saknar fältet och läses utan roller, alltså med idrotterna i `sports`. En passdels band (`band`) sparas bara på delar som har ett, så övriga pass sparas som förut och äldre scheman läses utan band.
+- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass. Idrotternas roller sparas under `roles` i det som angavs. Ett schema som sparades före dem saknar fältet och läses utan roller, alltså med idrotterna i `sports`. En passdels band (`band`) sparas bara på delar som har ett, så övriga pass sparas som förut och äldre scheman läses utan band. De fasta hårda dagarna sparas under `hard_days` (`{"weekday": 3, "sport": "ski"}`, utan `sport` när motorn väljer) bara när de finns.
 - **Namnet sparas inte i schemat.** Det läses från idrottarens rad när schemat öppnas.
 - **Målen följer testet.** När schemat öppnas räknas trösklarna om ur testet det bygger på, så att ett rättat laktatvärde slår igenom. Är testet borttaget gäller trösklarna som sparades med schemat.
 - **Radering:** raderna följer idrottaren (`ON DELETE CASCADE`) och skrivs över som övriga uppgifter. Tas testet bort ligger schemat kvar utan test. Schemat är med i utdraget (*Exportera allt*). PDF:en och kalenderfilen registreras som sparade filer, så att raderingen hittar dem.
@@ -194,13 +200,28 @@ Motorn räknar bakåt från A-målet. Finns flera A-mål slutar planen med det s
 | **Grund** | Resten av tiden | Volym i de låga zonerna och ett kvalitetspass i veckan: fartlek, backe och tröskel i tur och ordning |
 
 - **Lätta veckor:** tre belastningsveckor och en lätt vecka (65 % av volymen). Nybörjare får två och en. Veckorna räknas bakåt från nedtrappningen eller testet, så att veckorna närmast målet är belastningsveckor. Planen börjar aldrig med en lätt vecka.
-- **Volymen** börjar på den kända veckovolymen (*Tränar nu*). Är den okänd börjar den på nivåns förval (2, 3 eller 5 timmar), men högst på 70 % av det veckan rymmer, så att schemat aldrig börjar vid taket. **Det veckan rymmer** är nivåns antal pass i de längsta kärnplatserna, med långpasset inom nivåns längsta långpass och de andra passen inom längden på ett lugnt pass, 75 min (`periodize.week_capacity`).
-- **Ökningen** sprids över grund och uppbyggnad: varje belastningsvecka växer med den takt som når hela veckan vid den sista belastningsveckan före toppen, men aldrig fortare än nivåns 5, 7 eller 8 %. Ett schema som börjar nära taket växer alltså långsamt, och ett som börjar långt under växer i nivåns takt så många veckor som behövs, även om taket aldrig nås. En vecka är aldrig mer än 10 % större än den största veckan före, och aldrig större än kärnplatserna rymmer. Startpunkten och var tiden växer till står i översikten (`plan.text.start_line`).
+- **Volymen** börjar på den kända veckovolymen (*Tränar nu*). Är den okänd börjar den på nivåns förval (se [Nivåerna](#nivåerna)), men högst på 70 % av det veckan rymmer, så att schemat aldrig börjar vid taket. **Det veckan rymmer** är nivåns antal pass i de längsta kärnplatserna, med långpasset inom schemats längsta långpass och de andra passen inom nivåns längsta lugna pass (`periodize.week_capacity`).
+- **Ökningen** sprids över grund och uppbyggnad: varje belastningsvecka växer med den takt som når hela veckan vid den sista belastningsveckan före toppen, men aldrig fortare än nivåns takt (5, 7 eller 8 %). Ett schema som börjar nära taket växer alltså långsamt, och ett som börjar långt under växer i nivåns takt så många veckor som behövs, även om taket aldrig nås. En vecka är aldrig mer än 10 % större än den största veckan före, och aldrig större än kärnplatserna rymmer. Startpunkten och var tiden växer till står i översikten (`plan.text.start_line`).
 - **Översikten visar progressionen:** under staplarna med tid per zon ritas det längsta passet och minuterna i zon 3–5 per vecka, i en egen panel med egen axel i minuter (ingen andra axel på staplarna). Där syns långpassets ökning och kvalitetspassens steg även när veckotiden står still. Tioprocentsregeln är en tumregel med svagt stöd i forskningen *(ej verifierat)*, så den används som ett tak och inte som ett mål.
 - **Långpasset** ligger i veckans längsta plats, är ungefär en tredjedel av veckan och växer högst 15 minuter från en belastningsvecka till nästa.
+- **Långpassets tak följer målet** (`periodize.long_cap`, motor 9): nivåns tak gäller, men ett mål som tar mer än fyra timmar höjer det med tre fjärdedelar av varje minut över de fyra timmarna, högst till 4:30. Loppets tid räknas ur distansen och en vanlig tävlingsfart för en tränad motionär i idrotten: 11 km/h i löpning, 15 km/h på skidor och SkiErg, 28 km/h på cykel och 3,5 km/h i simning (`periodize.RACE_KMH`, programmets egna tal). Vasaloppet (90 km på skidor, ungefär 6 timmar) ger *Vältränad* och *Hög volym* 4:30 och *Motionär* 4:00. Ett lopp på 10 km, ett maraton och ett skidlopp på 45 km behåller nivåns tak. Taket gäller också den stödjande idrottens mindre långpass.
 - **För kort tid till målet:** blocken kortas i ordningen grund, uppbyggnad, topp. Är det mindre än 6 veckor kvar säger planen det i klartext och bygger ingen topp.
 - **Återhämtningen efter ett lopp** står i [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp).
 - **Inte byggt:** två och en för idrottare över 50 år.
+
+### Nivåerna
+
+Coachen väljer nivån (`PlanRequest.level`, `periodize.LEVEL`). Den sätter förvalet för veckotiden när *Tränar nu* är okänd, takten veckorna växer i, hur många belastningsveckor som kommer före en lätt vecka, hur många pass veckan rymmer, var kvalitetspassens stegring börjar, och hur långa långpasset och de lugna passen får bli.
+
+| Nivå | Förval | Ökning | Belastningsveckor | Pass i veckan | Långpass | Lugnt pass | Återhämtning |
+|---|---|---|---|---|---|---|---|
+| *Nybörjare* (`beginner`) | 2 h | 5 % | 2 | 3 | 1:30 | 75 min | 45 min |
+| *Motionär* (`recreational`) | 3 h | 7 % | 3 | 5 | 2:30 | 75 min | 45 min |
+| *Vältränad* (`trained`) | 5 h | 8 % | 3 | 7 | 3:00 | 75 min | 45 min |
+| *Hög volym* (`high`, motor 9) | 7 h | 8 % | 3 | 11 | 3:00 | 1:45 | 1:00 |
+
+- **Hög volym** är för den som tränar 10–13 timmar i veckan, till exempel inför ett långlopp: fler pass i veckan, också två pass samma dag (se [Två pass samma dag](#två-pass-samma-dag)), och lugna pass upp till 1:45. Återhämtningspasset dagen efter ett hårt pass eller långpasset får bli en timme. Långpassets tak höjs för långa mål som för de andra nivåerna. Med platser som rymmer det (sju dagar med 1:45, en lång lördag och tre luncher för ett andra pass) kan veckorna bli 11–14 timmar.
+- **Lugna pass och återhämtning** har nivåns längd (`Level.easy_max`, `Level.recovery_max`). Mallen *Lugn löpning* har 75 minuter och *Återhämtningsjogg* 45 minuter för de tre första nivåerna, som förut.
 
 ### Intensitetsfördelningen
 
@@ -209,6 +230,7 @@ Motorn räknar bakåt från A-målet. Finns flera A-mål slutar planen med det s
 - **Varför inte strikt 80/20 för alla:** fördelningen kommer ur studier av elitidrottare med stor volym (Seiler). En motionär med 4–6 timmar i veckan får för lite belastning om allt över LT1 stryks, och tröskelnära träning ger mycket på få timmar *(ej verifierat mot källa)*.
 - **Regeln räknas i pass, inte bara i tid:** högst två kvalitetspass i veckan, ett vid färre än fyra pass och i grundblocket, aldrig två dagar i rad (inte heller över veckogränsen), och aldrig dagen före ett långpass.
 - **Högst en fjärdedel av veckans tid över LT1.** Blir det mer stegar motorn ned kvalitetspasset eller stryker det. Den stegar aldrig upp för att fylla en vecka.
+- **Fasta hårda dagar** (`PlanRequest.hard_days`, motor 9): coachen anger veckodagar med ett hårt pass som alltid ligger fast, till exempel gruppens kvalitetspass på torsdagen, och för varje dag en idrott eller *valfri idrott*. Dagen är alltid en av veckans dagar med pass, och veckans kvalitetspass läggs där först: av de lagliga valen (aldrig två hårda dagar i rad, aldrig dagen före långpasset, inte runt ett lopp eller i återhämtningen efter ett) vinner det med flest fasta dagar, sedan det med den först angivna dagen, sedan det med mest vila emellan. En vecka med ett kvalitetspass tar alltså den första dagen, och en vecka med två tar båda när de har en dag emellan. En fast dag som inte är laglig den veckan blir en lugn dag. Med en idrott blir passet i den idrotten när dagens plats tillåter den, också en underhållsidrott. Testet ligger kvar i huvudidrotten. Dagarna runt planeras som förut: dagen efter en hård dag blir ett återhämtningspass. Utan fasta dagar blir schemat detsamma som förut.
 - **Zonen mellan LT1 och LT2** används medvetet (tröskelintervaller), inte av misstag. Lugna pass har ett tak strax under LT1, och det taket är det viktigaste testet ger en motionär.
 
 ### Flera idrotter
@@ -333,8 +355,8 @@ Appen har samma tabeller i `app/src/engine/library.ts`, och fixturerna (`app/scr
 
 | Mall | Upplägg | Stegring |
 |---|---|---|
-| Lugn löpning | 25–75 min i zon 2 | Tid |
-| Återhämtningsjogg | 20–45 min i nedre delen av zon 2, dagen efter ett hårt pass eller långpass | Tid |
+| Lugn löpning | 25–75 min i zon 2 (upp till 1:45 på nivån *Hög volym*) | Tid |
+| Återhämtningsjogg | 20–45 min i nedre delen av zon 2 (upp till en timme på nivån *Hög volym*), dagen efter ett hårt pass eller långpass | Tid |
 | Långpass | Från 30 min i zon 2. I toppblocket för långa lopp med de sista 20 min i zon 3 | Högst 15 min per belastningsvecka |
 | Tröskelintervaller | 4×5 min till 4×10 min i zon 4, strax under LT2 | Total arbetstid 20–40 min |
 | Hårda intervaller | 4×3 min till 6×4 min i zon 5, över LT2 | Antal, sedan längd |

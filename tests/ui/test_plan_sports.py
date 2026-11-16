@@ -229,3 +229,36 @@ def test_a_second_time_on_a_weekday_is_asked_saved_and_read_back(demo_window, er
     assert v.minutes2[1].text() == "" and v.dirty()
     assert [s.weekday for s in v.collect().availability].count(1) == 1
     v.revert()
+
+
+def test_fixed_hard_days_and_the_high_level_are_asked_saved_and_read_back(demo_window, erik):
+    """Engine 9: up to two fixed hard days, each with a sport or any, and the level for high volume."""
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v)
+    _tick(v, "bike")
+    for h in v.health.values():
+        h.setChecked(True)
+    assert [v.level.itemData(i) for i in range(v.level.count())][-1] == "high"
+    assert len(v.hard_days) == 2 and v.hard_days[0].currentData() is None and not v.hard_sports[0].isEnabled()
+    assert v.collect().hard_days == ()
+    v.level.setCurrentIndex(v.level.findData("high"))
+    v.hard_days[0].setCurrentIndex(v.hard_days[0].findData(3))
+    assert v.hard_sports[0].isEnabled()
+    v.hard_sports[0].setCurrentIndex(v.hard_sports[0].findData("bike"))
+    v.hard_days[1].setCurrentIndex(v.hard_days[1].findData(1))
+    v.hard_sports[1].setCurrentIndex(v.hard_sports[1].findData("swim"))      # not in the plan: any sport
+    req = v.collect()
+    assert req.level == "high"
+    assert [(h.weekday, h.sport) for h in req.hard_days] == [(3, "bike"), (1, "")]
+    assert v.preview()
+    assert all(w.sport == "bike" for w in v.plan.workouts if w.quality and w.date.weekday() == 3)
+    assert v.save() and not v.dirty()
+    win._plan_back()
+    win.open_plan(erik)
+    assert v.level.currentData() == "high"
+    assert [(d.currentData(), s.currentData()) for d, s in zip(v.hard_days, v.hard_sports)] == [(3, "bike"), (1, "")]
+    assert not v.dirty()
+    v.hard_days[1].setCurrentIndex(0)
+    assert v.dirty()

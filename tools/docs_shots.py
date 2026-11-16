@@ -43,7 +43,7 @@ DEMO_TEST_DATES = (datetime(2026, 4, 14, 8, 30, tzinfo=timezone.utc),
 VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost", "testerna", "testerna-cykel",
          "historik", "simtest",
          "jamforelse", "resultat-laktat", "resultat-zoner", "resultat-klocka", "resultat-vo2max", "skicka",
-         "traningsschema", "traningsschema-idrotter", "traningsschema-mal", "till-appen",
+         "traningsschema", "traningsschema-idrotter", "traningsschema-harda-pass", "traningsschema-mal", "till-appen",
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
          "protokoll-lopteknik", "nytt-test-kamera", "nytt-test-band-och-puls", "nytt-test-kontroll",
          "nytt-test-kontroll-utan-kamera",
@@ -542,6 +542,18 @@ class Studio:
         self.wait(100)
         bar = v.form_scroll.verticalScrollBar()
         bar.setValue(v.sport_rows["bike"].y() - 30)      # the sports and the days down to the second time on Thursday
+        self.wait(300)
+        return self.win
+
+    def traningsschema_harda_pass(self) -> Any:
+        """*Fasta hårda pass* under the days: Tuesday as the fixed hard day of the previewed plan."""
+        v = self._plan()
+        v.hard_days[0].setCurrentIndex(v.hard_days[0].findData(1))
+        assert v.preview(), v.error.text()
+        self.wait(100)
+        bar = v.form_scroll.verticalScrollBar()
+        top = v.hard_days[0].mapTo(v.form_scroll.widget(), v.hard_days[0].rect().topLeft()).y()
+        bar.setValue(top - 330)          # the days above the field
         self.wait(300)
         return self.win
 

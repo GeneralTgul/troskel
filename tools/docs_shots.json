@@ -30,6 +30,7 @@
     {"view": "skicka", "page": "docs/handbok/resultat/resultat.md", "file": "skicka.png"},
     {"view": "traningsschema", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "traningsschema.png"},
     {"view": "traningsschema-idrotter", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "idrotter.png"},
+    {"view": "traningsschema-harda-pass", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "harda-pass.png"},
     {"view": "traningsschema-mal", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "mal-och-halsodeklaration.png"},
     {"view": "till-appen", "page": "docs/handbok/traningsschema/traningsschema.md", "file": "till-appen.png"},
     {"view": "historik", "page": "docs/handbok/resultat/resultat.md", "file": "historik.png"},

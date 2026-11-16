@@ -19,7 +19,8 @@ tests, unless the SkiErg is in the plan too. A weekday can
 allow some of the sports only: the button beside the day says which, *Alla* by default. Strength is a number of
 sessions a week (0-3) on top of the endurance time, placed by the engine. With more than one sport a weekday can have
 a second time (the *+* beside the day): a second slot with its own minutes, clock time and sports, which the engine
-uses for a second, easy workout in another sport (plan.periodize.second_slots).
+uses for a second, easy workout in another sport (plan.periodize.second_slots). Under the days, *Fasta hårda pass* gives
+up to two weekdays (each with a sport, or any) where the week's quality sessions go first (PlanRequest.hard_days).
 
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
@@ -39,7 +40,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QGrid
 
 from lopanalys.core.i18n import t
 from lopanalys.core.models import Athlete
-from lopanalys.plan import RUNNING, Capacity, Goal, Plan, PlanRequest, Slot, SportRole, build_plan
+from lopanalys.plan import RUNNING, Capacity, Goal, HardDay, Plan, PlanRequest, Slot, SportRole, build_plan
 from lopanalys.plan import rolling
 from lopanalys.plan.engine import horizon_for
 from lopanalys.plan.models import BORROWS, LEVELS, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, SWIM, WEEKDAY_KEYS, ZONES
@@ -56,6 +57,7 @@ log = logging.getLogger(__name__)
 
 MIN_SLOT, MAX_SLOT = 20, 480      # minutes in one day
 MAX_WEEKS = 104
+HARD_DAYS = 2                     # fixed hard days in the form (PlanRequest.hard_days)
 SHARES = tuple(range(10, 101, 10))   # a sport's share of the weekly time, in tens of percent
 _TIME_RE = re.compile(r"^(\d{1,2})(?:[:.]?(\d{2}))?$")
 
@@ -466,6 +468,32 @@ class PlanView(QWidget):
         dg.setColumnStretch(2, 3)
         dg.setColumnStretch(3, 3)
         v.addLayout(dg)
+        # Fixed hard days (a group session): a weekday and the sport of its quality session.
+        hw = QWidget()
+        hg = QGridLayout(hw)
+        hg.setContentsMargins(0, 0, 0, 0)
+        hg.setHorizontalSpacing(12)
+        hg.setVerticalSpacing(8)
+        self.hard_days: list[QComboBox] = []
+        self.hard_sports: list[QComboBox] = []
+        for n in range(HARD_DAYS):
+            d = QComboBox()
+            d.setObjectName(f"hard_day_{n + 1}")
+            d.addItem(t("ui.plan.hard_day_none"), None)
+            for i, key in enumerate(WEEKDAY_KEYS):
+                d.addItem(t(f"ui.plan.day.{key}"), i)
+            sp = QComboBox()
+            sp.setObjectName(f"hard_sport_{n + 1}")
+            sp.addItem(t("ui.plan.hard_sport_any"), "")
+            for x in PLAN_SPORTS:
+                sp.addItem(t(f"plan.sport.{x}"), x)
+            sp.setEnabled(False)
+            d.currentIndexChanged.connect(lambda *_, d=d, sp=sp: sp.setEnabled(d.currentData() is not None))
+            hg.addWidget(d, n, 0)
+            hg.addWidget(sp, n, 1)
+            self.hard_days.append(d)
+            self.hard_sports.append(sp)
+        v.addWidget(field(t("ui.plan.hard_days"), hw, t("ui.plan.hard_days_hint")))
 
         v.addSpacing(6)
         v.addWidget(label(t("ui.plan.sec.goal"), "SectionTitle"))
@@ -525,7 +553,7 @@ class PlanView(QWidget):
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
                   self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
             w.textChanged.connect(self._changed)
-        for cb in (self.test, self.level, self.strength):
+        for cb in (self.test, self.level, self.strength, *self.hard_days, *self.hard_sports):
             cb.currentIndexChanged.connect(self._changed)
         self.mode.currentIndexChanged.connect(self._mode_changed)
 
@@ -594,6 +622,7 @@ class PlanView(QWidget):
         return (self.test.currentData(), self.level.currentData(), self.recent.value(),
                 tuple(r.snapshot() for r in self.sport_rows.values()),
                 tuple(r.test_id() for r in self.sport_rows.values()), self.strength.currentData(),
+                tuple((d.currentData(), s.currentData()) for d, s in zip(self.hard_days, self.hard_sports)),
                 tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
                                                                                   self.day_sports)),
                 tuple((m.value(), c.text().strip(), d.chosen()) if self._second_on(i) else None
@@ -807,6 +836,11 @@ class PlanView(QWidget):
         for d in self.day_sports + self.day_sports2:
             d.set_chosen(())
         self.strength.setCurrentIndex(max(0, self.strength.findData(req.strength_count if req else 0)))
+        given = list(req.hard_days[:HARD_DAYS]) if req else []
+        for n, (d, sp) in enumerate(zip(self.hard_days, self.hard_sports)):
+            h = given[n] if n < len(given) else None
+            d.setCurrentIndex(max(0, d.findData(h.weekday)) if h else 0)
+            sp.setCurrentIndex(max(0, sp.findData(h.sport)) if h else 0)
         self._sport_basis(req, session_id)
         if req is None:
             self.test.setCurrentIndex(max(0, self.test.findData(session_id)) if session_id else 0)
@@ -1063,10 +1097,15 @@ class PlanView(QWidget):
             return self._fail(t("ui.err.db", detail=str(e)))
         recent = self.recent.value()
         roles = tuple(self.sport_rows[sp].value() for sp in sports)
+        hard: list[HardDay] = []
+        for d, sp in zip(self.hard_days, self.hard_sports):
+            wd = d.currentData()
+            if wd is not None and wd not in [h.weekday for h in hard]:
+                hard.append(HardDay(wd, sp.currentData() if sp.currentData() in sports else ""))
         return PlanRequest(a.name, start_day, tuple(slots), tuple(caps), sports, goals=tuple(goals),
                            duration_weeks=weeks, level=level, recent_weekly_minutes=int(recent) if recent else None,
                            roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else (),
-                           strength_sessions=self.strength.currentData() or 0)
+                           strength_sessions=self.strength.currentData() or 0, hard_days=tuple(hard))
 
     def _session_id(self) -> int | None:
         """The running test the plan is built on; none when running is not in the plan."""
