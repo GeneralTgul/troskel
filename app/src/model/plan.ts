@@ -96,6 +96,16 @@ export function targetsOn(stored: StoredPlan, sport: string, day: IsoDate): Zone
   return stored.targets[sport] ?? {};
 }
 
+/** The targets in a workout's headline: the main zone's, or the band's when the work of that zone is in a band
+ * the test gave a target for (the bike's sweet spot: 88–94 % of the threshold power, not the whole of Z4). */
+export function mainTarget(stored: StoredPlan, w: StoredWorkout): ZoneTarget | undefined {
+  const zone = mainZone(w);
+  if (!zone) return undefined;
+  const targets = targetsOn(stored, w.sport, w.date);
+  const band = w.parts.find((p) => p.kind === "work" && p.zone === zone && p.band)?.band;
+  return (band ? targets[band] : undefined) ?? targets[zone];
+}
+
 // --- texts, as text.py and resolve.py -------------------------------------------------------------------
 
 export function duration(seconds: number): string {
@@ -193,7 +203,7 @@ export interface PartLine {
 const RUN_WORDED_PARTS = ["steady", "cooldown"];
 
 export function partLine(part: StoredPart, targets: ZoneTargets, sport = "run"): PartLine {
-  const tg = part.zone ? targets[part.zone] : undefined;
+  const tg = (part.band ? targets[part.band] : undefined) ?? (part.zone ? targets[part.zone] : undefined);
   let what = part.duration_s ? duration(part.duration_s) : "";
   if (part.repeat > 1) what = t("plan.fmt.repeat", { n: part.repeat, each: what });
   const any = sport === "run" ? "" : "_any";

@@ -34,8 +34,8 @@ def _plan(name: str):
 
 @pytest.mark.parametrize("sport", ["bike", "skierg", "ski", "swim"])
 def test_every_running_template_has_one_in_the_bike_and_the_skierg(sport):
-    assert sorted(library.SPORT_TEMPLATES[sport]) == sorted(RUN_TEMPLATES)
-    assert library.for_sport("test", sport) == "test" and library.for_sport("race", sport) == "race"
+    assert sorted(library.SPORT_TEMPLATES[sport]) == sorted(RUN_TEMPLATES + ["test"])
+    assert library.for_sport("race", sport) == "race"                   # a race is the goal itself, in any sport
 
 
 @pytest.mark.parametrize("tid", [t for t, tpl in library.TEMPLATES.items() if tpl.base])
@@ -45,7 +45,7 @@ def test_a_sport_template_takes_the_place_of_its_running_template(tid):
     tpl, run = library.get(tid), library.get(library.get(tid).base)
     assert (tpl.family, tpl.quality, tpl.min_minutes, tpl.max_minutes) == (run.family, run.quality, run.min_minutes,
                                                                             run.max_minutes)
-    assert tpl.sport == tid.split("_")[0] and tpl.sport in ("bike", "skierg", "swim")
+    assert tpl.sport == tid.split("_")[0] and tpl.sport in ("bike", "skierg", "ski", "swim")
     assert len(tpl.steps) == len(run.steps)
     for own, theirs in zip(tpl.steps, run.steps):
         assert sum(p.total_s for p in own) == sum(p.total_s for p in theirs)
@@ -58,7 +58,7 @@ def test_the_bike_has_z2_sweet_spot_threshold_and_vo2_and_the_skierg_easy_and_in
     bike = library.SPORT_TEMPLATES["bike"]
     zone = lambda tid, step=0: next(p.zone for p in library.build(tid, step=step) if p.kind == "work")
     assert library.get(bike["easy"]).top_zone == "Z2" and library.build(bike["long"], minutes=120)[0].zone == "Z2"
-    assert zone(bike["fartlek"]) == "Z3"                         # sweet spot: below the threshold zone
+    assert zone(bike["fartlek"]) == "Z4"                         # sweet spot: the lower part of Z4, as a band
     assert zone(bike["threshold"]) == "Z4" and zone(bike["vo2max"]) == "Z5" and zone(bike["hills"]) == "Z5"
     # The bike's threshold intervals are longer than running's: no impact on the legs.
     work = lambda tid, step: sum(p.work_s for p in library.build(tid, step=step) if p.kind == "work")
@@ -169,7 +169,7 @@ def test_a_part_in_another_sport_is_not_called_running():
     w = next(w for w in p.workouts if w.template_id == "bike_sweetspot")
     lines = [text.plain(x) for x in text.workout_lines(w, p.capacity_on("bike", w.date), p.zone_system)]
     assert lines[0].startswith("Uppvärmning: 10 min i Z2 (")
-    assert lines[1].startswith("Intervaller: 2 × 12 min i Z3 (") and lines[1].endswith("W), lugnt 3 min emellan")
+    assert lines[1].startswith("Intervaller: 2 × 12 min i Z4 (") and lines[1].endswith("W), lugnt 3 min emellan")
     assert lines[2].startswith("Nedvarvning: ")
     easy = next(w for w in p.workouts if w.template_id == "bike_easy")
     assert text.plain(text.workout_lines(easy, c.BIKE_TEST, p.zone_system)[0]).startswith("Jämnt: ")

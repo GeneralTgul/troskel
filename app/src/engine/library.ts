@@ -80,6 +80,20 @@ function steps(runId: string, ...sets: SetSpec[]): StoredPart[][] {
   return run.map((like, i) => fit(like, sets[i]));
 }
 
+/** library._band: the steps with the work parts in a band of their zone (resolve.BANDS). */
+const band = (own: StoredPart[][], name: string): StoredPart[][] =>
+  own.map((st) => st.map((p) => (p.kind === "work" ? { ...p, band: name } : p)));
+
+/** library._test: a sport's own test in the place of running's, the whole session as long. */
+function test(id: string, warm: number, testMin: number, cool: number): Template {
+  const parts = [part("warmup", warm * MIN, "Z2", 3), part("test", testMin * MIN, null, 10),
+    part("cooldown", cool * MIN, "Z2", 2)];
+  const run = TEMPLATES.test;
+  if (parts.reduce((s, p) => s + partTotal(p), 0) !== run.steps[0].reduce((s, p) => s + partTotal(p), 0))
+    throw new Error(`${id}: as long as running's test`);
+  return { ...run, id, steps: [parts], base: "test" };
+}
+
 function like(runId: string, id: string, own?: StoredPart[][]): Template {
   const t = TEMPLATES[runId];
   const top = own === undefined ? t.top_zone
@@ -90,9 +104,10 @@ function like(runId: string, id: string, own?: StoredPart[][]): Template {
 const BIKE: Template[] = [
   like("easy", "bike_easy"), like("recovery", "bike_recovery"), like("long", "bike_long"),
   like("long_progressive", "bike_long_progressive"),
-  like("fartlek", "bike_sweetspot", steps("fartlek", [10, 2, 10 * MIN, 3 * MIN, "Z3", 6, "Z2"],
-    [10, 2, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"], [10, 3, 10 * MIN, 2 * MIN, "Z3", 6, "Z2"],
-    [10, 2, 15 * MIN, 3 * MIN, "Z3", 6, "Z2"], [10, 3, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"])),
+  // Sweet spot: the blocks carry the band "sweetspot", 88–94 % of the threshold power, and count as Z4.
+  like("fartlek", "bike_sweetspot", band(steps("fartlek", [10, 2, 10 * MIN, 3 * MIN, "Z4", 6, "Z2"],
+    [10, 2, 12 * MIN, 3 * MIN, "Z4", 6, "Z2"], [10, 3, 10 * MIN, 2 * MIN, "Z4", 6, "Z2"],
+    [10, 2, 15 * MIN, 3 * MIN, "Z4", 6, "Z2"], [10, 3, 12 * MIN, 3 * MIN, "Z4", 6, "Z2"]), "sweetspot")),
   like("threshold", "bike_threshold", steps("threshold", [12, 3, 8 * MIN, 3 * MIN, "Z4", 7],
     [10, 3, 10 * MIN, 3 * MIN, "Z4", 7], [12, 3, 12 * MIN, 3 * MIN, "Z4", 7], [12, 2, 20 * MIN, 5 * MIN, "Z4", 7],
     [10, 4, 10 * MIN, 3 * MIN, "Z4", 7], [12, 3, 15 * MIN, 4 * MIN, "Z4", 7])),
@@ -102,9 +117,13 @@ const BIKE: Template[] = [
   like("hills", "bike_vo2_short", steps("hills", [15, 8, MIN, MIN, "Z5", 8], [15, 10, MIN, MIN, "Z5", 8],
     [15, 12, MIN, MIN, "Z5", 8], [15, 14, MIN, MIN, "Z5", 8], [15, 16, MIN, MIN, "Z5", 8])),
   like("opener", "bike_opener", steps("opener", [10, 3, 2 * MIN, 2 * MIN, "Z4", 6])),
+  test("bike_test", 10, 40, 10),   // the lactate step test on the trainer: 6–8 steps of 5 minutes
 ];
-const SKIERG: Template[] = ["easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills",
-  "opener"].map((id) => like(id, `skierg_${id}`));
+const SKIERG: Template[] = [...["easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek",
+  "hills", "opener"].map((id) => like(id, `skierg_${id}`)),
+  test("skierg_test", 10, 35, 15)];   // the lactate step test on the SkiErg: 6–8 steps of 4 minutes
+/** Skis have no test of their own: the athlete tests on the SkiErg, whose zones the skis borrow. */
+const SKI: Template[] = [test("ski_test", 10, 35, 15)];
 /** Swimming (#666 step 3): on effort (RPE), or with the pace per 100 m of a CSS test. */
 const SWIM: Template[] = [
   like("easy", "swim_easy"), like("recovery", "swim_technique"), like("long", "swim_long"),
@@ -120,8 +139,9 @@ const SWIM: Template[] = [
   like("hills", "swim_sprints", steps("hills", [15, 8, 30, 30, "Z5", 8], [15, 12, 30, 30, "Z5", 8],
     [15, 16, 30, 30, "Z5", 8], [15, 20, 30, 30, "Z5", 8], [15, 24, 30, 30, "Z5", 8])),
   like("opener", "swim_opener", steps("opener", [10, 4, MIN, MIN, "Z4", 6])),
+  test("swim_test", 20, 25, 15),   // the CSS test: 400 m and, after a full rest, 200 m
 ];
-for (const t of [...BIKE, ...SKIERG, ...SWIM]) TEMPLATES[t.id] = t;
+for (const t of [...BIKE, ...SKIERG, ...SKI, ...SWIM]) TEMPLATES[t.id] = t;
 
 /** Sport -> running template -> the sport's template (library.SPORT_TEMPLATES). */
 export const SPORT_TEMPLATES: Record<string, Record<string, string>> = {
@@ -140,13 +160,14 @@ for (const t of [strength("strength_full", 10, 30, 7, 5), strength("strength_leg
 export const STRENGTH_WEEK: Record<number, string[]> = { 1: ["strength_full"], 2: ["strength_legs", "strength_upper"],
   3: ["strength_legs", "strength_full", "strength_upper"] };
 export const STRENGTH_TAPER = "strength_maintenance";
-SPORT_TEMPLATES.ski = SPORT_TEMPLATES.skierg;
+SPORT_TEMPLATES.ski = { ...SPORT_TEMPLATES.skierg, ...Object.fromEntries(SKI.map((t) => [t.base, t.id])) };
 
 export const forSport = (id: string, sport: string): string => SPORT_TEMPLATES[sport]?.[id] ?? id;
 
 const sameParts = (a: StoredPart[], b: StoredPart[]) => a.length === b.length && a.every((p, i) =>
   p.kind === b[i].kind && p.duration_s === b[i].duration_s && p.zone === b[i].zone && p.rpe === b[i].rpe
-  && p.repeat === b[i].repeat && p.rest_s === b[i].rest_s && p.rest_zone === b[i].rest_zone);
+  && p.repeat === b[i].repeat && p.rest_s === b[i].rest_s && p.rest_zone === b[i].rest_zone
+  && (p.band ?? "") === (b[i].band ?? ""));
 
 /** library.in_sport: a running workout's template and parts moved to `sport`, just as long. */
 export function inSport(parts: StoredPart[], id: string, sport: string): [string, StoredPart[]] {

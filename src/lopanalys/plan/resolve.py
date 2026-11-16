@@ -13,6 +13,9 @@ Each sport gets the target of its test's load (#666, step 2): running a pace in 
 the SkiErg watt and the time per 500 m (Concept2's formula, core.sport). Skis borrow the SkiErg's zones but
 not its watt: on snow the plan gives heart rate and effort. A sport without a test gives zone and effort only.
 
+A part in a band (``Part.band``, BANDS) has a narrower watt than its zone: the bike's sweet spot is 88-94 % of the
+threshold power (``band_targets``).
+
 Swimming (#666, step 3) has no heart rate test: on effort (RPE) only, or with a CSS test (assessments.css) the pace
 per 100 m of every zone as seconds around the CSS pace (SWIM_ZONES).
 """
@@ -172,6 +175,36 @@ def targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM, sport: str 
         else:
             out[z.code] = Target(z.code, z.name, z.hr_low, z.hr_high, power_low_w=_watt(low), power_high_w=_watt(high),
                                  **flags)
+    return out
+
+
+# A band: a narrower target inside a zone, as shares of the threshold power (the load at LT2, the bike's FTP).
+# Band -> (sport, the zone its parts count in, low share, high share). Sweet spot is 88-94 % of FTP. The zones
+# cannot say that: their borders are LT1, the point halfway to LT2 and LT2, and LT1 lies anywhere from 65 to
+# 90 % of FTP, so a whole zone's watt is either too wide or in the wrong place. With LT1 at 75 % of FTP the band
+# is the lower half of Z4 (87.5-100 %), which is why its parts count as Z4 and show Z4's heart rates. The band is
+# not cut to the zone: with a high LT1 it starts a little below Z4's watt, and it is still the sweet spot.
+BANDS: dict[str, tuple[str, str, float, float]] = {"sweetspot": (Sport.BIKE.value, "Z4", 0.88, 0.94)}
+
+
+def band_targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM, sport: str | None = None) -> dict[str, Target]:
+    """Band -> its target: the heart rates of the band's zone and the band's own watt. Only for the band's sport
+    on its own test with a measured threshold power; else {} and the part is shown with its zone's targets."""
+    if capacity is None or capacity.anchors is None:
+        return {}
+    sport = sport or capacity.sport
+    threshold = _field(capacity.anchors, "lt2_speed_kmh", "lt2_load")
+    if not threshold or sport != capacity.sport:      # the threshold power is enough: an FTP test has no LT1
+        return {}
+    zones = None
+    out = {}
+    for band, (band_sport, zone, low, high) in BANDS.items():
+        if band_sport != sport:
+            continue
+        zones = zones or targets(capacity, system, sport)
+        if zone in zones:
+            out[band] = replace(zones[zone], power_low_w=_watt(low * threshold), power_high_w=_watt(high * threshold),
+                                speed_low_approx=False, speed_high_approx=False, speed_from_hr=False)
     return out
 
 

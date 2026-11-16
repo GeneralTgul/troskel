@@ -156,7 +156,7 @@ function normWorkout(w: StoredWorkout): StoredWorkout {
     key: w.key, date: w.date, sport: sport(w.sport), template_id: w.template_id, family: w.family, quality: w.quality,
     start: isoTime(w.start), status: w.status ?? "planned", goal: w.goal ? normGoal(w.goal) : null,
     parts: w.parts.map((p) => ({ kind: p.kind, duration_s: p.duration_s, zone: p.zone ?? null, rpe: p.rpe,
-      repeat: p.repeat ?? 1, rest_s: p.rest_s ?? 0, rest_zone: p.rest_zone ?? "Z1" })),
+      repeat: p.repeat ?? 1, rest_s: p.rest_s ?? 0, rest_zone: p.rest_zone ?? "Z1", ...(p.band ? { band: p.band } : {}) })),
   };
 }
 
