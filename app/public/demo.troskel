@@ -98,7 +98,7 @@
   "format": 2,
   "id": "demo",
   "created": "2026-11-16T00:00:00+00:00",
-  "engine_version": "6",
+  "engine_version": "7",
   "zone_system": "garmin",
   "status": "draft",
   "based_on": {

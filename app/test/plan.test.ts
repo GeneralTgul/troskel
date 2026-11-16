@@ -4,7 +4,7 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { keys, setLang, t } from "../src/i18n";
 import {
-  duration, hours, hrText, paceStr, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, planTitle, plain,
+  duration, hours, hrText, mainTarget, paceStr, partLine, powerText, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, planTitle, plain,
 } from "../src/model/plan";
 import type { StoredPlan } from "../src/model/types";
 import { daysFromSlots, slotsFromDays } from "../src/model/times";
@@ -108,6 +108,34 @@ describe("the bike's and the SkiErg's targets (#666, step 2)", () => {
     const ski = fx.plans["ski-main"].targets.ski.Z4!;
     expect(ski.power_low_w).toBeUndefined();
     expect(targetText(ski, "ski")).toMatch(/^\d+–\d+ slag\/min$/);
+  });
+
+  it("ends a plan in another sport with the sport's own test", () => {
+    setLang("sv");
+    const test = (name: string) => fx.plans[name].plan.weeks.flatMap((wk) => wk.workouts).find((w) => w.family === "test")!;
+    const shown = (name: string) => [test(name).template_id, planTitle(fx.plans[name], test(name))];
+    expect(shown("bike-alone-cycle")).toEqual(["bike_test", "Cykel: laktattest hos din coach"]);
+    expect(shown("skierg-alone-cycle")).toEqual(["skierg_test", "SkiErg: laktattest hos din coach"]);
+    expect(shown("ski-cycle")).toEqual(["ski_test", "Skidor: laktattest på SkiErg hos din coach"]);
+    expect(shown("swim-alone-cycle")).toEqual(["swim_test", "Simning: simtest, 400 m och 200 m"]);
+    expect(workoutLines(fx.plans["bike-alone-cycle"], test("bike-alone-cycle")).map(plain)[1]).toBe("Test: 40 min");
+  });
+
+  it("shows the sweet spot as 88–94 % of the threshold power, and as its zone without the band's target", () => {
+    setLang("sv");
+    const stored = fx.plans["bike-alone-cycle"];                   // LT2 at 240 W
+    const w = stored.plan.weeks.flatMap((wk) => wk.workouts).find((x) => x.template_id === "bike_sweetspot")!;
+    const work = w.parts.find((p) => p.kind === "work")!;
+    expect([work.zone, work.band]).toEqual(["Z4", "sweetspot"]);
+    expect(w.parts.filter((p) => p.band).length).toBe(1);
+    expect(partLine(work, stored.targets.bike, "bike").target).toBe("150–160 slag/min · 211–226 W");
+    const { sweetspot: _, ...zones } = stored.targets.bike;        // a plan sent without the band: the zone's watt
+    expect(partLine(work, zones, "bike").target).toBe("150–160 slag/min · 210–240 W");
+    expect(partLine({ ...work, band: undefined }, stored.targets.bike, "bike").target).toBe("150–160 slag/min · 210–240 W");
+    expect(powerText(mainTarget(stored, w)!)).toBe("211–226 W");   // the card's headline is the band, not all of Z4
+    const thr = stored.plan.weeks.flatMap((wk) => wk.workouts).find((x) => x.template_id === "bike_threshold")!;
+    expect(powerText(mainTarget(stored, thr)!)).toBe("210–240 W");
+    expect(mainTarget({ ...stored, targets: { ...stored.targets, bike: zones } }, w)).toEqual(stored.targets.bike.Z4);
   });
 
   it("reads a target without the watt fields, as sent before", () => {

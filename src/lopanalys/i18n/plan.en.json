@@ -238,7 +238,7 @@
  "plan.workout.bike_long_progressive.how": "Easy like a normal long ride, and the last 20 minutes in zone 3: even pressure, under control.",
  "plan.workout.bike_sweetspot.title": "sweet spot",
  "plan.workout.bike_sweetspot.purpose": "Long blocks just below the threshold: a lot of threshold training at a small cost in fatigue.",
- "plan.workout.bike_sweetspot.how": "Hold the watt in the upper part of zone 3, evenly through the block. Light pedalling between the blocks, cadence 85–95.",
+ "plan.workout.bike_sweetspot.how": "Hold the watt at 88–94 % of your threshold power, evenly through the block. That is the session's target in watt; the heart rate ends up in the lower part of zone 4 and drifts up a little during the block. Light pedalling between the blocks, cadence 85–95.",
  "plan.workout.bike_threshold.title": "threshold intervals",
  "plan.workout.bike_threshold.purpose": "Moves the threshold up: you can hold a higher watt for longer.",
  "plan.workout.bike_threshold.how": "Even watt in zone 4, hard but controlled. The last interval should be at the same watt as the first. Light pedalling in the rests.",
@@ -340,5 +340,17 @@
  "plan.workout.strength_upper.how": "Rows, push-ups, presses, chin-ups or pull-downs and core exercises, then mobility. 2–3 sets of 8–12 repetitions, effort 6 of 10. No zones.",
  "plan.workout.strength_maintenance.title": "maintenance",
  "plan.workout.strength_maintenance.purpose": "Keeps the strength until the goal without tiring.",
- "plan.workout.strength_maintenance.how": "The usual exercises but fewer sets and lighter weights, effort 5 of 10. No heavy loads in the last days before the goal."
+ "plan.workout.strength_maintenance.how": "The usual exercises but fewer sets and lighter weights, effort 5 of 10. No heavy loads in the last days before the goal.",
+ "plan.workout.bike_test.title": "lactate test at your coach",
+ "plan.workout.bike_test.purpose": "Shows what the training has given and sets new zones on the bike. Every coming ride gets new targets in heart rate and watt.",
+ "plan.workout.bike_test.how": "A lactate step test on the trainer: 10 minutes of warm-up and then 6–8 steps of 5 minutes, 25–30 W more for each step, with a blood sample at the end of each step. Come rested: an easy day before, no hard training for two days, the same food and drink as before the last test. Bring your own cycling shoes and pedals if you have them.",
+ "plan.workout.skierg_test.title": "lactate test at your coach",
+ "plan.workout.skierg_test.purpose": "Shows what the training has given and sets new zones in double poling. Every coming session gets new targets in heart rate, watt and time per 500 m.",
+ "plan.workout.skierg_test.how": "A lactate step test on the SkiErg: 10 minutes of warm-up and then 6–8 steps of 4 minutes, 15–20 W more for each step, with a blood sample in a half-minute pause after each step. Come rested: an easy day before, no hard training for two days, the same food and drink as before the last test.",
+ "plan.workout.ski_test.title": "lactate test on the SkiErg at your coach",
+ "plan.workout.ski_test.purpose": "Shows what the training has given and sets new heart rate zones for the ski sessions, which use the SkiErg's zones.",
+ "plan.workout.ski_test.how": "The test is done on the SkiErg, since there is no test on skis: 10 minutes of warm-up and then 6–8 steps of 4 minutes, 15–20 W more for each step, with a blood sample in a half-minute pause after each step. Come rested: an easy day before, no hard training for two days, the same food and drink as before the last test.",
+ "plan.workout.swim_test.title": "swim test, 400 m and 200 m",
+ "plan.workout.swim_test.purpose": "Gives your threshold pace in the water (CSS). The swim sessions get a time per 100 m for each zone instead of effort only.",
+ "plan.workout.swim_test.how": "Warm up for 15–20 minutes with a few short pick-ups. Swim 400 m as fast as you can at an even pace and take the time. Rest until you have fully recovered, at least 8–10 minutes of easy swimming. Then swim 200 m in the same way. The same pool and the same start (a push-off in the water) every time. Give the two times to your coach."
 }

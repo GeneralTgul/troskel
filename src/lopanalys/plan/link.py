@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 
 from . import codec
 from .models import Capacity, Plan
-from .resolve import Target, targets
+from .resolve import Target, band_targets, targets
 
 APP_URL = "https://generaltgul.github.io/troskel/app/"
 KIND = "troskel.plan"
@@ -46,8 +46,10 @@ def _target_dict(tg: Target) -> dict[str, Any]:
 
 
 def zone_targets(capacity: Capacity | None, system: str, sport: str | None = None) -> dict[str, dict[str, Any]]:
-    """Zone code -> its targets as a dict, for workouts in ``sport`` (None: the test's); {} when nothing is known."""
-    return {z: _target_dict(tg) for z, tg in targets(capacity, system, sport).items()}
+    """Zone code -> its targets as a dict, for workouts in ``sport`` (None: the test's); {} when nothing is known.
+    A band's target (the bike's sweet spot, resolve.BANDS) lies beside the zones under the band's name."""
+    both = {**targets(capacity, system, sport), **band_targets(capacity, system, sport)}
+    return {z: _target_dict(tg) for z, tg in both.items()}
 
 
 def _targets(plan: Plan) -> dict[str, dict[str, dict[str, Any]]]:

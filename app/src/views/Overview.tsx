@@ -16,7 +16,7 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
   const weeks = stored.plan.weeks;
   const max = Math.max(1, ...weeks.map(weekMinutes));
   const goals = [...stored.request.goals].sort((a, b) => a.date.localeCompare(b.date));
-  const tests: StoredWorkout[] = weeks.flatMap((w) => w.workouts).filter((w) => w.template_id === "test");
+  const tests: StoredWorkout[] = weeks.flatMap((w) => w.workouts).filter((w) => w.family === "test");
   const start = planStart(stored);
   const end = planEnd(stored);
   const thisWeek = mondayOf(today);
