@@ -1,0 +1,21 @@
+Tröskel shows the training plan your coach has made for you, on your phone and tablet.
+
+TODAY AND THE WEEK
+- Today's session at the top: what to do, for how long and in which zone.
+- The week in one view, with the rest days and what the week is for.
+- The whole plan week by week, up to your goal.
+- Pace in min/km and heart rate in your own zones, from your test with the coach.
+
+YOUR TIMES
+Change how many minutes you have and when, day by day, or drop a day that does not work. The plan is rebuilt around your times with the same rules as in the coach's program.
+
+FROM YOUR COACH
+Your coach sends the plan as a link, a QR code or a file. Open the link or scan the code, and the plan is in the app. The sessions can go into your phone's calendar.
+
+NO ACCOUNT, NO TRACKING
+The app has no account and no server. The plan is stored on your phone only. The app collects no data, shows no ads and sends nothing to anyone. It works offline.
+
+IMPORTANT
+Tröskel is a training aid, not a medical device. It makes no diagnosis and does not replace a medical assessment. If you get chest pain, dizziness or other unusual symptoms during exercise: stop and seek medical care.
+
+Tröskel is open source (AGPL-3.0).

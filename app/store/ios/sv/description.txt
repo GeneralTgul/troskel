@@ -1,0 +1,21 @@
+Tröskel visar träningsschemat som din coach har gjort åt dig, i telefonen och surfplattan.
+
+I DAG OCH VECKAN
+- Dagens pass överst: vad du ska göra, hur länge och i vilken zon.
+- Veckan i en vy, med vilodagarna och veckans inriktning.
+- Hela schemat vecka för vecka, fram till målet.
+- Tempo i min/km och puls i dina egna zoner, från testet hos coachen.
+
+DINA TIDER
+Ändra hur många minuter du har och när, dag för dag, eller ta bort en dag som inte går. Schemat räknas om efter tiderna med samma regler som i coachens program.
+
+FRÅN COACHEN
+Coachen skickar schemat som en länk, en QR-kod eller en fil. Öppna länken eller läs koden, så hamnar schemat i appen. Passen kan läggas i telefonens kalender.
+
+INGET KONTO, INGEN SPÅRNING
+Appen har inget konto och ingen server. Schemat sparas bara i telefonen. Appen samlar inte in några uppgifter, visar ingen reklam och skickar inget till någon. Den fungerar utan nät.
+
+VIKTIGT
+Tröskel är ett hjälpmedel för träning, inte en medicinteknisk produkt. Appen ställer inga diagnoser och ersätter inte en medicinsk bedömning. Får du bröstsmärta, yrsel eller andra ovanliga besvär vid träning: avbryt och kontakta vården.
+
+Tröskel är öppen källkod (AGPL-3.0).
