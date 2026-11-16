@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QSettings, Qt, QUrl, Signal
+from PySide6.QtCore import QEvent, QObject, QSettings, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QGuiApplication, QIntValidator, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDialog, QFileDialog,
                                QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea,
@@ -19,7 +19,7 @@ from lopanalys.core.i18n import t
 from lopanalys.ui import services, theme
 from lopanalys.ui.context import AppContext
 from lopanalys.ui.lock import IDLE_CHOICES, MIN_PIN, hash_pin
-from lopanalys.ui.widgets.common import Card, PageHeader, button, field, label, page
+from lopanalys.ui.widgets.common import Card, ColumnsBox, PageHeader, button, field, label, page
 from lopanalys.ui.widgets.inputs import SpecialSpinBox
 
 log = logging.getLogger(__name__)
@@ -80,6 +80,11 @@ class SettingsView(QWidget):
     lock_requested = Signal()      # "Lås nu"
     lock_changed = Signal()        # the PIN or the idle time changed
 
+    def eventFilter(self, obj: QObject, e: QEvent) -> bool:  # noqa: N802 - Qt's name
+        if obj is self.scroll.viewport() and e.type() == QEvent.Type.Resize:
+            self.cols.fit(self.scroll.viewport().width() - 2 * 32)      # the page's margins
+        return super().eventFilter(obj, e)
+
     def __init__(self, ctx: AppContext, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.ctx = ctx
@@ -92,14 +97,11 @@ class SettingsView(QWidget):
         w, v = page()
         sa.setWidget(w)
         v.addWidget(PageHeader(t("ui.nav.settings"), t("ui.set.subtitle")))
-        cols = QHBoxLayout()
-        cols.setSpacing(20)
-        c1, c2 = QVBoxLayout(), QVBoxLayout()
-        c1.setSpacing(20)
-        c2.setSpacing(20)
-        cols.addLayout(c1, 1)
-        cols.addLayout(c2, 1)
-        v.addLayout(cols)
+        # two columns on a wide screen, one on a laptop (2026-11-16: the page did not fit a laptop)
+        self.cols = ColumnsBox()
+        c1, c2 = self.cols.c1, self.cols.c2
+        v.addWidget(self.cols)
+        sa.viewport().installEventFilter(self)
 
         # --- branding
         b = Card(t("ui.set.branding"), t("ui.set.branding_sub"))

@@ -336,16 +336,16 @@ class AthleteForm(Card):
         cg.setHorizontalSpacing(18)
         cg.setVerticalSpacing(8)
         self.consent_date = DateField(placeholder=t("ui.consent.date_placeholder"), today=True)
-        cg.addWidget(field(t("ui.consent.date"), self.consent_date), 0, 0, 2, 1, Qt.AlignmentFlag.AlignTop)
+        # the date above the boxes, the boxes in two columns: fits beside the list on a laptop (2026-11-16)
+        cg.addWidget(field(t("ui.consent.date"), self.consent_date), 0, 0)
         self.consent_boxes: dict[str, QCheckBox] = {}
         for i, key in enumerate(CONSENT_KEYS):
             cb = QCheckBox(t(f"ui.consent.{key}"))
             cb.toggled.connect(self._consent_toggled)
             self.consent_boxes[key] = cb
-            cg.addWidget(cb, i % 2, 1 + i // 2)
-        cg.setColumnStretch(0, 2)
-        cg.setColumnStretch(1, 3)
-        cg.setColumnStretch(2, 3)
+            cg.addWidget(cb, 1 + i // 2, i % 2)
+        cg.setColumnStretch(0, 1)
+        cg.setColumnStretch(1, 1)
         self.body.addLayout(cg)
         self.error = label("", wrap=True)
         self.error.setStyleSheet(f"color: {theme.TOKENS['fix']}; font-weight: 600;")
@@ -591,13 +591,14 @@ class AthletesView(QWidget):
         self.remind.hide()
         left.addWidget(self.remind)
         self.list = QListWidget()
+        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.setSpacing(2)
         self.list.currentItemChanged.connect(self._selected)
         left.addWidget(self.list, 1)
         lw = QWidget()
         lw.setLayout(left)
         left.setContentsMargins(0, 0, 0, 0)
-        lw.setFixedWidth(360)
+        lw.setFixedWidth(300)      # 360 did not fit a laptop beside the form (2026-11-16)
         body.addWidget(lw)
         self.stack = QStackedWidget()
         self.empty = Card()
@@ -646,7 +647,7 @@ class AthletesView(QWidget):
         for a in rows:
             it = QListWidgetItem()
             it.setData(Qt.ItemDataRole.UserRole, a)
-            it.setSizeHint(QSize(300, 62))
+            it.setSizeHint(QSize(200, 62))          # the width follows the list
             self.list.addItem(it)
             self.list.setItemWidget(it, AthleteRow(a, review=a.id in self.due))
             if a.id == cur:

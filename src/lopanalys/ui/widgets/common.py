@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QRectF, QSize, Qt, QTimer
+from PySide6.QtCore import QEvent, QObject, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import (QAbstractButton, QFrame, QHBoxLayout, QLabel, QLayout, QPushButton, QSizePolicy,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractButton, QAbstractSlider, QAbstractSpinBox, QBoxLayout, QComboBox, QFrame,
+                               QHBoxLayout, QLabel, QLayout, QPushButton, QScrollArea, QScrollBar, QSizePolicy,
+                               QStackedWidget, QVBoxLayout, QWidget)
 
 from lopanalys.ui import theme
 
@@ -78,11 +79,123 @@ class _Field(QWidget):
             lay.setGeometry(self.rect())
 
 
+class WheelGuard(QObject):
+    """Installed on the application: the mouse wheel over a list box, a number box or a slider that has
+    not been clicked scrolls the page instead of changing the value (2026-11-16: scrolling down the
+    settings over Språk changed the language)."""
+
+    TYPES = (QComboBox, QAbstractSpinBox, QAbstractSlider)
+
+    def eventFilter(self, obj: QObject, e: QEvent) -> bool:  # noqa: N802 - Qt's name
+        if (e.type() == QEvent.Type.Wheel and isinstance(obj, self.TYPES) and not isinstance(obj, QScrollBar)
+                and not obj.hasFocus()):
+            e.ignore()        # stopped here but not accepted: Qt passes the wheel on to the parent, the scroll area
+            return True
+        return False
+
+
+class PageStack(QStackedWidget):
+    """The pages of the window: only the page shown sets the minimum size, so a wide page (the plan)
+    does not make every other page, and the window, as wide as itself."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.currentChanged.connect(lambda _: self.updateGeometry())
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt's name
+        w = self.currentWidget()
+        return w.minimumSizeHint().expandedTo(w.minimumSize()) if w is not None else super().minimumSizeHint()
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt's name
+        w = self.currentWidget()
+        return w.sizeHint() if w is not None else super().sizeHint()
+
+
+class PageScroller(QScrollArea):
+    """The page stack in a frameless scroll area with a scroll bar in both directions, shown only when the
+    page shown does not fit (a small laptop screen): nothing is cut off at the edge of the window.
+
+    The page is sized here and not by ``widgetResizable``: Qt would ask the stack for its height for the
+    width, and a stack answers for every page, so a short page grew as tall as the tallest one."""
+
+    def __init__(self, stack: QStackedWidget, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("PageScroller")
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setWidgetResizable(False)
+        self.setWidget(stack)
+        stack.installEventFilter(self)
+        stack.currentChanged.connect(lambda _: self.fit())
+
+    def fit(self) -> None:
+        w = self.widget()
+        if w is None:
+            return
+        need = w.minimumSizeHint()
+        vp = self.maximumViewportSize()          # the room without scroll bars
+        wide, tall = need.width() > vp.width(), need.height() > vp.height()
+        bar = self.style().pixelMetric(self.style().PixelMetric.PM_ScrollBarExtent)
+        vw = vp.width() - (bar if tall else 0)
+        vh = vp.height() - (bar if wide else 0)
+        size = QSize(max(vw, need.width()), max(vh, need.height()))
+        if size != w.size():
+            w.resize(size)
+
+    def resizeEvent(self, e: Any) -> None:  # noqa: N802 - Qt's name
+        super().resizeEvent(e)
+        self.fit()
+
+    def eventFilter(self, obj: QObject, e: QEvent) -> bool:  # noqa: N802 - Qt's name
+        if obj is self.widget() and e.type() == QEvent.Type.LayoutRequest:
+            QTimer.singleShot(0, self.fit)
+        return super().eventFilter(obj, e)
+
+
+class ColumnsBox(QWidget):
+    """Two columns side by side, or one under the other when they do not fit in the width given to
+    ``fit`` (a laptop screen): the page then scrolls down instead of sideways."""
+
+    def __init__(self, spacing: int = 20, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.box = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
+        self.box.setContentsMargins(0, 0, 0, 0)
+        self.box.setSpacing(spacing)
+        self.c1, self.c2 = QVBoxLayout(), QVBoxLayout()
+        for c in (self.c1, self.c2):
+            c.setSpacing(spacing)
+            self.box.addLayout(c, 1)
+
+    def side_by_side(self) -> bool:
+        return self.box.direction() == QBoxLayout.Direction.LeftToRight
+
+    def needed(self) -> int:
+        """The width the two columns need side by side."""
+        return self.c1.minimumSize().width() + self.c2.minimumSize().width() + self.box.spacing()
+
+    def fit(self, width: int) -> None:
+        d = (QBoxLayout.Direction.LeftToRight if width >= self.needed() else QBoxLayout.Direction.TopToBottom)
+        if d != self.box.direction():
+            self.box.setDirection(d)
+            self.updateGeometry()
+
+
+class _VScroll(QScrollArea):
+    """A vertical scroll area that asks for the width of what it holds, so a narrow window scrolls the
+    whole page sideways (with a bar) instead of cutting the form off at the right edge."""
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt's name
+        hint = super().minimumSizeHint()
+        w = self.widget()
+        if w is None:
+            return hint
+        bar = self.style().pixelMetric(self.style().PixelMetric.PM_ScrollBarExtent)
+        return QSize(max(hint.width(), w.minimumSizeHint().width() + bar), hint.height())
+
+
 def scrolled(w: QWidget) -> QWidget:
     """``w`` in a frameless vertical scroll area, so a form keeps its minimum sizes on a small screen
     instead of being squeezed until the fields draw over each other."""
-    from PySide6.QtWidgets import QScrollArea
-    sa = QScrollArea()
+    sa = _VScroll()
     sa.setWidgetResizable(True)
     sa.setFrameShape(QFrame.Shape.NoFrame)
     sa.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

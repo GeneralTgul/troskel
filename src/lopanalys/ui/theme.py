@@ -207,10 +207,11 @@ QHeaderView::section {{ background: {surface}; color: {muted}; border: none; bor
                         padding: 10px; font-weight: 700; font-size: 12px; }}
 QTableCornerButton::section {{ background: {surface}; border: none; }}
 
-QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: {surface3}; border-radius: 4px; min-height: 30px; }}
-QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
-QScrollBar::handle:horizontal {{ background: {surface3}; border-radius: 4px; min-width: 30px; }}
+QScrollBar:vertical {{ background: {surface2}; width: 12px; margin: 0; border-radius: 6px; }}
+QScrollBar::handle:vertical {{ background: {muted}; border-radius: 5px; min-height: 30px; margin: 2px; }}
+QScrollBar:horizontal {{ background: {surface2}; height: 12px; margin: 0; border-radius: 6px; }}
+QScrollBar::handle:horizontal {{ background: {muted}; border-radius: 5px; min-width: 30px; margin: 2px; }}
+QScrollBar::handle:hover {{ background: {text}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ background: none; border: none; height: 0; width: 0; }}
 QScrollArea {{ border: none; }}
 

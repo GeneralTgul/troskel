@@ -71,12 +71,13 @@ class HistoryView(QWidget):
         self.search.textChanged.connect(self.refresh)
         left.addWidget(self.search)
         self.alist = QListWidget()
+        self.alist.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.alist.currentItemChanged.connect(self._athlete)
         left.addWidget(self.alist, 1)
         lw = QWidget()
         lw.setLayout(left)
         left.setContentsMargins(0, 0, 0, 0)
-        lw.setFixedWidth(340)
+        lw.setFixedWidth(300)      # as in Idrottare: room for the table on a laptop
         body.addWidget(lw)
         card = Card()
         top = QHBoxLayout()
@@ -95,7 +96,9 @@ class HistoryView(QWidget):
         self.table.verticalHeader().hide()
         hh = self.table.horizontalHeader()
         hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        hh.setStretchLastSection(True)
+        for c in (2, 3):        # protocol and result share the rest of the width, cut with … (full text as tooltip)
+            hh.setSectionResizeMode(c, QHeaderView.ResizeMode.Stretch)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -121,7 +124,7 @@ class HistoryView(QWidget):
         for a in rows:
             it = QListWidgetItem()
             it.setData(Qt.ItemDataRole.UserRole, a)
-            it.setSizeHint(QSize(300, 62))
+            it.setSizeHint(QSize(200, 62))          # the width follows the list
             self.alist.addItem(it)
             self.alist.setItemWidget(it, AthleteRow(a))
             if a.id == cur:
@@ -200,6 +203,8 @@ class HistoryView(QWidget):
                     f"{t('ui.hist.interrupted')} {s.notes}".strip() if s.status == "interrupted" else s.notes]
             for c, v in enumerate(vals):
                 item = QTableWidgetItem(v)
+                if c >= 2 and v:
+                    item.setToolTip(v)
                 if c == 1:
                     item.setIcon(theme.icon(KIND_ICON.get(s.kind, "activity"), "accent"))
                 self.table.setItem(r, c, item)

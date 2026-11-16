@@ -365,8 +365,14 @@ class PlanView(QWidget):
         self.mail_btn.clicked.connect(lambda: self.send_to_athlete())
         self.save_btn = button(t("ui.common.save"), "save", kind="primary")
         self.save_btn.clicked.connect(lambda: self.save())
-        for w in (self.cancel_btn, self.preview_btn, self.ics_btn, self.app_btn, self.print_btn, self.pdf_btn, self.mail_btn,
-                  self.save_btn):
+        # two rows, so the page fits a laptop: sharing above, delete / cancel / save below (2026-11-16)
+        share = QHBoxLayout()
+        share.setSpacing(8)
+        share.addStretch(1)
+        for w in (self.preview_btn, self.ics_btn, self.app_btn, self.print_btn, self.pdf_btn, self.mail_btn):
+            share.addWidget(w)
+        outer.addLayout(share)
+        for w in (self.cancel_btn, self.save_btn):
             row.addWidget(w)
         outer.addLayout(row)
 

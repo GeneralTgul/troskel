@@ -7,7 +7,7 @@ from typing import Any
 
 from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QButtonGroup, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton,
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 from lopanalys.core.i18n import t
@@ -23,7 +23,7 @@ from lopanalys.ui.views.plan import PlanView
 from lopanalys.ui.views.results import ResultsView
 from lopanalys.ui.views.settings import SettingsView
 from lopanalys.ui.views.tests_info import TestsInfoView
-from lopanalys.ui.widgets.common import StatusPill, label
+from lopanalys.ui.widgets.common import PageScroller, PageStack, StatusPill, WheelGuard, label
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +48,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(t("ui.app.name") + (f"  ·  {t('ui.app.demo')}" if ctx.demo else ""))
         self.setWindowIcon(theme.icon("logo", "accent", 64))
         self.resize(1440, 900)
-        self.setMinimumSize(1100, 700)
+        # a small laptop (1280 x 720 at 150 %) fits: a page wider than the window scrolls with a visible bar
+        self.setMinimumSize(960, 600)
+        self.wheel_guard = WheelGuard(self)
+        QApplication.instance().installEventFilter(self.wheel_guard)
         root = QWidget()
         root.setObjectName("Root")
         # The lock is a page of its own over everything: nothing of the program shows behind it.
@@ -86,7 +89,7 @@ class MainWindow(QMainWindow):
         sv.addLayout(brand)
         sv.addSpacing(22)
 
-        self.stack = QStackedWidget()
+        self.stack = PageStack()
         self.athletes = AthletesView(ctx)
         self.new_test = NewTestView(ctx)
         self.history = HistoryView(ctx)
@@ -126,7 +129,8 @@ class MainWindow(QMainWindow):
             badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
             sv.addWidget(badge)
         h.addWidget(side)
-        h.addWidget(self.stack, 1)
+        self.page_scroll = PageScroller(self.stack)
+        h.addWidget(self.page_scroll, 1)
 
         self.athletes.start_test.connect(self.start_wizard_for)
         self.athletes.due_changed.connect(self._due_changed)
