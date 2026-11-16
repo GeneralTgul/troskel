@@ -12,7 +12,8 @@
 .plan-cover .cover-zones { margin-top: 5mm; }
 .plan-cover .cz-name { line-height: 1.3; }
 .plan-cover .cz-pace { font-size: 7.5pt; color: var(--ink-2); line-height: 1.3; }
-.plan-promise { margin-top: 5mm; padding: 3mm 4.5mm; background: var(--wash); border-left: 0.8mm solid var(--accent); font-size: 9pt; color: var(--ink-2); break-inside: avoid; }
+.plan-use { margin: 0 0 5mm; break-inside: avoid; }
+.plan-promise { padding: 3mm 4.5mm; background: var(--wash); border-left: 0.8mm solid var(--accent); font-size: 9pt; color: var(--ink-2); break-inside: avoid; }
 .plan-promise b { color: var(--ink); font-weight: 600; }
 .plan-notes { margin-top: 3mm; font-size: 8.5pt; color: var(--ink-2); padding: 2.5mm 4.5mm; border-left: 0.8mm solid var(--watch); background: #FDF7EC; }
 .plan-notes p { margin: 0 0 1mm; } .plan-notes p:last-child { margin: 0; }
@@ -26,6 +27,8 @@
 .guide .g b { font-size: 9.5pt; font-weight: 600; }
 .guide .g p { margin: 0.4mm 0 0; color: var(--ink-2); }
 .guide .g p.how { color: var(--muted); }
+.guide-sport { font-size: 9pt; font-weight: 700; letter-spacing: 0.04em; margin: 3.5mm 0 1.2mm; display: flex; align-items: center; gap: 1.5mm; break-after: avoid; }
+.guide-sport i { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 0.6mm; }
 .rules { margin: 0; padding-left: 4.5mm; color: var(--ink-2); font-size: 9pt; }
 .rules li { margin-bottom: 0.8mm; }
 
@@ -102,4 +105,3 @@
 .multi .plan-overview { margin-top: 3mm; }
 .multi .plan-chart { height: 46mm; }
 .multi .plan-cover .cover-zones { margin-top: 3mm; }
-.multi .plan-cover .plan-promise { margin-top: 3mm; }
