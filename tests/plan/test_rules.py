@@ -6,7 +6,7 @@ from datetime import date, timedelta
 import pytest
 
 from lopanalys.core.i18n import set_language
-from lopanalys.plan import Goal, Slot, build_plan, library
+from lopanalys.plan import Goal, Slot, build_plan, library, resolve
 from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, periodize
 
 from . import cases as c
@@ -110,7 +110,7 @@ def test_mostly_easy(plan):
 def test_retests(plan):
     tests = [wk.index for wk in plan.weeks if wk.kind == "test"]
     for wk in plan.weeks:
-        has_test = any(w.template_id == "test" for w in wk.workouts)
+        has_test = any(w.family == "test" for w in wk.workouts)        # running's test or the sport's own
         assert has_test == (wk.kind == "test"), wk.index
     gaps = [b - a for a, b in zip([0] + tests, tests)]
     assert all(g >= 8 for g in gaps), gaps
@@ -129,7 +129,8 @@ def test_the_plan_stores_zones_not_numbers(plan):
     for w in plan.workouts:
         assert w.parts
         for p in w.parts:
-            assert set(vars(p)) == {"kind", "duration_s", "zone", "rpe", "repeat", "rest_s", "rest_zone"}
+            assert set(vars(p)) == {"kind", "duration_s", "zone", "rpe", "repeat", "rest_s", "rest_zone", "band"}
+            assert p.band in ("", *resolve.BANDS)                    # a band is a name too: its watt is looked up
             assert p.zone in (None, "Z1", "Z2", "Z3", "Z4", "Z5")
             assert 1 <= p.rpe <= 10
 

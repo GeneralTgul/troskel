@@ -7,7 +7,7 @@ workout. Texts live in i18n: plan.workout.<id>.title / .purpose / .how.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .models import RUNNING, STRENGTH, SWIM, Part
 
@@ -87,6 +87,22 @@ def _steps(run_id: str, *sets: tuple) -> tuple[tuple[Part, ...], ...]:
     return tuple(_fit(like, *s) for like, s in zip(run, sets))
 
 
+def _band(steps: tuple[tuple[Part, ...], ...], band: str) -> tuple[tuple[Part, ...], ...]:
+    """The steps with the work parts in a band of their zone (resolve.BANDS)."""
+    return tuple(tuple(replace(p, band=band) if p.kind == "work" else p for p in st) for st in steps)
+
+
+def _test(new_id: str, warm_min: int, test_min: int, cool_min: int) -> Template:
+    """A sport's own test in the place of running's: its own warm-up and length, the whole session as long."""
+    parts = (Part("warmup", warm_min * MIN, "Z2", 3), Part("test", test_min * MIN, None, 10),
+             Part("cooldown", cool_min * MIN, "Z2", 2))
+    run = TEMPLATES["test"]
+    if sum(p.total_s for p in parts) != sum(p.total_s for p in run.steps[0]):
+        raise ValueError(f"{new_id}: as long as running's test")
+    return Template(new_id, run.family, run.quality, None, (parts,), run.min_minutes, run.max_minutes,
+                    new_id.split("_")[0], base="test")
+
+
 def _like(run_id: str, new_id: str, steps: tuple[tuple[Part, ...], ...] | None = None) -> Template:
     """A template of another sport in the place of a running template: the same family, effort and limits."""
     tpl = TEMPLATES[run_id]
@@ -99,17 +115,20 @@ def _like(run_id: str, new_id: str, steps: tuple[tuple[Part, ...], ...] | None =
 # The engine fills the week with the running templates above; when a workout gets its sport (engine._sports) it
 # takes the sport's template in the same place (``in_sport``): the same family and the same number of steps,
 # each step exactly as long as the running step, so the week keeps its minutes. The hard minutes may differ:
-# the engine checks the week again with the sport's templates. A test and a race stay as they are.
-# Bike: Z2 rides, sweet spot (the upper part of the zone between the thresholds), threshold and VO2 intervals.
+# the engine checks the week again with the sport's templates. The test is the sport's own (``_test``): the
+# lactate step test on the bike and the SkiErg (skis test on the SkiErg), the CSS test in the pool. A race stays.
+# Bike: Z2 rides, sweet spot (88-94 % of the threshold power), threshold and VO2 intervals.
 # SkiErg: easy double poling and intervals in the running structures. Skis and roller skis use the SkiErg's.
 _BIKE = (
     _like("easy", "bike_easy"), _like("recovery", "bike_recovery"), _like("long", "bike_long"),
     _like("long_progressive", "bike_long_progressive"),
-    # Sweet spot: long blocks just below the threshold zone, easy spinning between. Total work 20 -> 36 min.
-    _like("fartlek", "bike_sweetspot", _steps(
-        "fartlek", (10, 2, 10 * MIN, 3 * MIN, "Z3", 6, "Z2"), (10, 2, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"),
-        (10, 3, 10 * MIN, 2 * MIN, "Z3", 6, "Z2"), (10, 2, 15 * MIN, 3 * MIN, "Z3", 6, "Z2"),
-        (10, 3, 12 * MIN, 3 * MIN, "Z3", 6, "Z2"))),
+    # Sweet spot: long blocks just below the threshold, easy spinning between. Total work 20 -> 36 min.
+    # The blocks carry the band "sweetspot", 88-94 % of the threshold power, and count as Z4: the zones split the
+    # span between the thresholds in two, and the band lies in the upper half (resolve.BANDS).
+    _like("fartlek", "bike_sweetspot", _band(_steps(
+        "fartlek", (10, 2, 10 * MIN, 3 * MIN, "Z4", 6, "Z2"), (10, 2, 12 * MIN, 3 * MIN, "Z4", 6, "Z2"),
+        (10, 3, 10 * MIN, 2 * MIN, "Z4", 6, "Z2"), (10, 2, 15 * MIN, 3 * MIN, "Z4", 6, "Z2"),
+        (10, 3, 12 * MIN, 3 * MIN, "Z4", 6, "Z2")), "sweetspot")),
     # Threshold: longer intervals than running, the legs carry no impact. Total work 24 -> 45 min.
     _like("threshold", "bike_threshold", _steps(
         "threshold", (12, 3, 8 * MIN, 3 * MIN, "Z4", 7), (10, 3, 10 * MIN, 3 * MIN, "Z4", 7),
@@ -125,9 +144,15 @@ _BIKE = (
         "hills", (15, 8, MIN, MIN, "Z5", 8), (15, 10, MIN, MIN, "Z5", 8), (15, 12, MIN, MIN, "Z5", 8),
         (15, 14, MIN, MIN, "Z5", 8), (15, 16, MIN, MIN, "Z5", 8))),
     _like("opener", "bike_opener", _steps("opener", (10, 3, 2 * MIN, 2 * MIN, "Z4", 6))),
+    # The lactate step test on the trainer: 6-8 steps of 5 minutes (assessments.library_power).
+    _test("bike_test", 10, 40, 10),
 )
 _SKIERG = tuple(_like(run_id, f"skierg_{run_id}") for run_id in (
-    "easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills", "opener"))
+    "easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills", "opener")) + (
+    # The lactate step test on the SkiErg: 6-8 steps of 4 minutes with half a minute's pause for the sample.
+    _test("skierg_test", 10, 35, 15),)
+# Skis have no test of their own: the athlete tests on the SkiErg, whose zones the skis borrow (models.BORROWS).
+_SKI = (_test("ski_test", 10, 35, 15),)
 # Swimming (#666, step 3): on effort (RPE) without numbers, or with the pace per 100 m of a CSS test. Easy swimming,
 # technique (drills at an easy effort, in the place of the recovery run) and intervals with short rests.
 _SWIM = (
@@ -150,16 +175,18 @@ _SWIM = (
         "hills", (15, 8, 30, 30, "Z5", 8), (15, 12, 30, 30, "Z5", 8), (15, 16, 30, 30, "Z5", 8),
         (15, 20, 30, 30, "Z5", 8), (15, 24, 30, 30, "Z5", 8))),
     _like("opener", "swim_opener", _steps("opener", (10, 4, MIN, MIN, "Z4", 6))),
+    # The CSS test (assessments.css): 400 m and, after a full rest, 200 m, each as fast as an even pace allows.
+    _test("swim_test", 20, 25, 15),
 )
-TEMPLATES.update({tpl.id: tpl for tpl in _BIKE + _SKIERG + _SWIM})
-# Sport -> running template -> the sport's template. Every endurance sport has its own now; a test and a race
-# stay as they are.
+TEMPLATES.update({tpl.id: tpl for tpl in _BIKE + _SKIERG + _SKI + _SWIM})
+# Sport -> running template -> the sport's template. Every endurance sport has its own, the test too; a race
+# stays as it is.
 SPORT_TEMPLATES: dict[str, dict[str, str]] = {
     "bike": {tpl.base: tpl.id for tpl in _BIKE},
     "skierg": {tpl.base: tpl.id for tpl in _SKIERG},
     SWIM: {tpl.base: tpl.id for tpl in _SWIM},
 }
-SPORT_TEMPLATES["ski"] = SPORT_TEMPLATES["skierg"]
+SPORT_TEMPLATES["ski"] = {**SPORT_TEMPLATES["skierg"], **{tpl.base: tpl.id for tpl in _SKI}}
 
 
 # ---- strength (#666, step 3): no zones, a fixed length, effort only. Never in the place of an endurance workout:

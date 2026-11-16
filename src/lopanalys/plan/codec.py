@@ -121,13 +121,21 @@ def _workout_to_dict(w: Workout) -> dict[str, Any]:
     return {"key": w.key, "date": _d(w.date), "sport": w.sport, "template_id": w.template_id, "family": w.family,
             "quality": w.quality, "start": w.start.isoformat() if w.start else None, "status": w.status,
             "goal": _goal_to_dict(w.goal) if w.goal else None,
-            "parts": [{"kind": p.kind, "duration_s": p.duration_s, "zone": p.zone, "rpe": p.rpe, "repeat": p.repeat,
-                       "rest_s": p.rest_s, "rest_zone": p.rest_zone} for p in w.parts]}
+            "parts": [_part_to_dict(p) for p in w.parts]}
+
+
+def _part_to_dict(p: Part) -> dict[str, Any]:
+    """``band`` only on a part that has one, so every other part is stored as before."""
+    d = {"kind": p.kind, "duration_s": p.duration_s, "zone": p.zone, "rpe": p.rpe, "repeat": p.repeat,
+         "rest_s": p.rest_s, "rest_zone": p.rest_zone}
+    if p.band:
+        d["band"] = p.band
+    return d
 
 
 def _workout_from_dict(d: dict[str, Any]) -> Workout:
     parts = [Part(p["kind"], p["duration_s"], p.get("zone"), p["rpe"], p.get("repeat", 1), p.get("rest_s", 0),
-                  p.get("rest_zone", "Z1")) for p in d["parts"]]
+                  p.get("rest_zone", "Z1"), p.get("band", "")) for p in d["parts"]]
     return Workout(d["key"], date.fromisoformat(d["date"]), _sport(d["sport"]), d["template_id"], d["family"], d["quality"],
                    parts, _pt(d.get("start")), _goal_from_dict(d["goal"]) if d.get("goal") else None,
                    d.get("status", "planned"))

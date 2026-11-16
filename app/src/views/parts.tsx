@@ -2,7 +2,7 @@
 import { t } from "../i18n";
 import { dayMonth, weekdayLong } from "../model/dates";
 import {
-  duration, mainZone, targetsOn, workoutHow, workoutLines, workoutPurpose, workoutSeconds, planTitle, zoneName,
+  duration, mainTarget, mainZone, workoutHow, workoutLines, workoutPurpose, workoutSeconds, planTitle, zoneName,
   hrText, paceText, powerText,
 } from "../model/plan";
 import type { IsoDate, StoredPlan, StoredWorkout, ZoneCode } from "../model/types";
@@ -37,7 +37,7 @@ export function dayLabel(day: IsoDate): string {
 export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w: StoredWorkout; big?: boolean }) {
   const zone = mainZone(w);
   const secs = workoutSeconds(w);
-  const tg = zone ? targetsOn(stored, w.sport, w.date)[zone] : undefined;
+  const tg = mainTarget(stored, w);
   const lines = w.goal ? [] : workoutLines(stored, w);
   return (
     <article class={`workout ${big ? "big" : ""}`} style={{ "--zc": zoneColor(zone) }} data-key={w.key}>
