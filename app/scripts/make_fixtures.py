@@ -30,7 +30,7 @@ from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
 from lopanalys.plan import codec, demo, ics, library, link, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
-from lopanalys.plan.models import Capacity, Goal, PlanRequest, SportRole
+from lopanalys.plan.models import Capacity, Goal, HardDay, PlanRequest, SportRole
 from lopanalys.plan.rolling import roll_forward
 
 APP = Path(__file__).resolve().parents[1]
@@ -208,6 +208,37 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
                                        goals=base.goals + (Goal("Cykelloppet", date(2026, 12, 12), sport="bike",
                                                                 distance_km=150, priority="B"),)), date(2026, 12, 10)),
     ]
+    # The high level, the long run after the goal's length and fixed hard days (engine 9).
+    ski4 = ("ski", "run", "bike", "swim")
+    high_slots = sl(tuple((d, 270 if d == 5 else 105, "17:00:00", "core", ("ski", "run")) for d in range(7))
+                    + tuple((d, 45, "12:00:00", "core", ("bike", "swim")) for d in (1, 2, 3)))
+    high_roles = (SportRole("ski", "main", 58), SportRole("run", "support", 28), SportRole("bike", "maintenance", 7),
+                  SportRole("swim", "maintenance", 7))
+    long_ski = Goal("Långloppet", date(2027, 3, 7), sport="ski", distance_km=90)
+    out += [
+        ("high-volume", replace(base, availability=high_slots, sports=ski4, roles=high_roles, level="high",
+                                recent_weekly_minutes=600, capacity=base.capacity + (skierg,), goals=(long_ski,),
+                                strength_sessions=3, hard_days=(HardDay(3, "ski"), HardDay(0, "run"))), None),
+        ("high-run", replace(base, availability=sl(tuple((d, 180 if d == 6 else 105) for d in range(7))), level="high",
+                             recent_weekly_minutes=None), None),
+        ("high-rolling", replace(demo.demo_request(20), availability=high_slots, sports=ski4, roles=high_roles,
+                                 level="high", goals=(long_ski,), hard_days=(HardDay(3, "ski"),)), date(2026, 12, 23)),
+        ("long-ski-race", replace(base, availability=sl(tuple((d, 60 if d < 5 else 300, None, "core", ("ski", "run"))
+                                                              for d in range(7))), level="trained", recent_weekly_minutes=420,
+                                  roles=(SportRole("ski", "main"), SportRole("run", "support")), goals=(long_ski,),
+                                  capacity=base.capacity + (skierg,)), None),
+        ("ultra-recreational", replace(base, availability=sl(DEMO_SLOTS[:4] + ((6, 300, "09:00:00"),)),
+                                       goals=(Goal("Ultra", date(2027, 5, 1), distance_km=90),)), None),
+        ("hard-day", replace(base, hard_days=(HardDay(1),)), None),
+        ("hard-days-two", replace(base, hard_days=(HardDay(3), HardDay(0))), None),
+        ("hard-day-before-long", replace(base, hard_days=(HardDay(5),)), None),
+        ("hard-day-sport", replace(base, availability=multi, roles=(SportRole("run", "main"), SportRole("bike", "support")),
+                                   hard_days=(HardDay(3, "bike"),)), None),
+        ("hard-day-maintenance", replace(base, availability=sl(tuple((d, 70 if d < 5 else 150, None, "core", four)
+                                                                     for d in range(7))), level="trained",
+                                         recent_weekly_minutes=None, roles=roles4, capacity=base.capacity + (skierg,),
+                                         hard_days=(HardDay(2, "swim"), HardDay(4))), None),
+    ]
     return out
 
 
@@ -292,6 +323,8 @@ def engine_fixtures() -> dict[str, Any]:
     run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
     plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
     plans["two-a-day"] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == "two-a-day"), plan_id="demo"))
+    plans["high-volume"] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == "high-volume"),
+                                                       plan_id="demo"))
     for name in TEXT_PLANS:
         plans[name] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == name), plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
@@ -320,6 +353,9 @@ def engine_fixtures() -> dict[str, Any]:
         ("two-a-day-no-mornings", "two-a-day", demo_slots, [], "2026-12-01"),
         ("two-a-day-more-mornings", "two-a-day", _slots(*DEMO_SLOTS, *MORNING_BIKE, (0, 40, "06:30:00", "core", ("bike",))),
          ["2026-12-03"], "2026-11-24"),
+        ("high-volume-fewer", "high-volume", _slots(*((d, 270 if d == 5 else 90, "17:00:00", "core", ("ski", "run"))
+                                                      for d in (0, 1, 3, 5, 6)), (2, 45, "12:00:00", "core", ("bike",))),
+         ["2026-12-10"], "2026-11-30"),
         ("trained-cycle-fewer", "trained-cycle", _slots(*DEMO_SLOTS[:1], *DEMO_SLOTS[2:4]), ["2026-12-03"], "2026-11-30"),
     ]
     rebuilds = []

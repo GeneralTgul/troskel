@@ -41,6 +41,15 @@ The rules (docs/TRANINGSPLAN.md):
     then at least a day between two strength sessions, then on a day without endurance training, then after an
     easy one. A strength session is not a hard day and holds no zone time. The taper and the race week get the
     lighter maintenance session. A missed strength session is never made up for: no rule moves a workout.
+  - Fixed hard days (PlanRequest.hard_days, a group session): the coach's weekdays are always among the week's
+    slots, and the week's quality sessions go there first: of the legal choices (the rules above: never two hard
+    days in a row, never the day before the long run, around a race) the one with the most fixed days wins, then
+    the one with the most room. A week with fewer quality sessions than fixed days uses the ones given first, and a
+    fixed day that is not a legal hard day that week is an easy day. With a sport the quality session is in that
+    sport when the slot allows it, even a maintenance sport (the test stays in the main sport).
+  - The level sets the longest easy run (Level.easy_max: 75 minutes, 105 at the high level) and recovery run
+    (Level.recovery_max: 45 minutes, 60 at the high level), and the plan's goal the longest long run
+    (periodize.long_cap).
   - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
     (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
     block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them
@@ -55,14 +64,15 @@ from itertools import combinations
 from . import library
 from .models import (BORROWS, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot,
                      SportRole, Week, WeekSketch, Workout)
-from .periodize import (LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5,
-                        recovery_days, second_slots)
+from .periodize import (LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_cap, long_slot, periodize,
+                        round5, recovery_days, second_slots)
 
-ENGINE_VERSION = "8"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
+ENGINE_VERSION = "9"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
                                # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming;
                                # 7: each sport's own test, and the sweet spot as a band of the threshold power;
                                # 8: two workouts a day, a smaller long workout in a supporting sport, recovery
-                               #    after a race
+                               #    after a race; 9: the high level, the long run after the goal's length and
+                               #    fixed hard days
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -110,9 +120,10 @@ def _gap(days: list[int]) -> int:
     return min([b - a for a, b in zip(d, d[1:])] + [7 - d[-1] + d[0]])
 
 
-def _spread(slots: list[Slot], n: int, seed: Slot | None) -> list[Slot]:
-    """n of the slots, as evenly spread over the week as possible (ties: the earlier weekday)."""
-    chosen = [seed] if seed is not None else slots[:1]
+def _spread(slots: list[Slot], n: int, seeds: list[Slot]) -> list[Slot]:
+    """n of the slots, as evenly spread over the week as possible (ties: the earlier weekday). ``seeds``: slots that
+    are always among them (the long run's and the fixed hard days'), the first ones when n is smaller."""
+    chosen = list(seeds[:n]) if seeds else slots[:1]
     while len(chosen) < n:
         rest = [s for s in slots if s not in chosen]
         chosen.append(max(rest, key=lambda s: (_gap([c.weekday for c in chosen] + [s.weekday]), -s.weekday)))
@@ -230,7 +241,14 @@ class _Filler:
                                                        else {s.weekday: None for s in self.slots})
         # The long run has one home all through the plan: the longest slot of the main sport, the later day on a tie.
         self.long_slot = long_slot(self.slots, self.main)
+        self.long_cap = long_cap(request)
         self.seconds = second_slots(request, self.slots)
+        # Fixed hard days: weekday -> the sport of its quality session ("": any), the first given for a weekday.
+        self.hard: dict[int, str] = {}
+        for h in request.hard_days:
+            if 0 <= h.weekday <= 6 and h.weekday not in self.hard:
+                self.hard[h.weekday] = h.sport
+        self.hard_rank = {wd: i for i, wd in enumerate(self.hard)}
         self.state = _State()
         first, last = skeleton.weeks[0].monday, skeleton.weeks[-1].monday + timedelta(days=6)
         self.blocked: set[date] = set()       # no quality session on these days
@@ -272,14 +290,16 @@ class _Filler:
                        library.build(template_id, minutes=minutes, step=step), slot.start if slot else None, goal)
 
     def _place(self, cands: list[Slot], q: int, fixed_hard: list[int]) -> list[Slot] | None:
-        """The q quality days with the most room between hard days; None when no legal choice exists."""
-        best, best_score = None, -1
+        """The q quality days with the most fixed hard days (PlanRequest.hard_days, the ones given first before the
+        others), then the most room between hard days; None when no legal choice exists."""
+        best, best_score = None, None
         for combo in combinations(cands, q):
             days = [s.weekday for s in combo]
             if _gap(days) < 2:
                 continue
-            score = _gap(days + fixed_hard)
-            if score > best_score:
+            fixed = [self.hard_rank[d] for d in days if d in self.hard_rank]
+            score = (len(fixed), -sum(fixed), _gap(days + fixed_hard))
+            if best_score is None or score > best_score:
                 best, best_score = list(combo), score
         return best if q else []
 
@@ -302,7 +322,9 @@ class _Filler:
         want_long = (n >= 2 and self.long_slot in avail and not major_race
                      and long_day - timedelta(days=1) not in self.race_dates    # no long run the day after a race
                      and long_day not in self.recovering)
-        chosen = _spread(avail, min(n, len(avail)), self.long_slot if want_long else None) if avail else []
+        seeds = ([self.long_slot] if want_long else []) + [s for s in avail if s.weekday in self.hard
+                                                             and not (want_long and s is self.long_slot)]
+        chosen = _spread(avail, min(n, len(avail)), seeds) if avail else []
         doubles = n - len(chosen)     # second workouts of a day: only once every day has one
         day = {s.weekday: spec.monday + timedelta(days=s.weekday) for s in chosen}
         long_wd = self.long_slot.weekday
@@ -482,6 +504,7 @@ class _Filler:
         st, level = self.state, self.level
         workouts: list[Workout] = []
         used: dict[str, int] = {}
+        pinned: dict[str, str] = {}       # workouts whose sport is set already, by key (_sports)
         back = STEP_BACK if spec.kind in ("easy", "taper") else 0
         for slot, fam in zip(q_slots, fams):
             step = max(0, min(st.steps.get(fam, level.first_step), library.last_step(fam)) - back - down)
@@ -490,14 +513,18 @@ class _Filler:
             if library.minutes_of(fam, step) > slot.max_minutes:
                 return None
             used[fam] = step
-            workouts.append(self._workout(day[slot.weekday], fam, slot, step=step))
+            w = self._workout(day[slot.weekday], fam, slot, step=step)
+            sport = self.hard.get(slot.weekday, "")
+            if sport and sport in slot.sports and sport in self.request.plan_sports and fam != "test":
+                pinned[w.key] = sport     # the coach's sport on a fixed hard day
+            workouts.append(w)
         left = ceiling - sum(library.minutes_of(w.template_id, used[w.family]) for w in workouts)
         if left < 0:
             return None
 
         long_minutes = None
         if want_long:
-            want = min(self.long_slot.max_minutes, level.long_cap, max(45, round5(LONG_SHARE * ceiling)))
+            want = min(self.long_slot.max_minutes, self.long_cap, max(45, round5(LONG_SHARE * ceiling)))
             if spec.kind == "load" and st.last_long:
                 want = min(want, st.last_long + LONG_STEP)
             elif spec.kind in ("easy", "test"):
@@ -516,7 +543,6 @@ class _Filler:
                 left -= want
 
         # ---- a smaller long workout in the supporting sport, away from the long run (the rule in the docstring)
-        pinned: dict[str, str] = {}
         if support_long and long_minutes:
             near = {(self.long_slot.weekday + k) % 7 for k in (-1, 0, 1)}
             busy = {w.date for w in workouts}
@@ -527,7 +553,7 @@ class _Filler:
             if free:
                 slot = max(free, key=lambda s: (s.max_minutes, s.weekday))
                 part = shares(self.roles, spec.block)[support_long] * ceiling
-                want = floor5(min(slot.max_minutes, level.long_cap, SUPPORT_LONG_OF_MAIN * long_minutes,
+                want = floor5(min(slot.max_minutes, self.long_cap, SUPPORT_LONG_OF_MAIN * long_minutes,
                                   part, left))
                 if want >= SUPPORT_LONG_MIN:
                     w = self._workout(day[slot.weekday], "long", slot, minutes=want)
@@ -547,19 +573,21 @@ class _Filler:
             d = day[s.weekday]
             recovery = len(chosen) >= 4 and len(easy_slots) >= 2 and d - timedelta(days=1) in heavy
             tpl = library.get("recovery" if recovery else "easy")
-            hi = min(s.max_minutes, tpl.max_minutes, self.capped.get(d, 10_000),
+            hi = min(s.max_minutes, level.recovery_max if recovery else level.easy_max, self.capped.get(d, 10_000),
                      RACE_WEEK_MAX if spec.kind == "race" else 10_000)
             if hi >= tpl.min_minutes:
                 items.append((s.weekday, 0.7 if recovery else 1.0, tpl.min_minutes, hi))
                 kinds[s.weekday] = tpl.id
         # A day's second workout (keyed weekday + 7): easy, a recovery workout on a hard day, on the days without a
         # hard session or a long run first, never on the long run's day or around a race.
-        extra = sorted((s for s in seconds if day[s.weekday] not in self.blocked and day[s.weekday] not in self.capped
+        # Only on the days the week uses (a week with fewer sessions than days has none: ``doubles`` is 0).
+        extra = sorted((s for s in seconds if s.weekday in day and day[s.weekday] not in self.blocked
+                        and day[s.weekday] not in self.capped
                         and not (long_minutes and s.weekday == self.long_slot.weekday)),
                        key=lambda s: (day[s.weekday] in taken, -s.max_minutes, s.weekday))[:max(0, doubles)]
         for s in extra:
             tpl = library.get("recovery" if day[s.weekday] in taken else "easy")
-            hi = min(s.max_minutes, tpl.max_minutes)
+            hi = min(s.max_minutes, level.recovery_max if tpl.id == "recovery" else level.easy_max)
             if hi >= tpl.min_minutes:
                 items.append((s.weekday + 7, SECOND_WEIGHT, tpl.min_minutes, hi))
                 kinds[s.weekday + 7] = tpl.id
@@ -574,7 +602,7 @@ class _Filler:
         # With few slots the easy runs fill up: what is left goes to the long run, within its own limits.
         spare = floor5(left - sum(split.values()))
         if long_minutes and spec.kind == "load" and st.last_long and spare >= 5:
-            room = min(self.long_slot.max_minutes, level.long_cap, st.last_long + LONG_STEP) - long_minutes
+            room = min(self.long_slot.max_minutes, self.long_cap, st.last_long + LONG_STEP) - long_minutes
             if room >= 5:
                 long_minutes += min(spare, floor5(room))
                 i = next(i for i, w in enumerate(workouts) if w.family == "long")

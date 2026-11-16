@@ -15,6 +15,10 @@ The rules (docs/TRANINGSPLAN.md, "Planmotorn"):
     build by the rate that reaches the full week at the last load week before the peak, never faster
     than the level's rate: a plan that starts near the full week grows slowly, one that starts far
     below grows at the level's rate for as many weeks as it needs.
+  - The long run's ceiling (``long_cap``) is the level's, raised for a long goal: a race the athlete is out for
+    more than four hours (its length at a usual race speed of the sport, ``RACE_KMH``) gets three quarters of
+    every minute beyond the four hours on top, at most ``LONG_CAP_MAX``. A 90 km ski race gives a trained athlete
+    4:30; a 10 km race or a marathon keeps the level's ceiling.
 """
 from __future__ import annotations
 
@@ -24,7 +28,6 @@ from datetime import date, timedelta
 
 from lopanalys.core.i18n import t
 
-from . import library
 from .models import LEVELS, Block, Goal, Note, PlanRequest
 
 DEFAULT_WEEKS = 12
@@ -45,6 +48,12 @@ RECOVERY_KM_PER_DAY = {"run": 3.0, "bike": 15.0, "skierg": 10.0, "ski": 10.0, "s
 RECOVERY_A_DEFAULT = 7        # days after an A race without a distance
 RECOVERY_B_FROM = 7           # a B race gets a recovery period from this many days (a half marathon in running)
 RECOVERY_MAX_DAYS = 21
+# The long run for a long goal (``long_cap``): a usual race speed per sport for a trained amateur, km/h, the race
+# time from which the long run's ceiling grows, the share of the minutes beyond it that it grows by, and the most.
+RACE_KMH = {"run": 11.0, "bike": 28.0, "skierg": 15.0, "ski": 15.0, "swim": 3.5}
+LONG_RACE_FROM = 240
+LONG_RACE_SHARE = 0.75
+LONG_CAP_MAX = 270
 
 
 @dataclass(frozen=True)
@@ -54,13 +63,17 @@ class Level:
     load_weeks: int           # load weeks before each easy week
     max_sessions: int
     first_step: int           # where the quality progressions start
-    long_cap: int             # longest long run, minutes
+    long_cap: int             # longest long run, minutes (raised for a long goal: long_cap)
+    easy_max: int = 75        # longest easy run, minutes (the easy template's length up to the high level)
+    recovery_max: int = 45    # longest recovery run (the day after a hard day, a day's second workout on a hard day)
 
 
 LEVEL: dict[str, Level] = {
     "beginner": Level(120, 0.05, 2, 3, 0, 90),
     "recreational": Level(180, 0.07, 3, 5, 1, 150),
     "trained": Level(300, 0.08, 3, 7, 2, 180),
+    # High volume: 11-12 h a week in up to 11 sessions, easy runs up to 1:45 and recovery runs up to an hour.
+    "high": Level(420, 0.08, 3, 11, 2, 180, 105, 60),
 }
 assert set(LEVEL) == set(LEVELS)
 
@@ -97,6 +110,31 @@ def recovery_days(goal: Goal) -> int:
     if goal.priority == "B" and days < RECOVERY_B_FROM:
         return 0
     return days if days > 2 else 0
+
+
+def plan_goal(request: PlanRequest) -> Goal | None:
+    """The A goal the plan ends with (the latest), if any."""
+    a = sorted((g for g in request.goals if g.priority == "A"), key=lambda g: g.date)
+    return a[-1] if a else None
+
+
+def race_minutes(goal: Goal) -> float:
+    """How long the race takes at a usual race speed of its sport (RACE_KMH); 0 without a distance."""
+    return 60 * (goal.distance_km or 0) / RACE_KMH.get(goal.sport, RACE_KMH["run"])
+
+
+def long_cap(request: PlanRequest) -> int:
+    """The longest long run of the plan: the level's ceiling, raised for a goal that takes more than
+    ``LONG_RACE_FROM`` minutes by ``LONG_RACE_SHARE`` of the minutes beyond, at most ``LONG_CAP_MAX`` (and never
+    below the level's)."""
+    cap = LEVEL[request.level].long_cap
+    goal = plan_goal(request)
+    if goal is None:
+        return cap
+    over = race_minutes(goal) - LONG_RACE_FROM
+    if over <= 0:
+        return cap
+    return max(cap, min(LONG_CAP_MAX, int(cap + LONG_RACE_SHARE * over) // 5 * 5))
 
 
 def first_monday(d: date) -> date:
@@ -155,16 +193,16 @@ def long_slot(slots: list, main_sport: str):
 
 def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     """The minutes a week can really hold: the level's number of sessions in the longest core slots (and the
-    second slots of the days, ``second_slots``), the long run within the level's longest long run and every other
-    run within an easy run's length."""
+    second slots of the days, ``second_slots``), the long run within the plan's longest long run (``long_cap``) and
+    every other run within the level's easy run (``Level.easy_max``)."""
     level = LEVEL[request.level]
     slots = core_slots(request, sport)
     if not slots:
         return 0
     long = long_slot(slots, request.main_sport)
-    easy_max = library.get("easy").max_minutes
+    easy_max, cap = level.easy_max, long_cap(request)
     seconds = second_slots(request, slots) if sport is None else []
-    held = sorted((min(s.max_minutes, level.long_cap) if s is long else min(s.max_minutes, easy_max)
+    held = sorted((min(s.max_minutes, cap) if s is long else min(s.max_minutes, easy_max)
                    for s in slots + seconds), reverse=True)
     return sum(held[:level.max_sessions])
 
@@ -216,8 +254,7 @@ def periodize(request: PlanRequest) -> Skeleton:
     start = first_monday(request.start)
     notes: list[Note] = []
 
-    a_goals = sorted((g for g in request.goals if g.priority == "A"), key=lambda g: g.date)
-    goal = a_goals[-1] if a_goals else None
+    goal = plan_goal(request)
     if goal is not None:
         if goal.date < start + timedelta(days=7):
             raise ValueError(t("plan.error.goal_too_close", name=goal.name))

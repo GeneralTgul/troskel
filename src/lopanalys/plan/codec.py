@@ -16,6 +16,9 @@ Step 3 of several sports (#666) added ``strength_sessions`` to the request, ``cs
 capacity and ``strength`` to a sketched week. Each is written only when it is set, so a plan without strength or
 a swimming test is stored as before, and a plan saved before reads back with none.
 
+The fixed hard days (``PlanRequest.hard_days``, engine version 9) are stored the same way, under ``hard_days`` as
+``{"weekday": 3, "sport": "ski"}`` (the sport left out when the engine picks it), only when there are any.
+
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
@@ -27,7 +30,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 
-from .models import (Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, SportRole, Week, WeekSketch,
+from .models import (Block, Capacity, Goal, HardDay, Note, Part, Plan, PlanRequest, Slot, SpeedLine, SportRole, Week, WeekSketch,
                      Workout)
 
 FORMAT = 2                    # 2: the rolling plan (horizon and sketched weeks); 1 reads as fully detailed
@@ -102,6 +105,8 @@ def request_to_dict(r: PlanRequest) -> dict[str, Any]:
     }
     if r.strength_sessions:
         d["strength_sessions"] = r.strength_sessions
+    if r.hard_days:
+        d["hard_days"] = [{"weekday": h.weekday, **({"sport": h.sport} if h.sport else {})} for h in r.hard_days]
     return d
 
 
@@ -114,7 +119,8 @@ def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
                        tuple(_goal_from_dict(g) for g in d.get("goals", [])), d.get("duration_weeks"),
                        d.get("level", "recreational"), d.get("recent_weekly_minutes"),
                        tuple(SportRole(_sport(x["sport"]), x.get("role", "main"), x.get("share", 0))
-                             for x in d.get("roles", [])), d.get("strength_sessions", 0))
+                             for x in d.get("roles", [])), d.get("strength_sessions", 0),
+                       tuple(HardDay(h["weekday"], _sport(h.get("sport", ""))) for h in d.get("hard_days", [])))
 
 
 def _workout_to_dict(w: Workout) -> dict[str, Any]:

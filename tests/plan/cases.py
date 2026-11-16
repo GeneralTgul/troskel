@@ -6,7 +6,7 @@ from datetime import date, time
 from lopanalys.assessments.zone_systems import Anchors
 from dataclasses import replace
 
-from lopanalys.plan import RUNNING, Capacity, Goal, PlanRequest, Slot, SportRole
+from lopanalys.plan import RUNNING, Capacity, Goal, HardDay, PlanRequest, Slot, SportRole
 
 START = date(2026, 11, 16)   # a Monday
 TESTED = Capacity(RUNNING, Anchors(192, 46, 165, 174, 13.2, 14.4), date(2026, 11, 13), "Laktattrappa")
@@ -27,9 +27,10 @@ STRENGTH_SLOTS = (Slot(0, 45, ("strength",), time(7)), Slot(2, 45, ("strength",)
 
 
 def request(slots=FIVE, *, goals=(), weeks=None, level="recreational", recent=200, capacity=(TESTED,),
-            start=START, roles=(), strength=0) -> PlanRequest:
+            start=START, roles=(), strength=0, hard=()) -> PlanRequest:
     return PlanRequest("Exempel Löpare", start, slots, capacity, goals=tuple(goals), duration_weeks=weeks,
-                       level=level, recent_weekly_minutes=recent, roles=tuple(roles), strength_sessions=strength)
+                       level=level, recent_weekly_minutes=recent, roles=tuple(roles), strength_sessions=strength,
+                       hard_days=tuple(hard))
 
 
 def for_sports(slots, *sports: str) -> tuple:
@@ -42,6 +43,13 @@ FOUR = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("ski
         SportRole("swim", "maintenance"))
 RUN_BIKE_ERG = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("skierg", "support", 20))
 TRIATHLON = (SportRole(RUNNING, "main", 40), SportRole("bike", "support", 35), SportRole("swim", "support", 25))
+# High volume (engine 9): skis as the main sport with long evenings, a lunch for the bike and the pool three days a
+# week, a long Saturday, and a 90 km ski race.
+SKI4 = (SportRole("ski", "main", 58), SportRole(RUNNING, "support", 28), SportRole("bike", "maintenance", 7),
+        SportRole("swim", "maintenance", 7))
+HIGH = (tuple(Slot(d, 270 if d == 5 else 105, ("ski", RUNNING), time(17)) for d in range(7))
+        + tuple(Slot(d, 45, ("bike", "swim"), time(12)) for d in (1, 2, 3)))
+LONG_SKI = Goal("Långloppet", date(2027, 3, 7), sport="ski", distance_km=90)              # Sunday of week 16
 
 
 HALF = Goal("Halvmaran", date(2027, 2, 6), distance_km=21.1, target="under 1:45")       # Saturday of week 12
@@ -82,6 +90,14 @@ CASES = {
                                strength=2),
     "two_a_day": request(FIVE + MORNING_BIKE, goals=(HALF, SEEDING, PARKRUN), level="trained", recent=330,
                          roles=RUN_BIKE, strength=1),
+    # The high level, the long run after a long goal and fixed hard days (engine 9).
+    "high_ski": request(HIGH, goals=(LONG_SKI,), level="high", recent=660, roles=SKI4, strength=3,
+                        capacity=(TESTED, SKIERG_TEST), hard=(HardDay(3, "ski"), HardDay(0, RUNNING))),
+    "long_ski_trained": request(tuple(Slot(d, 300 if d == 5 else 75, ("ski", RUNNING)) for d in range(7)), goals=(LONG_SKI,), level="trained", recent=420,
+                                capacity=(TESTED, SKIERG_TEST), roles=(SportRole("ski", "main"), SportRole(RUNNING))),
+    "half_hard_tuesday": request(goals=(HALF, SEEDING, PARKRUN), hard=(HardDay(1),)),
+    "run_bike_hard_bike": request(for_sports(FIVE, RUNNING, "bike"), goals=(HALF, SEEDING, PARKRUN), roles=RUN_BIKE,
+                                  hard=(HardDay(3, "bike"), HardDay(5))),
 }
 
 # A long plan with every sport: four sports, a morning workout beside the evening's on three days, every test

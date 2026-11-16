@@ -3,7 +3,6 @@
  * lopanalys/plan/periodize.py; the rules are in its docstring and in docs/TRANINGSPLAN.md.
  */
 import type { IsoDate, StoredBlock, StoredGoal, StoredNote, StoredRequest, StoredSlot } from "../model/types";
-import * as library from "./library";
 import { LEVELS, PlanError, mainSport, note, planSports } from "./models";
 import { addDays, daysBetween, floordiv, round, sortedBy, weekday } from "./py";
 
@@ -23,6 +22,12 @@ export const RECOVERY_KM_PER_DAY: Record<string, number> = { run: 3.0, bike: 15.
 export const RECOVERY_A_DEFAULT = 7;
 export const RECOVERY_B_FROM = 7;
 export const RECOVERY_MAX_DAYS = 21;
+/** The long run for a long goal (periodize.long_cap): a usual race speed per sport (km/h), the race time from which
+ * the long run's ceiling grows, the share of the minutes beyond it that it grows by, and the most. */
+export const RACE_KMH: Record<string, number> = { run: 11.0, bike: 28.0, skierg: 15.0, ski: 15.0, swim: 3.5 };
+export const LONG_RACE_FROM = 240;
+export const LONG_RACE_SHARE = 0.75;
+export const LONG_CAP_MAX = 270;
 
 /** periodize.recovery_days: the easy days after an A or B race (0: the two easy days every such race has). */
 export function recoveryDays(g: StoredGoal): number {
@@ -41,15 +46,20 @@ export interface Level {
   max_sessions: number;
   first_step: number;
   long_cap: number;
+  /** The longest easy run and recovery run (periodize.Level.easy_max, recovery_max). */
+  easy_max: number;
+  recovery_max: number;
 }
 
 const lv = (start_minutes: number, growth: number, load_weeks: number, max_sessions: number, first_step: number,
-  long_cap: number): Level => ({ start_minutes, growth, load_weeks, max_sessions, first_step, long_cap });
+  long_cap: number, easy_max = 75, recovery_max = 45): Level =>
+  ({ start_minutes, growth, load_weeks, max_sessions, first_step, long_cap, easy_max, recovery_max });
 
 export const LEVEL: Record<string, Level> = {
   beginner: lv(120, 0.05, 2, 3, 0, 90),
   recreational: lv(180, 0.07, 3, 5, 1, 150),
   trained: lv(300, 0.08, 3, 7, 2, 180),
+  high: lv(420, 0.08, 3, 11, 2, 180, 105, 60),
 };
 if (LEVELS.some((l) => !LEVEL[l])) throw new Error("LEVEL and LEVELS differ");
 
@@ -67,6 +77,25 @@ export interface Skeleton {
   blocks: StoredBlock[];
   notes: StoredNote[];
   goal: StoredGoal | null;
+}
+
+/** periodize.plan_goal: the A goal the plan ends with (the latest), if any. */
+export function planGoal(r: StoredRequest): StoredGoal | null {
+  const a = sortedBy(r.goals.filter((g) => g.priority === "A"), (g) => g.date);
+  return a.length ? a[a.length - 1] : null;
+}
+
+/** periodize.race_minutes: how long the race takes at a usual race speed of its sport; 0 without a distance. */
+export const raceMinutes = (g: StoredGoal) => 60 * (g.distance_km || 0) / (RACE_KMH[g.sport] ?? RACE_KMH.run);
+
+/** periodize.long_cap: the level's longest long run, raised for a goal that takes more than four hours. */
+export function longCap(r: StoredRequest): number {
+  const cap = LEVEL[r.level].long_cap;
+  const goal = planGoal(r);
+  if (goal === null) return cap;
+  const over = raceMinutes(goal) - LONG_RACE_FROM;
+  if (over <= 0) return cap;
+  return Math.max(cap, Math.min(LONG_CAP_MAX, floordiv(Math.trunc(cap + LONG_RACE_SHARE * over), 5) * 5));
 }
 
 export const firstMonday = (d: IsoDate) => addDays(d, ((-weekday(d)) % 7 + 7) % 7);
@@ -122,9 +151,10 @@ export function weekCapacity(r: StoredRequest, sport: string | null = null): num
   const slots = coreSlots(r, sport);
   if (!slots.length) return 0;
   const ls = longSlot(slots, mainSport(r));
-  const easyMax = library.get("easy").max_minutes;
+  const easyMax = level.easy_max;
+  const cap = longCap(r);
   const seconds = sport === null ? secondSlots(r, slots) : [];
-  const held = [...slots, ...seconds].map((s) => (s === ls ? Math.min(s.max_minutes, level.long_cap) : Math.min(s.max_minutes, easyMax)))
+  const held = [...slots, ...seconds].map((s) => (s === ls ? Math.min(s.max_minutes, cap) : Math.min(s.max_minutes, easyMax)))
     .sort((a, b) => b - a);
   return held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
 }
@@ -166,8 +196,7 @@ export function periodize(r: StoredRequest): Skeleton {
   const start = firstMonday(r.start);
   const notes: StoredNote[] = [];
 
-  const aGoals = sortedBy(r.goals.filter((g) => g.priority === "A"), (g) => g.date);
-  const goal = aGoals.length ? aGoals[aGoals.length - 1] : null;
+  const goal = planGoal(r);
   let n: number;
   let layout: [string, number][];
   let cycleEnds: number[] = [];

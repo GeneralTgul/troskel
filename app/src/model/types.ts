@@ -76,12 +76,20 @@ export interface StoredRequest {
   capacity: StoredCapacity[];
   goals: StoredGoal[];
   duration_weeks: number | null;
-  level: "beginner" | "recreational" | "trained" | string;
+  level: "beginner" | "recreational" | "trained" | "high" | string;
   recent_weekly_minutes: number | null;
   /** Several sports (#666); missing or [] in a plan saved before them: the sports in `sports`. */
   roles?: StoredRole[];
   /** Strength sessions a week, 0-3 (#666 step 3); only when set. */
   strength_sessions?: number;
+  /** Fixed hard days (engine 9): the week's quality sessions go there first; only when set. */
+  hard_days?: StoredHardDay[];
+}
+
+/** A weekday the coach fixes as a hard day, with the sport of its quality session (none: the engine's choice). */
+export interface StoredHardDay {
+  weekday: number;
+  sport?: Sport;
 }
 
 export type PartKind = "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | string;

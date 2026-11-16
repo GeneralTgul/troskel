@@ -8,7 +8,7 @@ import pytest
 
 from lopanalys.core.i18n import set_language
 from lopanalys.plan import Goal, Slot, build_plan, library, resolve
-from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, periodize, second_slots
+from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, long_cap, periodize, second_slots
 
 from . import cases as c
 
@@ -103,7 +103,7 @@ def test_progression_is_careful(plan):
              for wk in plan.weeks if wk.kind == "load"]
     longs = [m for m in longs if m]
     assert all(b - a <= 15 for a, b in zip(longs, longs[1:]))
-    assert all(m <= level.long_cap for m in longs)
+    assert all(m <= long_cap(plan.request) for m in longs)
 
 
 def test_easy_weeks_come_regularly_and_are_lighter(plan):

@@ -37,7 +37,7 @@ ROLE_SHARE = {"main": 60, "support": 30, "maintenance": 10}
 ZONE_LOAD = {"Z1": 0.5, "Z2": 1.0, "Z3": 1.5, "Z4": 2.5, "Z5": 3.5}
 SPORT_LOAD = {RUNNING: 1.0, Sport.BIKE.value: 0.7, Sport.SKIERG.value: 1.0, "ski": 1.0, SWIM: 0.7, STRENGTH: 0.8}
 
-LEVELS = ("beginner", "recreational", "trained")
+LEVELS = ("beginner", "recreational", "trained", "high")   # "high": high volume, more and longer easy sessions
 PRIORITIES = ("A", "B", "C")                      # A: the goal, B: a milestone (seeding race), C: a training race
 BLOCK_KINDS = ("base", "build", "peak", "taper")
 WEEK_KINDS = ("load", "easy", "test", "taper", "race")
@@ -117,6 +117,15 @@ class Slot:
 
 
 @dataclass(frozen=True)
+class HardDay:
+    """A weekday the coach fixes as a hard day (a group session with a hard content, say): the week's quality
+    sessions go there first. ``sport`` "" : the sport the engine picks; else the quality session is in that sport
+    when the day's slot allows it."""
+    weekday: int                     # 0 = Monday
+    sport: str = ""
+
+
+@dataclass(frozen=True)
 class Goal:
     name: str
     date: date
@@ -153,6 +162,7 @@ class PlanRequest:
     recent_weekly_minutes: int | None = None   # mean of the last 4-6 weeks, when known
     roles: tuple[SportRole, ...] = ()          # () : ``sports``, the first (or the A goal's) as the main sport
     strength_sessions: int = 0                 # strength sessions a week, 0-3 (MAX_STRENGTH), set by the coach
+    hard_days: tuple[HardDay, ...] = ()        # fixed hard days (a group session), set by the coach
 
     @property
     def strength_count(self) -> int:

@@ -161,6 +161,8 @@ def pack_request(r: dict[str, Any]) -> dict[str, Any]:
                               ("recent_weekly_minutes", "m", None), ("strength_sessions", "st", None)):
         if r.get(k, default) != default:
             out[short] = r[k]
+    if r.get("hard_days"):        # the fixed hard days: [weekday] or [weekday, sport]
+        out["hd"] = [[h["weekday"], h["sport"]] if h.get("sport") else [h["weekday"]] for h in r["hard_days"]]
     return out
 
 
@@ -179,6 +181,8 @@ def unpack_request(d: dict[str, Any]) -> dict[str, Any]:
                      for x in d.get("ro", [])]}
     if d.get("st"):
         out["strength_sessions"] = d["st"]
+    if d.get("hd"):
+        out["hard_days"] = [{"weekday": h[0], **({"sport": h[1]} if len(h) > 1 and h[1] else {})} for h in d["hd"]]
     return out
 
 

@@ -21,7 +21,7 @@ export const strengthCount = (r: StoredRequest) => Math.max(0, Math.min(MAX_STRE
 export const BORROWS: Record<string, string> = { ski: "skierg" };
 export const ROLES = ["main", "support", "maintenance"];
 export const ROLE_SHARE: Record<string, number> = { main: 60, support: 30, maintenance: 10 };
-export const LEVELS = ["beginner", "recreational", "trained"] as const;
+export const LEVELS = ["beginner", "recreational", "trained", "high"] as const;
 export const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export const EASY_ZONES = ["Z1", "Z2"];
 export const DEFAULT_SYSTEM = "garmin";
@@ -119,6 +119,8 @@ export function normRequest(r: StoredRequest): StoredRequest {
     roles: (r.roles ?? []).map((x) => ({ sport: sport(x.sport), role: x.role ?? "main", share: x.share ?? 0 })),
   };
   if (r.strength_sessions) out.strength_sessions = r.strength_sessions;
+  if (r.hard_days?.length)
+    out.hard_days = r.hard_days.map((h) => (h.sport ? { weekday: h.weekday, sport: sport(h.sport) } : { weekday: h.weekday }));
   return out;
 }
 

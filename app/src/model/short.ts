@@ -45,6 +45,8 @@ interface ShortRequest {
   l?: string;
   m?: number;
   st?: number;
+  /** The fixed hard days: [weekday] or [weekday, sport]. */
+  hd?: (number | string)[][];
 }
 
 const ANCHORS = ["max_hr", "resting_hr", "lt1_hr", "lt2_hr", "lt1_speed_kmh", "lt2_speed_kmh"] as const;
@@ -81,6 +83,8 @@ export function unpackRequest(d: ShortRequest): StoredRequest {
     roles: (d.ro ?? []).map((x) => ({ sport: x[0] as string, role: at<string>(x, 1) ?? "main", share: at<number>(x, 2) ?? 0 })),
   };
   if (d.st) out.strength_sessions = d.st;
+  if (d.hd?.length)
+    out.hard_days = d.hd.map((h) => (h.length > 1 && h[1] ? { weekday: h[0] as number, sport: h[1] as string } : { weekday: h[0] as number }));
   return out;
 }
 
