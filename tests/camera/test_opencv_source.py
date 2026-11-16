@@ -159,7 +159,7 @@ def test_cli_gopro_download_and_analyze(tmp_path, capsys, monkeypatch):
 
     def fake_analyze(path, height, view, **kw):
         seen.update(path=path, height=height, view=view, speed=kw.get("speed_kmh"))
-        p = RunnerParams(fps=25, duration_s=10, noise_px=1.0)
+        p = RunnerParams(fps=60, duration_s=10, noise_px=1.0)   # contact time uncertain below 100 fps
         poses, truth = generate(p)
         return offline.analyze_core(poses, height, view, times=truth.times).analysis
 

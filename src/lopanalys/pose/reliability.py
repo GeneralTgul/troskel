@@ -9,16 +9,27 @@ Every metric has two limits on the achieved frame rate of the clip:
   is built on it (the per-step values stay in ``steps`` for the review tools);
 * ``sure_fps``: below it the value is shown but marked uncertain.
 
-**The limits are provisional.** They come from the synthetic runner (``pose.synthetic``) analysed at
-120 fps and decimated to 60, 30 and 24 fps (2026-11-14): cadence, vertical oscillation, trunk lean,
-knee flexion at midstance and overstride stayed within 1 unit (overstride 2 cm); contact and flight
-time within 6 ms on average; but the angles at landing and toe-off moved with the frame (knee flexion
-at contact +5 deg at 30 fps and +10 deg at 24 fps, shin angle -3 to -6 deg, hip extension at toe-off
--3 deg, foot angle -2 deg), because the landing falls between two frames. The synthetic runner has no
-motion blur, so real video is worse, not better. So: everything timed by the landing or the toe-off,
-and every angle read in that frame, is marked uncertain below 50 fps, and left out below 20 fps
-(the second view's live rate can fall to 6 fps). The limits are to be set from a real run in 120 fps
-with HRM-Pro+ (``tools/jamfor_garmin.py``) and then this docstring rewritten.
+**The limits come from a real run** (2026-11-15): a treadmill run of about six minutes in three
+speeds, filmed from the left side with a GoPro in 1080p, 100 fps and the linear lens, analysed at 100
+fps and decimated to 50, 33, 25 and 20 fps (``tools/jamfor_garmin.py --every 1,2,3,4,5``), with the
+median per 30 s window compared with the full rate (12 windows, tolerances in ``TOLERANCE`` there):
+
+* within tolerance at every rate down to 20 fps: vertical oscillation (0.4 cm), trunk lean (0.2 deg)
+  and cadence (2.2 spm at most, bias -2 spm or less); knee flexion at midstance down to 25 fps (2.9
+  deg; 5.6 deg at 20 fps);
+* within tolerance at 50 fps but not below: overstride (5 cm at 33 fps, 10 at 25), shin angle and knee
+  flexion at contact (6-7 deg at 33 fps, 10 at 25, 17-18 at 20);
+* off already at 50 fps: ground contact time (+54 ms at 50 fps, +93 at 33, +116 at 25), hip extension
+  at toe-off (+4.5 deg) and foot angle (-2.6 deg at 50 fps, -14 at 33, -20 at 25, so the foot strike
+  flips). Flight time and duty factor are timed by the same landings and toe-offs.
+
+So a value is sure from the lowest tested rate that held, and left out below the rate where its error
+passed about twice the tolerance. The contact values and the two angles held at no lower rate, so they
+are sure only at the film's own 100 fps, which is the highest tested and not itself checked: the check
+of the absolute values against the HRM-Pro+ strap (ground contact, vertical oscillation, cadence) is
+still to come. The values not in the run (front-view values, arm values, heel whip) keep the limits
+from the synthetic runner (``pose.synthetic``, 120 fps decimated to 60/30/24, 2026-11-14), which has
+no motion blur, so real video is worse, not better.
 
 ``decimate`` gives the same clip at a lower rate (every n-th pose), for the downsampling test.
 """
@@ -40,32 +51,31 @@ class Requirement:
     basis: str           # where the limits come from
 
 
-_SYN = "synthetic runner 120 -> 60/30/24 fps, 2026-11-14 (provisional until the HRM-Pro+ check)"
-_TIMING = "landings between frames; real blur unknown: 60 fps recommended since 2026-11-14 (provisional)"
+_SYN = "synthetic runner 120 -> 60/30/24 fps, 2026-11-14 (not in the real run)"
+_RUN = "real run, GoPro 100 fps decimated to 50/33/25/20, 2026-11-15 (absolute check against the strap to come)"
 
 REQUIREMENTS: dict[str, Requirement] = {r.metric: r for r in (
     # robust: medians of positions or of angles at midstance
-    Requirement("cadence_spm", 0, 20, _SYN),
-    Requirement("vertical_oscillation_cm", 0, 20, _SYN),
-    Requirement("trunk_lean_deg", 0, 20, _SYN),
-    Requirement("knee_flex_midstance_deg", 0, 20, _SYN),
-    Requirement("overstride_cm", 0, 20, _SYN),
+    Requirement("cadence_spm", 0, 20, _RUN),
+    Requirement("vertical_oscillation_cm", 0, 20, _RUN),
+    Requirement("trunk_lean_deg", 0, 20, _RUN),
+    Requirement("knee_flex_midstance_deg", 0, 25, _RUN),
     Requirement("pelvic_drop_deg", 0, 20, _SYN),
     Requirement("knee_valgus_deg", 0, 20, _SYN),
     Requirement("step_width_cm", 0, 20, _SYN),
     Requirement("elbow_angle_deg", 0, 20, _SYN),
     Requirement("arm_swing_deg", 0, 20, _SYN),
     Requirement("arm_cross_cm", 0, 20, _SYN),
-    # timed by the landing and the toe-off: shown, uncertain below 50 fps
-    Requirement("ground_contact_ms", 20, 50, _TIMING),
-    Requirement("flight_ms", 20, 50, _TIMING),
-    Requirement("duty_factor_pct", 20, 50, _TIMING),
-    # angles in the frame of landing or toe-off: uncertain below 50 fps (whether they are to be left
-    # out instead is decided from the HRM-Pro+ run)
-    Requirement("knee_flex_contact_deg", 20, 50, _SYN),
-    Requirement("shin_angle_deg", 20, 50, _SYN),
-    Requirement("foot_angle_deg", 20, 50, _SYN),
-    Requirement("hip_extension_toe_off_deg", 20, 50, _SYN),
+    # read in the frame of landing: sure from 50 fps, left out below 30
+    Requirement("overstride_cm", 30, 50, _RUN),
+    Requirement("knee_flex_contact_deg", 30, 50, _RUN),
+    Requirement("shin_angle_deg", 30, 50, _RUN),
+    # timed by the landing and the toe-off, or read in those frames: off already at 50 fps
+    Requirement("ground_contact_ms", 50, 100, _RUN),
+    Requirement("flight_ms", 50, 100, _RUN),
+    Requirement("duty_factor_pct", 50, 100, _RUN),
+    Requirement("foot_angle_deg", 50, 100, _RUN),
+    Requirement("hip_extension_toe_off_deg", 20, 100, _RUN),
     Requirement("heel_whip_deg", 20, 50, _SYN),
 )}
 
