@@ -11,6 +11,12 @@ The rules (docs/TRANINGSPLAN.md):
   - At most a quarter of a week's time above LT1; the engine steps the quality down, never up, to hold it.
   - A week never holds more than 10 % above the biggest week before it.
   - The same request always gives the same plan: no randomness anywhere.
+  - Several sports (#666, Tom 2026-11-15): the week is filled as above over every sport at once, so the
+    hard days, the long run and the ceilings count over all sports. Then every workout gets its sport
+    (``_Filler._sports``): the long run and the test in the main sport, the rest to the sport furthest
+    behind its share of the week among the sports its slot allows. The shares shift towards the main sport
+    in the peak (half of the rest) and the taper (three quarters). A maintenance sport gets at most one
+    workout a week and never a hard one, and running grows by at most 10 % a week of its own minutes.
   - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
     (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
     block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them
@@ -23,10 +29,11 @@ from datetime import date, datetime, time, timedelta, timezone
 from itertools import combinations
 
 from . import library
-from .models import EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, Week, WeekSketch, Workout
-from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, periodize, round5
+from .models import (BORROWS, EASY_ZONES, RUNNING, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot, SportRole, Week,
+                     WeekSketch, Workout)
+from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5
 
-ENGINE_VERSION = "3"           # 2: the volume grows from what the athlete trains; 3: the rolling plan
+ENGINE_VERSION = "4"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -39,6 +46,7 @@ BEGINNER_EARLY_WEEKS = 4
 PROGRESSIVE_FROM_KM = 20.0    # goals from here get race-pace minutes in the long run of the peak
 STEP_BACK = 2                 # steps an easy or taper week goes back in a progression
 DETAIL_WEEKS = 4              # weeks with workouts in a rolling plan: the week of the day and three more
+SHARE_SHIFT = {"peak": 0.5, "taper": 0.75}   # the part of the other sports' share the main sport takes
 
 
 def floor5(minutes: float) -> int:
@@ -55,6 +63,7 @@ class _State:
     sunday_hard: bool = False          # last week ended with a hard day
     load_target: int = 0               # the last load week: its target and what it really held
     load_actual: int = 0
+    max_run: int = 0                   # the most running minutes in a week so far
 
 
 def _gap(days: list[int]) -> int:
@@ -147,6 +156,18 @@ def _families(spec: WeekSpec, q: int, state: _State, goal: Goal | None, early_be
     return fams
 
 
+def shares(roles: tuple[SportRole, ...], block: str) -> dict[str, float]:
+    """Each sport's share of a week in a block: the roles' weights, shifted towards the main sport (the
+    first) near the goal (SHARE_SHIFT)."""
+    total = sum(r.weight for r in roles)
+    k = SHARE_SHIFT.get(block, 0.0)
+    out: dict[str, float] = {}
+    for i, r in enumerate(roles):
+        b = r.weight / total
+        out[r.sport] = b + k * (1 - b) if i == 0 else b * (1 - k)
+    return out
+
+
 def _hard_share(workouts: list[Workout]) -> float:
     zs: dict[str, int] = {}
     for w in workouts:
@@ -160,9 +181,11 @@ class _Filler:
     def __init__(self, request: PlanRequest, skeleton: Skeleton, plan_id: str) -> None:
         self.request, self.plan_id, self.goal = request, plan_id, skeleton.goal
         self.level: Level = LEVEL[request.level]
+        self.roles = request.plan_roles()
+        self.main = request.main_sport
         self.slots = core_slots(request)
-        # The long run has one home all through the plan: the longest slot, the later day on a tie.
-        self.long_slot = max(self.slots, key=lambda s: (s.max_minutes, s.weekday))
+        # The long run has one home all through the plan: the longest slot of the main sport, the later day on a tie.
+        self.long_slot = long_slot(self.slots, self.main)
         self.state = _State()
         first, last = skeleton.weeks[0].monday, skeleton.weeks[-1].monday + timedelta(days=6)
         self.blocked: set[date] = set()       # no quality session on these days
@@ -185,7 +208,8 @@ class _Filler:
     def _workout(self, day: date, template_id: str, slot: Slot | None, *, minutes: int | None = None,
                  step: int = 0, goal: Goal | None = None) -> Workout:
         tpl = library.get(template_id)
-        return Workout(self._key(day, "-race" if goal else ""), day, RUNNING, template_id, tpl.family, tpl.quality,
+        sport = goal.sport if goal else self.main     # _sports sets the sport of the others
+        return Workout(self._key(day, "-race" if goal else ""), day, sport, template_id, tpl.family, tpl.quality,
                        library.build(template_id, minutes=minutes, step=step), slot.start if slot else None, goal)
 
     def _place(self, cands: list[Slot], q: int, fixed_hard: list[int]) -> list[Slot] | None:
@@ -239,6 +263,7 @@ class _Filler:
             if result is not None:
                 break
         workouts, used_steps, long_minutes = result if result else ([], {}, None)
+        self._sports(spec, workouts, {s.weekday: s for s in chosen})
         for g in spec.goals:
             workouts.append(self._workout(g.date, "race", None, goal=g))
         workouts.sort(key=lambda w: (w.date, w.key))
@@ -258,8 +283,41 @@ class _Filler:
             st.base_i += spec.block == "base"
             st.build_i += spec.block == "build"
         st.max_minutes = max(st.max_minutes or 0, week.minutes)
+        st.max_run = max(st.max_run, week.sport_minutes().get(RUNNING, 0))
         st.sunday_hard = any(w.quality and w.date.weekday() == 6 for w in workouts)
         return week
+
+    def _sports(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
+        """Gives every workout of the week (races not among them) its sport, in place.
+
+        The long run and the test first, in the main sport; then the hard sessions by date and the easy ones,
+        longest first: each to the sport furthest behind its share of the week's minutes, among the sports its
+        slot allows (ties: the order of the roles). A maintenance sport is never hard and gets one workout a
+        week, and running is left out once it would pass 10 % above its biggest week, as long as the slot
+        allows another sport."""
+        if len(self.roles) < 2:
+            return
+        share = shares(self.roles, spec.block)
+        total = sum(w.minutes for w in workouts)
+        done = {r.sport: 0 for r in self.roles}
+        count = {r.sport: 0 for r in self.roles}
+        run_cap = floor5((1 + MAX_WEEKLY_INCREASE) * self.state.max_run) if self.state.max_run else None
+        main_first = lambda w: w.family == "long" or w.template_id == "test"
+        order = sorted(workouts, key=lambda w: (0 if main_first(w) else 1 if w.quality else 2,
+                                                0 if main_first(w) or w.quality else -w.minutes, w.date))
+        for w in order:
+            allowed = [r for r in self.roles if r.sport in slot_of[w.date.weekday()].sports]
+            cands = ([r for r in allowed if r.role != "maintenance"] if w.quality else allowed) or allowed
+            cands = [r for r in cands if r.role != "maintenance" or count[r.sport] == 0] or cands
+            cands = [r for r in cands if r.sport != RUNNING or run_cap is None
+                     or done[RUNNING] + w.minutes <= run_cap] or cands
+            if main_first(w) and any(r.sport == self.main for r in cands):
+                pick = self.main
+            else:
+                pick = max(cands, key=lambda r: (share[r.sport] * total - done[r.sport], -self.roles.index(r))).sport
+            w.sport = pick
+            done[pick] += w.minutes
+            count[pick] += 1
 
     def _assemble(self, spec: WeekSpec, chosen: list[Slot], day: dict[int, date], q_slots: list[Slot],
                   fams: list[str], down: int, ceiling: int, want_long: bool,
@@ -377,13 +435,20 @@ def build_plan(request: PlanRequest, *, plan_id: str = "plan", created: datetime
         horizon = horizon_for(weeks[0].monday, len(weeks), today)
         weeks = [wk if wk.index <= horizon else sketch_of(wk) for wk in weeks]
     notes = list(skeleton.notes)
-    cap = request.capacity_for(RUNNING)
+    cap = request.capacity_for(request.main_sport)
     if cap.anchors is None:
         notes.append(Note.of("plan.note.no_test"))
     elif cap.speed_from_hr:
         notes.append(Note.of("plan.note.speed_from_hr"))
     elif cap.estimated:
         notes.append(Note.of("plan.note.estimated"))
+    for i, r in enumerate(request.plan_roles()):
+        if request.own_capacity(r.sport) is not None:
+            continue
+        if r.sport in BORROWS and request.own_capacity(BORROWS[r.sport]) is not None:
+            notes.append(Note.of(f"plan.note.borrowed.{r.sport}"))
+        elif i > 0:
+            notes.append(Note.of(f"plan.note.no_test_sport.{r.sport}"))
     created = created or datetime.combine(request.start, time(0), tzinfo=timezone.utc)
     return Plan(plan_id, request, created, ENGINE_VERSION, skeleton.blocks, weeks, notes,
                 based_on={c.sport: c.tested for c in request.capacity}, horizon=horizon)

@@ -206,7 +206,7 @@ def _goal_line(g: Any) -> str:
 
 def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     req = plan.request
-    cap = req.capacity_for(req.sports[0])
+    cap = req.capacity_for(req.main_sport)
     zt = targets(cap, plan.zone_system)
     goal = plan.goal
     slots = core_slots(req)

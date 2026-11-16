@@ -24,7 +24,7 @@ from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
 from lopanalys.plan import codec, demo, ics, link
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
-from lopanalys.plan.models import Capacity, Goal, PlanRequest
+from lopanalys.plan.models import Capacity, Goal, PlanRequest, SportRole
 from lopanalys.plan.rolling import roll_forward
 
 APP = Path(__file__).resolve().parents[1]
@@ -111,6 +111,27 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
         ("rolling-before", demo.demo_request(20), date(2026, 10, 1)),
         ("rolling-late", demo.demo_request(20), date(2027, 6, 1)),
     ]
+    # Several sports (#666): the roles, the shares, a slot for one sport only, a borrowed test and a bike race.
+    rb = ("run", "bike")
+    four = ("run", "bike", "ski", "swim")
+    roles4 = (SportRole("run", "main"), SportRole("bike", "support"), SportRole("ski", "support", 20),
+              SportRole("swim", "maintenance"))
+    skierg = Capacity("skierg", Anchors(188, 48, 150, 168, 160.0, 210.0, sport="skierg"), date(2026, 11, 1), "Laktattrappa")
+    multi = sl(tuple((*r, None, "core", rb) for r in ((0, 45), (1, 75), (3, 75), (5, 60), (6, 120))))
+    out += [
+        ("run-bike", replace(base, availability=multi, roles=(SportRole("run", "main"), SportRole("bike", "support"))), None),
+        ("sports-without-roles", replace(base, availability=multi, sports=rb), None),
+        ("bike-main", replace(base, availability=multi, roles=(SportRole("bike", "main", 70), SportRole("run", "support", 30))),
+         None),
+        ("bike-only-wednesday", replace(base, availability=sl(DEMO_SLOTS + ((2, 60, None, "core", ("bike",)),)),
+                                        roles=(SportRole("run", "main"), SportRole("bike", "support"))), None),
+        ("four-sports", replace(base, availability=sl(tuple((d, 70 if d < 5 else 150, None, "core", four) for d in range(7))),
+                                level="trained", recent_weekly_minutes=None, roles=roles4, capacity=base.capacity + (skierg,)), None),
+        ("bike-race", replace(base, availability=multi, roles=(SportRole("run", "main"), SportRole("bike", "support")),
+                              goals=base.goals + (Goal("Cykellopp", date(2026, 12, 12), sport="bike", priority="B"),)), None),
+        ("four-sports-rolling", replace(base, availability=sl(tuple((d, 60, None, "core", four) for d in range(7))),
+                                        roles=roles4), date(2026, 12, 2)),
+    ]
     return out
 
 
@@ -158,6 +179,8 @@ def engine_fixtures() -> dict[str, Any]:
             if w["date"] < "2026-11-26":
                 w["status"] = "done" if w["date"] != "2026-11-19" else "missed"
     plans["demo-done"] = done
+    run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
+    plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
     changes = [  # (name, plan, slots, unavailable, from)
         ("shorter-thursday", "demo", _slots(*DEMO_SLOTS[:2], (3, 45), *DEMO_SLOTS[3:]), [], "2026-11-26"),
@@ -179,6 +202,8 @@ def engine_fixtures() -> dict[str, Any]:
         ("rolling-more", "rolling", _slots(*DEMO_SLOTS, (2, 45), (4, 45)), [], "2026-11-19"),
         ("beginner-add-day", "beginner", _slots(*DEMO_SLOTS, (2, 30)), [], "2026-11-25"),
         ("beginner-two-days", "beginner", _slots((1, 40), (5, 60)), [], "2026-11-17"),
+        ("run-bike-fewer", "run-bike", _slots((1, 75, None, "core", ("run", "bike")), (3, 75, None, "core", ("bike",)),
+                                              (6, 120, None, "core", ("run", "bike"))), ["2026-12-10"], "2026-11-30"),
         ("trained-cycle-fewer", "trained-cycle", _slots(*DEMO_SLOTS[:1], *DEMO_SLOTS[2:4]), ["2026-12-03"], "2026-11-30"),
     ]
     rebuilds = []

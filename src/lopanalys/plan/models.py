@@ -17,8 +17,21 @@ from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import Sport
 
-# The sport keys are core.sport.Sport values ("run", "bike", "skierg"); the plans are built for running only.
+# The sport keys: core.sport.Sport values ("run", "bike", "skierg") and the sports without a test in
+# Tröskel ("ski", "swim"). Every sport uses the running templates for now, with the sport's name.
 RUNNING = Sport.RUN.value
+PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", "swim")
+# A sport without its own test borrows the zones of another: skis and roller skis take the SkiErg's.
+BORROWS = {"ski": Sport.SKIERG.value}
+# The roles of a sport in a plan, and the share of the weekly time each one gets when none is given.
+ROLES = ("main", "support", "maintenance")
+ROLE_SHARE = {"main": 60, "support": 30, "maintenance": 10}
+# The load of a workout: minutes x zone factor x sport factor (Tom 2026-11-15, #666). A part without a zone
+# (a test) counts as Z4; a race has no planned length.
+ZONE_LOAD = {"Z1": 0.5, "Z2": 1.0, "Z3": 1.5, "Z4": 2.5, "Z5": 3.5}
+SPORT_LOAD = {RUNNING: 1.0, Sport.BIKE.value: 0.7, Sport.SKIERG.value: 1.0, "ski": 1.0, "swim": 0.7, "strength": 0.8}
+# Templates whose title says "running": in another sport they take the title without it.
+_RUN_WORDED = ("easy", "recovery")
 
 LEVELS = ("beginner", "recreational", "trained")
 PRIORITIES = ("A", "B", "C")                      # A: the goal, B: a milestone (seeding race), C: a training race
@@ -104,6 +117,19 @@ class Goal:
 
 
 @dataclass(frozen=True)
+class SportRole:
+    """One sport of the plan: its role and its share of the weekly time in percent (0: the role's default).
+    The shares are weights: 60/30 gives two thirds and one third."""
+    sport: str
+    role: str = "main"               # ROLES
+    share: int = 0
+
+    @property
+    def weight(self) -> int:
+        return self.share if self.share > 0 else ROLE_SHARE.get(self.role, ROLE_SHARE["support"])
+
+
+@dataclass(frozen=True)
 class PlanRequest:
     """What the athlete and the coach state. Either an A goal or ``duration_weeks`` sets the length."""
     athlete_name: str
@@ -115,12 +141,46 @@ class PlanRequest:
     duration_weeks: int | None = None
     level: str = "recreational"
     recent_weekly_minutes: int | None = None   # mean of the last 4-6 weeks, when known
+    roles: tuple[SportRole, ...] = ()          # () : ``sports``, the first (or the A goal's) as the main sport
+
+    def own_capacity(self, sport: str) -> Capacity | None:
+        return next((c for c in self.capacity if c.sport == sport), None)
 
     def capacity_for(self, sport: str) -> Capacity:
-        for c in self.capacity:
-            if c.sport == sport:
-                return c
-        return Capacity(sport)
+        """The sport's capacity; a sport without its own test borrows (BORROWS), else nothing is known."""
+        own = self.own_capacity(sport)
+        if own is None and sport in BORROWS:
+            own = self.own_capacity(BORROWS[sport])
+        return own if own is not None else Capacity(sport)
+
+    def plan_roles(self) -> tuple[SportRole, ...]:
+        """The plan's sports with their roles, the main sport first and each sport once.
+
+        Without ``roles`` the sports in ``sports`` are used, the rest as supporting sports. Exactly one sport
+        is the main sport: the first one given as main, else the sport of the A goal, else the first sport;
+        another sport given as main counts as supporting."""
+        given = self.roles or tuple(SportRole(sp, "support") for sp in self.sports)
+        out: list[SportRole] = []
+        for r in given:
+            if r.sport not in [o.sport for o in out]:
+                out.append(r if r.role in ROLES else SportRole(r.sport, "support", r.share))
+        if not out:
+            return ()
+        main = next((r for r in out if r.role == "main"), None)
+        if main is None:
+            a = sorted((g for g in self.goals if g.priority == "A"), key=lambda g: g.date)
+            main = next((r for r in out if a and r.sport == a[-1].sport), out[0])
+        rest = [SportRole(r.sport, "support", r.share) if r.role == "main" else r for r in out if r is not main]
+        return (SportRole(main.sport, "main", main.share), *rest)
+
+    @property
+    def plan_sports(self) -> tuple[str, ...]:
+        return tuple(r.sport for r in self.plan_roles())
+
+    @property
+    def main_sport(self) -> str:
+        roles = self.plan_roles()
+        return roles[0].sport if roles else RUNNING
 
 
 @dataclass(frozen=True)
@@ -166,7 +226,21 @@ class Workout:
 
     @property
     def title(self) -> str:
-        return self.goal.name if self.goal else t(f"plan.workout.{self.template_id}.title")
+        """The template's title; in a sport other than running with the sport's name first."""
+        if self.goal:
+            return self.goal.name
+        if self.sport == RUNNING:
+            return t(f"plan.workout.{self.template_id}.title")
+        suffix = ".title_any" if self.template_id in _RUN_WORDED else ".title"
+        return t("plan.workout.in_sport", sport=t(f"plan.sport.{self.sport}"),
+                 title=t(f"plan.workout.{self.template_id}{suffix}"))
+
+    @property
+    def load(self) -> float:
+        """Minutes x zone factor x sport factor (ZONE_LOAD, SPORT_LOAD): comparable between sports."""
+        zoned = sum(s / 60 * ZONE_LOAD[z] for z, s in self.zone_seconds().items())
+        test = sum(p.total_s / 60 * ZONE_LOAD["Z4"] for p in self.parts if p.zone is None and p.kind == "test")
+        return (zoned + test) * SPORT_LOAD.get(self.sport, 1.0)
 
     @property
     def purpose(self) -> str:
@@ -247,6 +321,18 @@ class Week:
             for z, s in w.zone_seconds().items():
                 out[z] = out.get(z, 0.0) + s / 60
         return out
+
+    def sport_minutes(self) -> dict[str, int]:
+        """Planned minutes per sport (a detailed week; a sketch has only the sums)."""
+        out: dict[str, int] = {}
+        for w in self.workouts:
+            if w.goal is None:
+                out[w.sport] = out.get(w.sport, 0) + w.minutes
+        return out
+
+    @property
+    def load(self) -> float:
+        return sum(w.load for w in self.workouts if w.goal is None)
 
     @property
     def longest_minutes(self) -> int:

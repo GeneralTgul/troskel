@@ -13,7 +13,7 @@ rewriting the plan. No Qt and no network in this package (docs/TRANINGSPLAN.md).
 from __future__ import annotations
 
 from .engine import ENGINE_VERSION, build_plan
-from .models import RUNNING, Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, Week, Workout
+from .models import RUNNING, Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SportRole, Week, Workout
 
 __all__ = ["ENGINE_VERSION", "RUNNING", "Block", "Capacity", "Goal", "Note", "Part", "Plan", "PlanRequest", "Slot",
-           "Week", "Workout", "build_plan"]
+           "SportRole", "Week", "Workout", "build_plan"]

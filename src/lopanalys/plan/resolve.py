@@ -8,6 +8,9 @@ thresholds and between them. Nothing is extrapolated.
 A zones test without lactate (``Capacity.speed_line``) gives the estimated zones a pace from the
 relation heart rate -> speed of its steps, the same way the result page does (hr_zones.zone_speeds):
 a border a little outside the steps is marked ``≈``, further out it has no pace.
+
+The pace is given for running only. In the other sports the test's load is watt, not km/h, and the plan
+shows heart rate and effort until those sports get their own targets (#666, step 2).
 """
 from __future__ import annotations
 
@@ -20,7 +23,7 @@ from lopanalys.assessments.lactate import pace_str
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, convert
 from lopanalys.core.i18n import t
 
-from .models import Capacity, Plan, SpeedLine
+from .models import RUNNING, Capacity, Plan, SpeedLine
 
 APPROX = "≈"     # before a pace outside the measured steps of a zones test (report.builder.EXTRAPOLATED_MARK)
 
@@ -81,6 +84,9 @@ def targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM) -> dict[str
         zones = hr_zones.zone_speeds(zones, _relation(line))
     out = {}
     for z in zones:
+        if capacity.sport != RUNNING:
+            out[z.code] = Target(z.code, z.name, z.hr_low, z.hr_high, estimated=bool(z.estimated))
+            continue
         out[z.code] = Target(z.code, z.name, z.hr_low, z.hr_high,
                              _field(z, "speed_low_kmh", "load_low"), _field(z, "speed_high_kmh", "load_high"),
                              bool(z.estimated), bool(_field(z, "speed_low_extrapolated", "load_low_extrapolated")),

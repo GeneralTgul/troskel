@@ -9,6 +9,9 @@ The rolling plan (plan.rolling) stores its horizon, the last week with workouts,
 it as sketches (sums without workouts). A plan saved before that has neither and reads back as a
 plan where every week is detailed. ``engine_version`` says which rules built it (or last rolled it on).
 
+The sports' roles and shares (``PlanRequest.roles``, several sports) came after format 2 and are stored
+under ``roles``; a request saved without them reads back with none, which means the sports in ``sports``.
+
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
@@ -20,7 +23,8 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 
-from .models import Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, Week, WeekSketch, Workout
+from .models import (Block, Capacity, Goal, Note, Part, Plan, PlanRequest, Slot, SpeedLine, SportRole, Week, WeekSketch,
+                     Workout)
 
 FORMAT = 2                    # 2: the rolling plan (horizon and sketched weeks); 1 reads as fully detailed
 _ANCHOR_FIELDS = tuple(f.name for f in fields(Anchors) if f.name != "source")
@@ -88,6 +92,7 @@ def request_to_dict(r: PlanRequest) -> dict[str, Any]:
                           "start": s.start.isoformat() if s.start else None, "role": s.role} for s in r.availability],
         "capacity": [capacity_to_dict(c) for c in r.capacity], "goals": [_goal_to_dict(g) for g in r.goals],
         "duration_weeks": r.duration_weeks, "level": r.level, "recent_weekly_minutes": r.recent_weekly_minutes,
+        "roles": [{"sport": x.sport, "role": x.role, "share": x.share} for x in r.roles],
     }
 
 
@@ -98,7 +103,9 @@ def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
     return PlanRequest(athlete_name, date.fromisoformat(d["start"]), slots,
                        tuple(capacity_from_dict(c) for c in d.get("capacity", [])), tuple(_sport(x) for x in d["sports"]),
                        tuple(_goal_from_dict(g) for g in d.get("goals", [])), d.get("duration_weeks"),
-                       d.get("level", "recreational"), d.get("recent_weekly_minutes"))
+                       d.get("level", "recreational"), d.get("recent_weekly_minutes"),
+                       tuple(SportRole(_sport(x["sport"]), x.get("role", "main"), x.get("share", 0))
+                             for x in d.get("roles", [])))
 
 
 def _workout_to_dict(w: Workout) -> dict[str, Any]:

@@ -24,7 +24,7 @@ from datetime import date, timedelta
 from lopanalys.core.i18n import t
 
 from . import library
-from .models import LEVELS, RUNNING, Block, Goal, Note, PlanRequest
+from .models import LEVELS, Block, Goal, Note, PlanRequest
 
 DEFAULT_WEEKS = 12
 MIN_WEEKS = 4                 # without a goal
@@ -83,32 +83,42 @@ def round5(minutes: float) -> int:
     return int(round(minutes / 5.0)) * 5
 
 
-def core_slots(request: PlanRequest, sport: str = RUNNING) -> list:
-    """The core slots for a sport, one per weekday (the longest), in weekday order."""
+def core_slots(request: PlanRequest, sport: str | None = None) -> list:
+    """The core slots for a sport, or (None) for any of the plan's sports: one per weekday (the longest),
+    in weekday order. A slot for a sport the plan does not have is not used."""
+    wanted = (sport,) if sport is not None else request.plan_sports
     best: dict[int, object] = {}
     for s in request.availability:
-        if s.role != "core" or sport not in s.sports or s.max_minutes <= 0 or not 0 <= s.weekday <= 6:
+        if (s.role != "core" or not any(x in wanted for x in s.sports) or s.max_minutes <= 0
+                or not 0 <= s.weekday <= 6):
             continue
         if s.weekday not in best or s.max_minutes > best[s.weekday].max_minutes:
             best[s.weekday] = s
     return [best[d] for d in sorted(best)]
 
 
-def week_capacity(request: PlanRequest, sport: str = RUNNING) -> int:
+def long_slot(slots: list, main_sport: str):
+    """The long run's slot all through the plan: the longest slot for the main sport, the later day on a tie
+    (the longest slot of all when no slot has the main sport)."""
+    own = [s for s in slots if main_sport in s.sports] or slots
+    return max(own, key=lambda s: (s.max_minutes, s.weekday))
+
+
+def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     """The minutes a week can really hold: the level's number of sessions in the longest core slots,
     the long run within the level's longest long run and every other run within an easy run's length."""
     level = LEVEL[request.level]
     slots = core_slots(request, sport)
     if not slots:
         return 0
-    long_slot = max(slots, key=lambda s: (s.max_minutes, s.weekday))
+    long = long_slot(slots, request.main_sport)
     easy_max = library.get("easy").max_minutes
-    held = sorted((min(s.max_minutes, level.long_cap) if s is long_slot else min(s.max_minutes, easy_max)
+    held = sorted((min(s.max_minutes, level.long_cap) if s is long else min(s.max_minutes, easy_max)
                    for s in slots), reverse=True)
     return sum(held[:level.max_sessions])
 
 
-def first_week_minutes(request: PlanRequest, sport: str = RUNNING) -> tuple[int, str]:
+def first_week_minutes(request: PlanRequest, sport: str | None = None) -> tuple[int, str]:
     """The weekly volume of the plan's first week and where it comes from:
     "recent" (what the athlete trains now), "capped" (more than the week holds: the full week) or
     "default" (nothing known: the level's default, at most ``DEFAULT_SHARE`` of the full week)."""

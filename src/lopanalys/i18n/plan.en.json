@@ -210,5 +210,18 @@
  "plan.block_short.base": "Base",
  "plan.block_short.build": "Build",
  "plan.block_short.peak": "Peak",
- "plan.block_short.taper": "Taper"
+ "plan.block_short.taper": "Taper",
+ "plan.sport.run": "Running",
+ "plan.sport.bike": "Cycling",
+ "plan.sport.skierg": "SkiErg",
+ "plan.sport.ski": "Skiing",
+ "plan.sport.swim": "Swimming",
+ "plan.workout.in_sport": "{sport}: {title}",
+ "plan.workout.easy.title_any": "easy session",
+ "plan.workout.recovery.title_any": "recovery session",
+ "plan.note.borrowed.ski": "The ski sessions use the SkiErg's zones, since there is no test on skis.",
+ "plan.note.no_test_sport.bike": "The cycling sessions are not built on a cycling test and give the zone and the effort.",
+ "plan.note.no_test_sport.skierg": "The SkiErg sessions are not built on a SkiErg test and give the zone and the effort.",
+ "plan.note.no_test_sport.ski": "The ski sessions are not built on a test and give the zone and the effort.",
+ "plan.note.no_test_sport.swim": "The swimming sessions give the zone and the perceived effort (RPE), since there is no swim test."
 }
