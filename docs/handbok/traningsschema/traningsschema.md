@@ -45,7 +45,7 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | | Idrotterna den dagen | Bara med flera idrotter: *Alla* eller de idrotter som går den dagen, till exempel bara cykel en dag utan löpband |
 | | *+* (en andra tid samma dag) | Bara med flera idrotter: en rad till under dagen, *Andra passet*, med egna minuter, klockslag och idrotter. Båda tiderna behöver ett klockslag, och de ska vara olika. *−* tar bort den andra tiden, se [Två pass samma dag](#två-pass-samma-dag) |
 | *Mål* | *Schemat slutar med ett mål (lopp)* | Namn, datum, distans och måltid. Schemat räknas bakåt från loppet |
-| | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig. Ett *Träningslopp* ersätter ett av veckans hårda pass |
+| | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig, och ett långt delmål (ett halvmaraton eller längre i löpning) lugna dagar efter sig. Ett *Träningslopp* ersätter ett av veckans hårda pass. Ett delmål strax före startdatumet, till exempel förra schemats mål, ger schemat lugna dagar i början, se [Återhämtning efter ett lopp](../../TRANINGSPLAN.md#återhämtning-efter-ett-lopp) |
 | | *Inget mål: ange längd* | Antal veckor, minst 4. Schemat slutar med ett nytt test |
 | | *Startdatum* | Schemat börjar första måndagen från och med datumet. Tomt betyder i dag |
 

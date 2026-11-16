@@ -77,6 +77,9 @@ CASES = {
                               goals=(Goal("Triathlon", date(2027, 5, 29), distance_km=51.5),),
                               capacity=(TESTED, BIKE_TEST, SWIM_TEST), roles=TRIATHLON, strength=1),
     # Two workouts a day (#666): more sessions than days, a morning bike beside the evening run, and strength.
+    # Recovery after a race (#666): a half marathon as a milestone, with strength.
+    "half_b_recovery": request(goals=(HALF, Goal("Halvmaran i vinter", date(2027, 1, 2), distance_km=21.1, priority="B")),
+                               strength=2),
     "two_a_day": request(FIVE + MORNING_BIKE, goals=(HALF, SEEDING, PARKRUN), level="trained", recent=330,
                          roles=RUN_BIKE, strength=1),
 }

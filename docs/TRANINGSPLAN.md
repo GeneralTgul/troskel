@@ -15,6 +15,7 @@ Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
   - [Intensitetsfördelningen](#intensitetsfördelningen)
   - [Flera idrotter](#flera-idrotter)
   - [Delmål och planer utan mål](#delmål-och-planer-utan-mål)
+  - [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp)
   - [Omtest och omläggning](#omtest-och-omläggning)
   - [Det rullande schemat](#det-rullande-schemat)
   - [Passbiblioteket](#passbiblioteket)
@@ -60,7 +61,8 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Idrotterna i formuläret och utskriften: roll och andel, idrotterna per veckodag, en färg per idrott, idrottstabellen, watt i zonerna, veckans tid per idrott och belastningen | Byggt (steg 4 av 4), se [Utskriften](#4-utskriften). Inte provat på Windows ([PROV.md](PROV.md)) |
 | Två pass samma dag: en andra tid på en veckodag ger ett lugnt pass i en annan idrott | Byggt, se [Två pass samma dag](#två-pass-samma-dag) |
 | Ett mindre långpass i en stödjande idrott varannan vecka | Byggt, se [Flera idrotter](#flera-idrotter) |
-| Återhämtningsblock efter ett mål, passkort | Inte byggt |
+| Återhämtning efter ett lopp: lugna dagar efter ett A-lopp som inte är schemats mål, efter ett långt B-lopp och efter ett lopp strax före schemat | Byggt, se [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp) |
+| Passkort | Inte byggt |
 
 ## 1. Datamodellen
 
@@ -197,7 +199,8 @@ Motorn räknar bakåt från A-målet. Finns flera A-mål slutar planen med det s
 - **Översikten visar progressionen:** under staplarna med tid per zon ritas det längsta passet och minuterna i zon 3–5 per vecka, i en egen panel med egen axel i minuter (ingen andra axel på staplarna). Där syns långpassets ökning och kvalitetspassens steg även när veckotiden står still. Tioprocentsregeln är en tumregel med svagt stöd i forskningen *(ej verifierat)*, så den används som ett tak och inte som ett mål.
 - **Långpasset** ligger i veckans längsta plats, är ungefär en tredjedel av veckan och växer högst 15 minuter från en belastningsvecka till nästa.
 - **För kort tid till målet:** blocken kortas i ordningen grund, uppbyggnad, topp. Är det mindre än 6 veckor kvar säger planen det i klartext och bygger ingen topp.
-- **Inte byggt:** återhämtningsblocket efter ett A-mål, och två och en för idrottare över 50 år.
+- **Återhämtningen efter ett lopp** står i [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp).
+- **Inte byggt:** två och en för idrottare över 50 år.
 
 ### Intensitetsfördelningen
 
@@ -282,7 +285,20 @@ En veckodag kan ha en andra plats (`periodize.second_slots`): en kärnplats till
 
 - **B-mål (delmål, seedningslopp):** en mikrotopp. Loppveckan är 25 % lättare och utan långpass, sista kvalitetspasset ligger minst tre dagar före, dagen före är högst 30 minuter och två lugna dagar följer. Blocket runt omkring flyttas inte.
 - **C-mål:** ersätter ett av veckans kvalitetspass. Dagen före och dagen efter är lugna, och långpasset stryks om det skulle hamna dagen efter loppet.
+- **Långa B-lopp och tidigare A-lopp** får lugna dagar efter sig, se [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp).
 - **Utan tävlingsmål (3, 6 eller 12 månader):** grund och uppbyggnad i cykler om 8–12 veckor, där varje cykel slutar med ett test i stället för ett lopp. Testet är målet, och framsteget syns i nästa rapport.
+
+### Återhämtning efter ett lopp
+
+Efter ett lopp som schemat fortsätter efter får de närmaste dagarna bara lugna pass (`periodize.recovery_days`, `engine._Filler`). Det gäller ett A-lopp som inte är schemats mål (ett tidigare A-mål), ett långt B-lopp (delmål), och ett A- eller B-lopp strax före schemats start, till exempel förra schemats mål när coachen gör ett nytt schema och anger loppet som delmål.
+
+- **Antalet dagar:** en dag per 3 km i löpning, avrundat uppåt: 4 dagar efter 10 km, 8 efter ett halvmaraton och 15 efter ett maraton, högst 21. Ett A-lopp utan distans ger 7 dagar. Ett B-lopp får dagarna först från 7 dagar (ett halvmaraton i löpning), annars gäller de två lugna dagarna som varje A- och B-lopp redan har. Ett C-lopp får inga.
+- **Källan:** tumregeln *en lugn dag per 3–5 km* av loppet är vanlig i löpning, och en strängare variant är *en dag per engelsk mil (1,6 km)*, som brukar tillskrivas Jack Foster *(ej verifierat mot källa)*. Programmet väljer den försiktiga änden av den första, 3 km. Regeln gäller de hårda passen och långpasset, inte vila: lugn träning är tillåten.
+- **Andra idrotter:** en dag per 15 km på cykel, 10 km på skidor och SkiErg och 1 km i simning. De talen är programmets egna och inte hämtade ur en källa: de är satta så att ett vanligt långlopp i idrotten ger ungefär en vecka (Vasaloppet 90 km ger 9 dagar, 150 km på cykel 10 dagar).
+- **Dagarna:** inget hårt pass, inget långpass (inte heller den stödjande idrottens), inget andra pass samma dag, och varje pass högst 30 minuter den första halvan av dagarna och 45 minuter den andra. Ingen styrka den första halvan.
+- **Testet:** ett omtest läggs inte i en vecka med sådana dagar, utan i nästa lätta vecka. Ett schema utan mål har testet i slutet av varje cykel, och ett lopp strax före det tar bort testet den cykeln.
+- **Veckorna** med sådana dagar säger det: *Återhämtning efter Halvmaran: lugna pass, inga hårda pass och inget långpass till och med 2027-01-10* (`plan.week.recovery`). Ett lopp före schemat står i översikten i stället för raden om att loppet ligger utanför schemat (`plan.note.recovery_before`).
+- **Efter schemats mål** finns inga veckor, så där behövs inget. Ett nytt schema efter målet får återhämtningen när målet anges som delmål i det nya schemat.
 
 ### Omtest och omläggning
 

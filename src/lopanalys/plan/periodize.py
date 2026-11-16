@@ -8,7 +8,8 @@ The rules (docs/TRANINGSPLAN.md, "Planmotorn"):
     the weeks before the goal are load weeks and the easy week never lands in the peak.
     The plan never opens with an easy week: when the count does not come out even, the first run of load
     weeks is one week longer, and its first week is the volume the athlete already trains.
-  - A retest in an easy week once 8 weeks have passed since the last test, at least 4 weeks before the goal.
+  - A retest in an easy week once 8 weeks have passed since the last test, at least 4 weeks before the goal, and
+    not in a week with days of recovery after a race (recovery_days).
   - Volume starts at what the athlete trains now (or the level's default, kept below what the week
     holds), stands still in the peak and never passes what the core slots hold. It grows in base and
     build by the rate that reaches the full week at the last load week before the peak, never faster
@@ -37,6 +38,13 @@ RETEST_MIN_GAP = 8            # weeks between tests
 RETEST_BEFORE_GOAL = 4        # no retest closer to the goal than this
 CYCLE_MAX = 12                # weeks in a cycle without a goal
 DEFAULT_SHARE = 0.70          # with nothing known, the plan starts at most at this share of the full week
+# Recovery after a race (#666): one easy day per this many km of the race, by sport. Running's is the careful end of
+# the rule of thumb "a day per 3-5 km" (docs/TRANINGSPLAN.md, *Återhämtning efter ett lopp*); the other sports'
+# are the programme's own, scaled to how far a race in the sport usually goes.
+RECOVERY_KM_PER_DAY = {"run": 3.0, "bike": 15.0, "skierg": 10.0, "ski": 10.0, "swim": 1.0}
+RECOVERY_A_DEFAULT = 7        # days after an A race without a distance
+RECOVERY_B_FROM = 7           # a B race gets a recovery period from this many days (a half marathon in running)
+RECOVERY_MAX_DAYS = 21
 
 
 @dataclass(frozen=True)
@@ -73,6 +81,22 @@ class Skeleton:
     blocks: list[Block]
     notes: list[Note]
     goal: Goal | None
+
+
+def recovery_days(goal: Goal) -> int:
+    """The easy days after an A or B race: a day per ``RECOVERY_KM_PER_DAY`` km of the race (rounded up, at most 21),
+    a week for an A race without a distance. A B race gets them only from ``RECOVERY_B_FROM`` days (a long race),
+    and 0 means the two easy days every A and B race already has."""
+    if goal.priority not in ("A", "B"):
+        return 0
+    if goal.distance_km:
+        days = math.ceil(goal.distance_km / RECOVERY_KM_PER_DAY.get(goal.sport, RECOVERY_KM_PER_DAY["run"]))
+    else:
+        days = RECOVERY_A_DEFAULT if goal.priority == "A" else 0
+    days = min(days, RECOVERY_MAX_DAYS)
+    if goal.priority == "B" and days < RECOVERY_B_FROM:
+        return 0
+    return days if days > 2 else 0
 
 
 def first_monday(d: date) -> date:
@@ -241,8 +265,13 @@ def periodize(request: PlanRequest) -> Skeleton:
             kinds[w - 1] = "taper"
         kinds[n - 1] = "race"
         last_test = 0
+        # No test in a week with days of recovery after a race (the engine makes them easy): the next easy week.
+        rest = [(g.date, g.date + timedelta(days=recovery_days(g))) for g in request.goals if g is not goal]
+        resting = {w for w in range(1, n + 1) for a, b in rest
+                   if a < start + timedelta(weeks=w - 1, days=6) and b >= start + timedelta(weeks=w - 1) and b > a}
         for w in range(1, taper_first):
-            if kinds[w - 1] == "easy" and w - last_test >= RETEST_MIN_GAP and n - w >= RETEST_BEFORE_GOAL:
+            if (kinds[w - 1] == "easy" and w - last_test >= RETEST_MIN_GAP and n - w >= RETEST_BEFORE_GOAL
+                    and w not in resting):
                 kinds[w - 1], last_test = "test", w
     else:
         prev_end = 0
@@ -266,6 +295,10 @@ def periodize(request: PlanRequest) -> Skeleton:
         idx = (g.date - start).days // 7 + 1 if g.date >= start else 0
         if 1 <= idx <= n:
             by_week.setdefault(idx, []).append(g)
+        elif g.date < start and g.date + timedelta(days=recovery_days(g)) >= start:
+            # a race just before the plan: the plan opens with its recovery (engine)
+            until = g.date + timedelta(days=recovery_days(g))
+            notes.append(Note.of("plan.note.recovery_before", name=g.name, until=until.isoformat()))
         else:
             notes.append(Note.of("plan.note.goal_outside", name=g.name))
 

@@ -18,6 +18,21 @@ export const RETEST_MIN_GAP = 8;
 export const RETEST_BEFORE_GOAL = 4;
 export const CYCLE_MAX = 12;
 export const DEFAULT_SHARE = 0.70;
+/** Recovery after a race (periodize.RECOVERY_*): one easy day per this many km of the race, by sport. */
+export const RECOVERY_KM_PER_DAY: Record<string, number> = { run: 3.0, bike: 15.0, skierg: 10.0, ski: 10.0, swim: 1.0 };
+export const RECOVERY_A_DEFAULT = 7;
+export const RECOVERY_B_FROM = 7;
+export const RECOVERY_MAX_DAYS = 21;
+
+/** periodize.recovery_days: the easy days after an A or B race (0: the two easy days every such race has). */
+export function recoveryDays(g: StoredGoal): number {
+  if (g.priority !== "A" && g.priority !== "B") return 0;
+  let days = g.distance_km ? Math.ceil(g.distance_km / (RECOVERY_KM_PER_DAY[g.sport] ?? RECOVERY_KM_PER_DAY.run))
+    : g.priority === "A" ? RECOVERY_A_DEFAULT : 0;
+  days = Math.min(days, RECOVERY_MAX_DAYS);
+  if (g.priority === "B" && days < RECOVERY_B_FROM) return 0;
+  return days > 2 ? days : 0;
+}
 
 export interface Level {
   start_minutes: number;
@@ -200,8 +215,14 @@ export function periodize(r: StoredRequest): Skeleton {
     for (let w = taperFirst; w <= n; w++) kinds[w - 1] = "taper";
     kinds[n - 1] = "race";
     let lastTest = 0;
+    // No test in a week with days of recovery after a race: the next easy week.
+    const rest = r.goals.filter((g) => g !== goal).map((g) => [g.date, addDays(g.date, recoveryDays(g))] as const);
+    const resting = new Set<number>();
+    for (let w = 1; w <= n; w++)
+      for (const [a, b] of rest)
+        if (a < addDays(start, 7 * (w - 1) + 6) && b >= addDays(start, 7 * (w - 1)) && b > a) resting.add(w);
     for (let w = 1; w < taperFirst; w++)
-      if (kinds[w - 1] === "easy" && w - lastTest >= RETEST_MIN_GAP && n - w >= RETEST_BEFORE_GOAL) {
+      if (kinds[w - 1] === "easy" && w - lastTest >= RETEST_MIN_GAP && n - w >= RETEST_BEFORE_GOAL && !resting.has(w)) {
         kinds[w - 1] = "test";
         lastTest = w;
       }
@@ -226,6 +247,8 @@ export function periodize(r: StoredRequest): Skeleton {
     if (idx >= 1 && idx <= n) {
       if (!byWeek.has(idx)) byWeek.set(idx, []);
       byWeek.get(idx)!.push(g);
+    } else if (g.date < start && addDays(g.date, recoveryDays(g)) >= start) {
+      notes.push(note("plan.note.recovery_before", { name: g.name, until: addDays(g.date, recoveryDays(g)) }));
     } else notes.push(note("plan.note.goal_outside", { name: g.name }));
   }
 

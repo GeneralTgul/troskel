@@ -12,7 +12,8 @@ import {
   minutes, note, ownCapacity, planRoles, roleWeight, sketchOf, speedFromHr, strengthCount, weekMinutes, zoneSeconds,
 } from "./models";
 import {
-  LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5, secondSlots,
+  LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, recoveryDays, round5,
+  secondSlots,
 } from "./periodize";
 import { addDays, cmp, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
@@ -25,6 +26,8 @@ export const SECOND_WEIGHT = 0.7;
 /** A supporting sport's smaller long workout: at least this long, at most this share of the long run. */
 export const SUPPORT_LONG_MIN = 60;
 export const SUPPORT_LONG_OF_MAIN = 0.75;
+/** The longest workout in the first and the second half of the recovery after a race (engine.RECOVERY_MAX). */
+export const RECOVERY_MAX = [30, 45];
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -189,6 +192,9 @@ class Filler {
   readonly blocked = new Set<IsoDate>();
   readonly capped = new Map<IsoDate, number>();
   readonly raceDates: Set<IsoDate>;
+  /** Recovery after a race that is not the plan's goal: the race and its last day of recovery. */
+  readonly recovery: [StoredGoal, IsoDate][] = [];
+  readonly recovering = new Set<IsoDate>();
 
   constructor(readonly request: StoredRequest, skeleton: Skeleton, readonly planId: string) {
     this.goal = skeleton.goal;
@@ -215,6 +221,18 @@ class Filler {
         this.blocked.add(addDays(g.date, d));
       }
       if (major) PRE_RACE_MAX.forEach((m, i) => this.capped.set(addDays(g.date, -(i + 1)), m));
+    }
+    for (const g of sortedBy(request.goals, (g) => g.date)) {
+      const days = recoveryDays(g);
+      if (g === this.goal || days === 0 || g.date > last || addDays(g.date, days) < first) continue;
+      this.recovery.push([g, addDays(g.date, days)]);
+      for (let k = 1; k <= days; k++) {
+        const d = addDays(g.date, k);
+        const cap = k <= floordiv(days + 1, 2) ? RECOVERY_MAX[0] : RECOVERY_MAX[1];
+        this.recovering.add(d);
+        this.blocked.add(d);
+        this.capped.set(d, Math.min(this.capped.get(d) ?? cap, cap));
+      }
     }
   }
 
@@ -261,7 +279,8 @@ class Filler {
     const n = Math.min(avail.length + seconds.length, level.max_sessions, Math.max(1, floordiv(ceiling, MIN_SESSION)));
     const majorRace = spec.goals.some(isAB);
     const longDay = addDays(spec.monday, this.longSlot.weekday);
-    const wantLong = n >= 2 && avail.includes(this.longSlot) && !majorRace && !this.raceDates.has(addDays(longDay, -1));
+    const wantLong = n >= 2 && avail.includes(this.longSlot) && !majorRace && !this.raceDates.has(addDays(longDay, -1))
+      && !this.recovering.has(longDay);
     const chosen = avail.length ? spread(avail, Math.min(n, avail.length), wantLong ? this.longSlot : null) : [];
     const doubles = n - chosen.length; // second workouts of a day: only once every day has one
     const day = new Map(chosen.map((s) => [s.weekday, addDays(spec.monday, s.weekday)]));
@@ -295,6 +314,9 @@ class Filler {
     const notes: StoredNote[] = [note(`plan.week.focus.${spec.kind === "load" ? spec.block : spec.kind}`)];
     for (const g of spec.goals)
       if (g !== final) notes.push(note(`plan.week.race_${g.priority.toLowerCase()}`, { name: g.name }));
+    for (const [g, until] of this.recovery)
+      if (addDays(g.date, 1) <= addDays(spec.monday, 6) && until >= spec.monday)
+        notes.push(note("plan.week.recovery", { name: g.name, until }));
     const week: StoredWeek = { index: spec.index, monday: spec.monday, block: spec.block, kind: spec.kind,
       target_minutes: spec.target_minutes, notes, workouts };
     // ---- what the next week needs to know
@@ -326,6 +348,8 @@ class Filler {
       if (isAB(g)) for (let k = 1; k <= STRENGTH_CLEAR_DAYS; k++) closed.add(addDays(g.date, -k));
       if (g === this.goal) for (let k = 1; k < 7; k++) closed.add(addDays(g.date, k));
     }
+    for (const [g, until] of this.recovery) // the first half of a recovery
+      for (let k = 1; k <= floordiv(daysBetween(g.date, until) + 1, 2); k++) closed.add(addDays(g.date, k));
     const cands = [...days.keys()].sort((a, b) => a - b).filter((wd) => !closed.has(days.get(wd)!));
     if (!cands.length) return [];
     const on = new Map<IsoDate, StoredWorkout[]>();

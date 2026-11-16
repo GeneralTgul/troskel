@@ -191,6 +191,19 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
                                  level="trained", recent_weekly_minutes=360,
                                  roles=(SportRole("run", "main"), SportRole("bike", "support"))), None),
     ]
+    # Recovery after a race (#666): a long milestone, an earlier A race, a race just before the plan, and a bike race.
+    out += [
+        ("recovery-milestone", replace(base, goals=base.goals + (Goal("Halvmaran i vinter", date(2027, 1, 2), distance_km=21.1,
+                                                                       priority="B"),), strength_sessions=2), None),
+        ("recovery-two-a-goals", replace(demo.demo_request(20), goals=demo.demo_request(20).goals
+                                         + (Goal("Vintermaran", date(2027, 1, 9), distance_km=42.2),)), None),
+        ("recovery-before-start", replace(base, goals=(Goal("Förra maran", date(2026, 11, 14), distance_km=42.2,
+                                                            priority="B"),), duration_weeks=12), None),
+        ("recovery-bike-race", replace(base, availability=sl(tuple((r[0], r[1], None, "core", rb) for r in DEMO_SLOTS)),
+                                       roles=(SportRole("run", "main"), SportRole("bike", "support")),
+                                       goals=base.goals + (Goal("Cykelloppet", date(2026, 12, 12), sport="bike",
+                                                                distance_km=150, priority="B"),)), date(2026, 12, 10)),
+    ]
     return out
 
 

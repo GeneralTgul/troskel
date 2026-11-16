@@ -29,6 +29,11 @@ The rules (docs/TRANINGSPLAN.md):
     the first supporting sport gets a long, easy workout in its longest slot that allows it, never on the main sport's
     long run day, the days before and after it or the day after a hard day. It is at most three quarters of the long run and the sport's part
     of the week, at least 60 minutes, and counts in the sport's share and the week's ceilings.
+  - Recovery after a race (#666): after an A race that is not the plan's goal, and after a long B race, the days of
+    recovery (periodize.recovery_days: a day per 3 km in running) are easy: no quality session, no long run, no
+    second workout, every workout at most 30 minutes in their first half and 45 in the second, and no strength in
+    the first half. A race just before the
+    plan's start gives the plan's first days the same. The weeks they fall in say so (plan.week.recovery).
   - Strength (#666, step 3): the coach sets 0-3 sessions a week (PlanRequest.strength_sessions). They come on
     top of the endurance week, which is filled first and never changes for them (``_Filler._strength``):
     never on a race day, the day before a race or the three days before an A or B race; at most one in the race
@@ -51,12 +56,13 @@ from . import library
 from .models import (BORROWS, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot,
                      SportRole, Week, WeekSketch, Workout)
 from .periodize import (LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5,
-                        second_slots)
+                        recovery_days, second_slots)
 
 ENGINE_VERSION = "8"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
                                # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming;
                                # 7: each sport's own test, and the sweet spot as a band of the threshold power;
-                               # 8: two workouts a day, a smaller long workout in a supporting sport
+                               # 8: two workouts a day, a smaller long workout in a supporting sport, recovery
+                               #    after a race
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -75,6 +81,7 @@ SECOND = "-2"                 # the key suffix of a day's second workout (period
 SECOND_WEIGHT = 0.7           # a second workout's weight when the easy minutes are shared, as a recovery run's
 SUPPORT_LONG_MIN = 60         # a supporting sport's long workout: at least this long, else none
 SUPPORT_LONG_OF_MAIN = 0.75   # at most this share of the main sport's long run
+RECOVERY_MAX = (30, 45)       # the longest workout in the first and the second half of the recovery after a race
 
 
 def floor5(minutes: float) -> int:
@@ -238,6 +245,20 @@ class _Filler:
             if major:
                 for d, minutes in enumerate(PRE_RACE_MAX, start=1):
                     self.capped[g.date - timedelta(days=d)] = minutes
+        # Recovery after a race that is not the plan's goal, also one just before the plan: easy days, none long.
+        self.recovery: list[tuple[Goal, date]] = []      # the race and its last day of recovery
+        self.recovering: set[date] = set()
+        for g in sorted(request.goals, key=lambda g: g.date):
+            days = recovery_days(g)
+            if g is self.goal or days == 0 or g.date > last or g.date + timedelta(days=days) < first:
+                continue
+            self.recovery.append((g, g.date + timedelta(days=days)))
+            for k in range(1, days + 1):
+                d = g.date + timedelta(days=k)
+                cap = RECOVERY_MAX[0] if k <= (days + 1) // 2 else RECOVERY_MAX[1]
+                self.recovering.add(d)
+                self.blocked.add(d)
+                self.capped[d] = min(self.capped.get(d, cap), cap)
 
     def _key(self, day: date, suffix: str = "") -> str:
         iso = day.isocalendar()
@@ -279,7 +300,8 @@ class _Filler:
         major_race = any(g.priority in ("A", "B") for g in spec.goals)
         long_day = spec.monday + timedelta(days=self.long_slot.weekday)
         want_long = (n >= 2 and self.long_slot in avail and not major_race
-                     and long_day - timedelta(days=1) not in self.race_dates)   # no long run the day after a race
+                     and long_day - timedelta(days=1) not in self.race_dates    # no long run the day after a race
+                     and long_day not in self.recovering)
         chosen = _spread(avail, min(n, len(avail)), self.long_slot if want_long else None) if avail else []
         doubles = n - len(chosen)     # second workouts of a day: only once every day has one
         day = {s.weekday: spec.monday + timedelta(days=s.weekday) for s in chosen}
@@ -318,6 +340,9 @@ class _Filler:
         for g in spec.goals:
             if g is not final:
                 week.notes.append(Note.of(f"plan.week.race_{g.priority.lower()}", name=g.name))
+        for g, until in self.recovery:
+            if g.date + timedelta(days=1) <= spec.monday + timedelta(days=6) and until >= spec.monday:
+                week.notes.append(Note.of("plan.week.recovery", name=g.name, until=until.isoformat()))
         # ---- what the next week needs to know
         if spec.kind == "load":
             for fam, step in used_steps.items():
@@ -353,6 +378,8 @@ class _Filler:
                 closed |= {g.date - timedelta(days=k) for k in range(1, STRENGTH_CLEAR_DAYS + 1)}
             if g is self.goal:     # nothing after the plan's goal
                 closed |= {g.date + timedelta(days=k) for k in range(1, 7)}
+        for g, until in self.recovery:     # the first half of a recovery
+            closed |= {g.date + timedelta(days=k) for k in range(1, ((until - g.date).days + 1) // 2 + 1)}
         cands = [wd for wd in sorted(days) if days[wd] not in closed]
         if not cands:
             return []
