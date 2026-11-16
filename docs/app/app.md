@@ -51,9 +51,17 @@ Innehållet är det sparade schemat ur `plan/codec.py` (begäran och planen), id
 
 ## Mina tider och planmotorn
 
-När idrottaren sparar nya tider räknar appen om schemat från i morgon med planmotorn, samma regler som i Tröskel. Motorn är ännu inte portad till appen. Till dess sparas tiderna på enheten, och appen säger att de används när coachen skickar ett nytt schema.
+När idrottaren sparar nya tider räknar appen om schemat från i morgon med planmotorn, samma regler som i Tröskel. Motorn i appen är en översättning till TypeScript av `src/lopanalys/plan/` (`periodize`, `engine`, `rolling` och passbiblioteket), en fil per Python-modul i `app/src/engine/`, och den provas mot Python-motorn (se nedan).
 
-Gränssnittet mot motorn finns i `app/src/engine/index.ts`: `rebuild(stored, { slots, unavailable, from })` ger ett nytt sparat schema där passen före `from` är orörda.
+`rebuild(stored, { slots, unavailable, from })` i `app/src/engine/index.ts` ger ett nytt sparat schema:
+
+- Underlaget får de nya tiderna, och motorn bygger hela schemat på nytt med samma schema-id. Blocken och målet ligger kvar, och veckotiden följer vad de nya tiderna rymmer.
+- En vecka som slutar före `from` ligger kvar som den sparades. I veckan som `from` faller i ligger passen före `from` kvar med sin status, och resten är nytt.
+- I ett rullande schema står gränsen för passen kvar. Veckorna efter den blir skisser av det nya schemat, så att *Förnya* i Tröskel senare ger samma pass.
+- De dagar som inte går stryks passen (loppen ligger kvar). Motorn flyttar dem inte till en annan dag, eftersom motorn i Python inte har dagar som faller bort.
+- Går det inte att göra ett schema, till exempel utan någon dag för löpning, sparas tiderna på enheten som förut, och appen säger att de används när coachen skickar ett nytt schema.
+
+Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriven med Python-motorns egna funktioner. Målen i puls och fart räknas inte om i appen: de beror på testet, inte på tiderna, och följer med schemat från Tröskel.
 
 ## Integritet
 
@@ -82,4 +90,6 @@ Exempelschemat, provens fixturer och planens texter kommer från Python:
 python app/scripts/make_fixtures.py
 ```
 
-Det skriver `app/public/demo.troskel`, länken och kalenderfilerna i `app/test/fixtures/` och `app/src/i18n/plan.*.json`. Provet `tests/plan/test_link.py` stoppar när någon av dem inte stämmer med Python, till exempel efter en ändrad text i `plan.sv.json`. Appens egna texter står i `app/src/i18n/ui.sv.json` och `ui.en.json`.
+Det skriver `app/public/demo.troskel`, länken och kalenderfilerna i `app/test/fixtures/` och `app/src/i18n/plan.*.json`. Provet `tests/plan/test_link.py` stoppar när någon av dem inte stämmer med Python, till exempel efter en ändrad text i `plan.sv.json`.
+
+Det skriver också `app/test/fixtures/engine.json.gz`: scheman som Python-motorn bygger för demolöparna (nybörjare, motionär och vältränad, 5 till 20 veckor, med och utan mål, olika tider, rullande scheman och felen), förnyelser av ett rullande schema och `rebuild` med tidsändringar. `app/test/engine.test.ts` jämför motorn i appen med varje fall i sin helhet. Ändras motorn i Python stoppar `tests/plan/test_link.py` tills fixturerna skrivs om, och sedan stoppar Vitest tills TypeScript-motorn följer med. Python-motorn räknar med flyttal, så TypeScript-motorn gör räkneoperationerna i samma ordning och avrundar som Python (`app/src/engine/py.ts`). Fixturerna skrivs med Python 3.12 eller senare, där `sum` lägger ihop flyttal med kompensation. Appens egna texter står i `app/src/i18n/ui.sv.json` och `ui.en.json`.

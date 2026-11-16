@@ -3,7 +3,8 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App, TABS, type Tab } from "../src/App";
-import { EngineMissing, stub, type Engine, type NewAvailability } from "../src/engine";
+import { EngineMissing, engine, stub, type Engine, type NewAvailability } from "../src/engine";
+import { weekday } from "../src/model/dates";
 import { setLang } from "../src/i18n";
 import { liveDemo } from "../src/model/demo";
 import { memoryStore } from "../src/model/storage";
@@ -139,6 +140,22 @@ describe("my times", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].from).toBe("2026-11-26");
     expect(store.plan()!.plan.engine_version).toBe("fake");
+    expect(store.times()).toBeNull();
+    expect(root.textContent).toContain("omräknat från i morgon");
+  });
+
+  it("rebuild the plan with the real engine", async () => {
+    const before = demoPlan();
+    const { store } = await mount({ plan: demoPlan(), tab: "times", engine });
+    await click(root.querySelectorAll<HTMLInputElement>(".time-rows input[type=checkbox]")[0]); // no Mondays
+    await save();
+    const after = store.plan()!;
+    const all = (p: StoredPlan) => p.plan.weeks.flatMap((w) => w.workouts);
+    const mondays = (p: StoredPlan) => all(p).filter((w) => w.date >= "2026-11-26" && weekday(w.date) === 0 && !w.goal);
+    expect(all(after).filter((w) => w.date < "2026-11-26")).toEqual(all(before).filter((w) => w.date < "2026-11-26"));
+    expect(mondays(before).length).toBeGreaterThan(0);
+    expect(mondays(after)).toEqual([]);
+    expect(after.request.availability.map((s) => s.weekday)).toEqual([1, 3, 5, 6]);
     expect(store.times()).toBeNull();
     expect(root.textContent).toContain("omräknat från i morgon");
   });
