@@ -10,6 +10,10 @@
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
 - [Bygga och köra lokalt](#bygga-och-köra-lokalt)
+
+**Undersidor:**
+
+- [Appen i App Store och Google Play](butikerna/butikerna.md)
 <!-- /toc -->
 
 ## Vad appen gör

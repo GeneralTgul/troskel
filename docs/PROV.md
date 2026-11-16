@@ -15,6 +15,7 @@
 - [Rapporten och utskriften](#rapporten-och-utskriften)
 - [FIT-filen och mejlet](#fit-filen-och-mejlet)
 - [Programmet](#programmet)
+- [Appen i telefonen](#appen-i-telefonen)
 <!-- /toc -->
 
 ## Kameran
@@ -227,3 +228,16 @@ I testsviten läses FIT-filen tillbaka med kontrollsummorna, och mejlet går til
 | Exe-filen med cryptography | Windows-bygget och egenkontrollen | Bygget går igenom, egenkontrollen listar `cryptography.hazmat.primitives.ciphers.aead` som ok, och *Säkerhetskopiera* fungerar i den installerade exe-filen | |
 | Videoanalysen | Analys efter ett löptekniktest | Analysen går i bakgrunden, fynden och nyckelbilderna visas och sparas | |
 | Engelska | Starta med `--lang en` och gå igenom alla sidor | Ingen svensk text kvar, inget klipps | |
+
+## Appen i telefonen
+
+Appen för idrottaren ([Appen i App Store och Google Play](app/butikerna/butikerna.md)) är provad med Vitest och byggd i GitHub Actions, men har inte körts i en riktig telefon eller surfplatta.
+
+| Del | Prov | Godkänt när | Läge |
+|---|---|---|---|
+| Webbappen på hemskärmen | Öppna `generaltgul.github.io/troskel/app/` i Safari på en iPhone och i Chrome på en Android-telefon, lägg den på hemskärmen och öppna en länk från Tröskel | Schemat syns, appen startar från hemskärmen utan adressfält och fungerar i flygplansläge | |
+| APK:n på Android | Installera APK:n från körningen *App* i GitHub Actions | Appen startar med ikonen och startbilden, och länken, filen och QR-koden ger schemat | |
+| QR-koden | *Läs en QR-kod* i APK:n och på iPhone, med koden från Tröskel | Appen frågar om kameran första gången, läser koden och sparar schemat; nekad kamera ger ett begripligt besked | |
+| Kalenderfilen | *Lägg passen i kalendern* i APK:n och på iPhone | Telefonens kalender öppnar filen och passen hamnar på rätt dagar och tider | |
+| TestFlight | Bygget till TestFlight med App Store Connect-nyckeln | Bygget kommer fram i App Store Connect och går att installera med TestFlight | |
+| Play internt test | Första AAB:n för hand i Play Console, sedan *Ladda upp* i arbetsflödet | Utkastet finns på spåret för internt test | |
