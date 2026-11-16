@@ -340,5 +340,18 @@
  "report.power.zones": "Power zones",
  "report.power.zones_sub": "Coggan's seven zones in per cent of FTP",
  "report.power.col_w": "Power W",
- "report.power.note": "FTP is an estimate with an error of about 3–5 % and is not the same number as the threshold (LT2) from a lactate step test. The zone borders differ a little between sources."
+ "report.power.note": "FTP is an estimate with an error of about 3–5 % and is not the same number as the threshold (LT2) from a lactate step test. The zone borders differ a little between sources.",
+ "report.plan.sports.col.sport": "Sport",
+ "report.plan.sports.col.role": "Role",
+ "report.plan.sports.col.share": "Share of the time",
+ "report.plan.sports.col.test": "Zones based on",
+ "report.plan.role.main": "Main sport",
+ "report.plan.role.support": "Supporting",
+ "report.plan.role.maintenance": "Maintenance",
+ "report.plan.sports.borrows": "Borrows the zones of {sport}",
+ "report.plan.sports.effort": "No test: perceived effort",
+ "report.plan.sports.max_hr": "Max HR",
+ "report.plan.week_sports": "The week's time per sport",
+ "report.plan.load": "Load",
+ "report.plan.load_note": "minutes × zone × sport, to compare the weeks"
 }

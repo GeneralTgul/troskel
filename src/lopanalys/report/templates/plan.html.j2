@@ -8,7 +8,7 @@
 {% include "plan.css" %}
 </style>
 </head>
-<body class="kind-plan">
+<body class="kind-plan{% if multi %} multi{% endif %}">
 {# ============================== page 1: the overview ============================== #}
 <div class="cover plan-cover">
 <header class="brand cover-brand">
@@ -31,6 +31,18 @@
     {% for f in facts %}<div{% if f.wide %} class="wide"{% endif %}>{% if f.k %}<dt>{{ f.k }}</dt><dd>{{ f.v }}</dd>{% endif %}</div>
     {% endfor %}
   </dl>
+  {% if sports %}
+  <table class="plan-sports">
+    <thead><tr><th class="first">{{ t("report.plan.sports.col.sport") }}</th><th>{{ t("report.plan.sports.col.role") }}</th>
+      <th class="n">{{ t("report.plan.sports.col.share") }}</th><th class="last">{{ t("report.plan.sports.col.test") }}</th></tr></thead>
+    <tbody>
+    {% for s in sports %}
+      <tr><td class="first b"><span class="swatch" style="background: {{ s.color }}"></span>{{ s.name }}</td><td>{{ s.role }}</td>
+        <td class="n num">{{ s.share }} %</td><td class="last">{{ s.basis }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 </section>
 
 <section class="summary">
@@ -58,7 +70,7 @@
 </figure>
 
 <div class="cover-zones">
-  <div class="cz-head"><b>{{ t("plan.pdf.zones.title") }}</b><span>{{ zones_sub }}</span></div>
+  <div class="cz-head"><b>{{ t("plan.pdf.zones.title") }}</b><span>{% if multi %}{{ main_sport }} · {% endif %}{{ zones_sub }}</span></div>
   <div class="cz-bar" style="grid-template-columns: repeat({{ zones | length }}, 1fr)">
     {% for z in zones %}
     <div class="cz">
@@ -69,6 +81,12 @@
     </div>
     {% endfor %}
   </div>
+  {% for s in sport_zones %}
+  <div class="cz-sport" style="grid-template-columns: 18mm repeat({{ zones | length }}, 1fr)">
+    <div class="cz-sport-name"><i style="background: {{ s.color }}"></i>{{ s.name }}</div>
+    {% for c in s.cells %}<div class="num">{% if c.hr %}<span class="cz-hr">{{ c.hr }}</span>{% endif %}{% if c.load %}<span>{{ c.load }}</span>{% endif %}</div>{% endfor %}
+  </div>
+  {% endfor %}
 </div>
 
 <div class="plan-promise"><b>{{ t("plan.pdf.promise.title") }}</b> {{ t("plan.pdf.promise.text") }}</div>
@@ -166,13 +184,19 @@
     {% endfor %}
     </tbody>
   </table>
-  {% if w.zone_bar %}
   <div class="week-foot">
+  {% if w.zone_bar %}
     <h2>{{ t("plan.pdf.week_zones") }}</h2>
     <div class="zb">{% for z in w.zone_bar %}<i style="background: {{ z.color }}; flex: {{ "%.2f" | format(z.pct) }} 0 0"></i>{% endfor %}</div>
     <div class="zl">{% for z in w.zone_bar %}<span><i style="background: {{ z.color }}"></i>{{ z.code }} {{ t("plan.fmt.minutes", m=z.minutes) }}</span>{% endfor %}</div>
-  </div>
   {% endif %}
+  {% if w.sport_bar %}
+    <h2 class="sb-h">{{ t("report.plan.week_sports") }}</h2>
+    <div class="zb sb">{% for s in w.sport_bar %}<i style="background: {{ s.color }}; flex: {{ "%.2f" | format(s.pct) }} 0 0"></i>{% endfor %}</div>
+    <div class="zl">{% for s in w.sport_bar %}<span><i style="background: {{ s.color }}"></i>{{ s.name }} {{ t("plan.fmt.minutes", m=s.minutes) }}</span>{% endfor %}</div>
+  {% endif %}
+  {% if w.load %}<div class="week-load"><b>{{ t("report.plan.load") }}</b> <span class="num">{{ w.load }}</span> · {{ t("report.plan.load_note") }}</div>{% endif %}
+  </div>
 </section>
 {% endfor %}
 

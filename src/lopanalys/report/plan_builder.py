@@ -2,23 +2,28 @@
 
 Page 1 is the overview (goal, blocks, every week as a bar in the watch's zone colours, the zones),
 page 2 explains how to read the plan, then one page per week with a row per day to tick off.
+A plan with several sports (#666, step 4) adds a table of the sports on the cover (share, role, test and
+its date), the bike's watt and the SkiErg's watt and time per 500 m in *Dina zoner*, one colour per sport
+(none of them a zone colour) beside each workout's title, and the week's time per sport as a small bar.
+The week page lists a day's workouts in clock order and ends with the week's load (minutes x zone x sport).
+
 The HTML goes through report.pdf like the test report. Targets are resolved from the athlete's
 latest test when the page is rendered (plan.resolve), never stored.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from html import escape
 from typing import Any
 
 from markupsafe import Markup
 
 from lopanalys.core.i18n import language, set_language, t
-from lopanalys.core.zone_colors import zone_color
+from lopanalys.core.zone_colors import sport_color, zone_color
 from lopanalys.plan import library
-from lopanalys.plan.models import WEEKDAY_KEYS, ZONES, Plan, Week
+from lopanalys.plan.models import BORROWS, WEEKDAY_KEYS, ZONES, Capacity, Plan, Week
 from lopanalys.plan.periodize import core_slots
-from lopanalys.plan.resolve import targets
+from lopanalys.plan.resolve import SPLIT_SPORTS, split_str, targets
 from lopanalys.plan.text import duration, hours, progress_axis, volume_start, workout_lines
 
 from .builder import ASSETS, Branding, _css_str, _data_uri_image, _env, _footer_line, _safe_color, date_long
@@ -199,6 +204,87 @@ def _zone_bar(zm: dict[str, float]) -> list[dict[str, Any]]:
              "pct": 100 * zm.get(z, 0.0) / total} for i, z in enumerate(ZONES) if total and zm.get(z, 0.0) >= 0.5]
 
 
+def _sport_name(sport: str) -> str:
+    return t(f"plan.sport.{sport}")
+
+
+def _basis(cap: Capacity) -> str:
+    """'Laktattrappa · 13 november 2026', with the marks for estimated zones; 'Inget test' without one."""
+    if cap.anchors is None:
+        return t("plan.pdf.fact.no_test")
+    basis = " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x) \
+        or t("report.plan.sports.max_hr")
+    if cap.estimated and cap.tested:
+        basis += " · " + t("assessments.zones.estimated").lower()
+    if cap.speed_from_hr:
+        basis += " · " + t("assessments.hrzones.speed_from_hr").lower()
+    return basis
+
+
+def _sports(plan: Plan) -> list[dict[str, Any]]:
+    """The sports table of the cover: one row per sport, the main sport first, with the share of the weekly
+    time in percent (the shares are weights) and what its zones come from."""
+    req = plan.request
+    roles = req.plan_roles()
+    total = sum(r.weight for r in roles) or 1
+    out = []
+    for r in roles:
+        own = req.own_capacity(r.sport)
+        if own is None and r.sport in BORROWS:
+            basis = t("report.plan.sports.borrows", sport=_sport_name(BORROWS[r.sport]))
+        elif own is None and r.sport == "swim":
+            basis = t("report.plan.sports.effort")
+        else:
+            basis = _basis(req.capacity_for(r.sport))
+        out.append({"sport": r.sport, "name": _sport_name(r.sport), "color": sport_color(r.sport),
+                    "role": t(f"report.plan.role.{r.role}"), "share": round(100 * r.weight / total), "basis": basis})
+    return out
+
+
+def _sport_zones(plan: Plan) -> list[dict[str, Any]]:
+    """The other sports' rows under *Dina zoner*: the sports whose test gives watt (the bike; the SkiErg
+    also the time per 500 m), zone by zone."""
+    req = plan.request
+    out = []
+    for sp in req.plan_sports:
+        if sp == req.main_sport:          # its watt is in the zones above
+            continue
+        cap = req.own_capacity(sp)
+        zt = targets(cap, plan.zone_system, sp) if cap is not None else {}
+        if not any(z.power_text for z in zt.values()):
+            continue
+        out.append({"name": _sport_name(sp), "color": sport_color(sp),
+                    "cells": [_compact(zt[z]) if z in zt else {"hr": "", "load": ""} for z in ZONES]})
+    return out
+
+
+def _ends(lo: str, hi: str, times: bool = False) -> str:
+    """'lo–hi', '< hi' or '> lo': a short range for the cover's narrow cells. ``times``: the values are times
+    per 500 m, where the easier end is the slower (the larger) one."""
+    if lo and hi:
+        return f"{lo}–{hi}"
+    below, above = (">", "<") if times else ("<", ">")
+    return f"{below} {hi}" if hi else (f"{above} {lo}" if lo else "")
+
+
+def _compact(tg: Any) -> dict[str, str]:
+    """A zone's targets in a narrow cell: '140–150' and '180–210 W · 2:10–2:04'; the easiest zone
+    '< 160 W · > 2:10'."""
+    hr = _ends(str(tg.hr_low or ""), str(tg.hr_high or ""))
+    watt = _ends(str(tg.power_low_w or ""), str(tg.power_high_w or ""))
+    split = _ends(split_str(tg.power_low_w), split_str(tg.power_high_w), True) if tg.sport in SPLIT_SPORTS else ""
+    load = " · ".join(x for x in (f"{watt} W" if watt else "", split) if x)
+    return {"hr": hr, "load": load}
+
+
+def _sport_bar(wk: Week) -> list[dict[str, Any]]:
+    """The week's planned minutes per sport, the largest first."""
+    sm = wk.sport_minutes()
+    total = sum(sm.values())
+    return [{"name": _sport_name(sp), "color": sport_color(sp), "minutes": m, "pct": 100 * m / total}
+            for sp, m in sorted(sm.items(), key=lambda x: -x[1]) if total and m > 0]
+
+
 def _goal_line(g: Any) -> str:
     return " · ".join(x for x in (g.name, t("plan.goal.distance", km=fmt_num(g.distance_km, 1 if g.distance_km % 1 else 0))
                                   if g.distance_km else "", date_long(g.date), g.target) if x)
@@ -207,7 +293,7 @@ def _goal_line(g: Any) -> str:
 def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     req = plan.request
     cap = req.capacity_for(req.main_sport)
-    zt = targets(cap, plan.zone_system)
+    zt = targets(cap, plan.zone_system, req.main_sport)
     goal = plan.goal
     slots = core_slots(req)
     load = [wk.minutes for wk in plan.weeks if wk.kind == "load"] or [wk.minutes for wk in plan.weeks]
@@ -216,6 +302,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
 
     # ---- cover
     period = {"k": t("plan.pdf.fact.period"), "v": f"{date_long(plan.start)} – {date_long(plan.end)}"}
+    multi = len(req.plan_roles()) > 1
     if cap.anchors is None:
         basis = t("plan.pdf.fact.no_test")
     else:
@@ -226,7 +313,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
             basis += " · " + t("assessments.hrzones.speed_from_hr").lower()
     start_minutes, source = volume_start(plan)
     # Three columns: a wide field (two columns) is always followed by a narrow one.
-    narrow = [period, {"k": t("plan.pdf.fact.based_on"), "v": basis},
+    narrow = [period, *([] if multi else [{"k": t("plan.pdf.fact.based_on"), "v": basis}]),
               {"k": t("plan.pdf.fact.level"), "v": t("plan.pdf.fact.level_default" if source == "default"
                                                    else "plan.pdf.fact.level_value", level=t(f"plan.level.{req.level}"),
                                                     hours=hours(req.recent_weekly_minutes if source == "capped"
@@ -255,7 +342,8 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     ]
     zones = [{"code": z, "color": zone_color(i), "name": zt[z].name if z in zt else t(f"assessments.zones.garmin.{z}.name"),
               "hr": (f"{zt[z].hr_low}–{zt[z].hr_high}" if z in zt and zt[z].hr_low and zt[z].hr_high else ""),
-              "hr_text": zt[z].hr_text if z in zt else "", "pace": zt[z].pace_text if z in zt else "",
+              "hr_text": zt[z].hr_text if z in zt else "",
+              "pace": " · ".join(x for x in (zt[z].power_text, zt[z].pace_text) if x) if z in zt else "",
               "purpose": t(f"assessments.zones.garmin.{z}.purpose")} for i, z in enumerate(ZONES)]
 
     # ---- the guide: only the workouts this plan uses
@@ -278,7 +366,7 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     block_names = {b.kind: b.name for b in plan.blocks}
     for wk in plan.detailed_weeks:
         by_day: dict[date, list] = {}
-        for w in wk.workouts:
+        for w in sorted(wk.workouts, key=lambda w: (w.date, w.start is None, w.start or time.min)):
             by_day.setdefault(w.date, []).append(w)
         days = []
         for i in range(7):
@@ -294,13 +382,15 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
                 items.append({"title": w.title, "purpose": (race or w.purpose),
                               "duration": duration(w.seconds) if w.seconds else "", "lines": lines,
                               "start": f"{w.start:%H:%M}" if w.start else "", "race": bool(w.goal),
-                              "quality": w.quality, "color": zone_color(ZONES.index(top)) if top else INK})
+                              "quality": w.quality, "sport": _sport_name(w.sport) if multi else "",
+                              "color": sport_color(w.sport) if multi else zone_color(ZONES.index(top)) if top else INK})
             days.append({"weekday": _weekday(d), "date": _day(d), "workouts": items})
         weeks.append({"index": wk.index, "dates": f"{date_long(wk.monday)} – {date_long(wk.sunday)}",
                       "block": block_names.get(wk.block, ""), "kind": t(f"plan.week.kind.{wk.kind}"),
                       "notes": [n.text for n in wk.notes], "total": hours(wk.minutes),
                       "sessions": wk.sessions,
-                      "easy_pct": round(100 * wk.easy_share), "days": days, "zone_bar": _zone_bar(wk.zone_minutes())})
+                      "easy_pct": round(100 * wk.easy_share), "days": days, "zone_bar": _zone_bar(wk.zone_minutes()),
+                      "sport_bar": _sport_bar(wk) if multi else [], "load": round(wk.load)})
 
     # ---- the weeks after the detail horizon: one row each, without workouts
     sketch = [{"index": wk.index, "dates": _span(wk.monday, wk.sunday), "block": block_names.get(wk.block, ""),
@@ -318,6 +408,8 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
         "logo": _data_uri_image(branding.logo_path, 800) if branding.logo_path else None,
         "accent": _safe_color(branding.accent_color), "font_dir": (ASSETS / "fonts").as_uri(),
         "created": date_long(plan.created), "facts": facts, "tiles": tiles, "zones": zones,
+        "multi": multi, "sports": _sports(plan) if multi else [], "sport_zones": _sport_zones(plan),
+        "main_sport": _sport_name(req.main_sport),
         "zones_estimated": cap.anchors is not None and cap.estimated, "has_targets": bool(zt),
         "zones_sub": t("plan.pdf.zones.estimated_hr" if cap.anchors is not None and cap.speed_from_hr else
                        "plan.pdf.zones.estimated" if cap.anchors is not None and cap.estimated else

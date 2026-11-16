@@ -340,5 +340,18 @@
  "report.power.zones": "Effektzoner",
  "report.power.zones_sub": "Coggans sju zoner i procent av FTP",
  "report.power.col_w": "Effekt W",
- "report.power.note": "FTP är en uppskattning med ett fel på cirka 3–5 % och är inte samma tal som tröskeln (LT2) ur en laktattrappa. Zongränserna skiljer något mellan källor."
+ "report.power.note": "FTP är en uppskattning med ett fel på cirka 3–5 % och är inte samma tal som tröskeln (LT2) ur en laktattrappa. Zongränserna skiljer något mellan källor.",
+ "report.plan.sports.col.sport": "Idrott",
+ "report.plan.sports.col.role": "Roll",
+ "report.plan.sports.col.share": "Andel av tiden",
+ "report.plan.sports.col.test": "Zonerna bygger på",
+ "report.plan.role.main": "Huvudidrott",
+ "report.plan.role.support": "Stödjande",
+ "report.plan.role.maintenance": "Underhåll",
+ "report.plan.sports.borrows": "Lånar zonerna från {sport}",
+ "report.plan.sports.effort": "Inget test: upplevd ansträngning",
+ "report.plan.sports.max_hr": "Maxpulsen",
+ "report.plan.week_sports": "Veckans tid per idrott",
+ "report.plan.load": "Belastning",
+ "report.plan.load_note": "minuter × zon × idrott, för att jämföra veckorna"
 }
