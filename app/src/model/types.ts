@@ -96,6 +96,15 @@ export interface StoredWorkout {
   parts: StoredPart[];
 }
 
+/** A week beyond the rolling plan's horizon: the sums the engine filled it with, without the workouts. */
+export interface StoredSketch {
+  minutes: number;
+  sessions: number; // workouts, races not counted
+  quality: number; // of them hard days
+  longest: number; // the longest run, minutes
+  zones: [ZoneCode | string, number][]; // minutes per zone
+}
+
 export interface StoredWeek {
   index: number; // 1-based
   monday: IsoDate;
@@ -103,7 +112,8 @@ export interface StoredWeek {
   kind: "load" | "easy" | "test" | "taper" | "race" | string;
   target_minutes: number;
   notes: StoredNote[];
-  workouts: StoredWorkout[];
+  workouts: StoredWorkout[]; // a sketched week: only its races
+  sketch?: StoredSketch; // set beyond the horizon of a rolling plan
 }
 
 export interface StoredBlock {
@@ -126,6 +136,8 @@ export interface StoredPlanBody {
   capacity_log: [IsoDate, StoredCapacity][];
   blocks: StoredBlock[];
   weeks: StoredWeek[];
+  /** The last week with workouts (1-based) in a rolling plan; null or missing: every week has its workouts. */
+  horizon?: number | null;
 }
 
 /** One zone's targets, resolved by Tröskel from the athlete's test (resolve.Target without the name). */
