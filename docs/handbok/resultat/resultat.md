@@ -122,7 +122,7 @@ Jämförelsen med klockans VO2max eller ett labbtest är *(inte provat på rikti
 
 ![Sidan Historik: idrottarna till vänster och den valda idrottarens tester till höger](images/historik.png)
 
-*Historik* visar alla tester per idrottare, med datum, test, protokoll, resultat och anteckning. Listan uppe till höger filtrerar på testtyp. Dubbelklicka på ett test, eller markera det och tryck på *Öppna*.
+*Historik* visar alla tester per idrottare, med datum, test, protokoll, resultat och anteckning. Listan uppe till höger filtrerar på testtyp. Dubbelklicka på ett test, eller markera det och tryck på *Öppna*. *Simtest (CSS)* skriver in ett simtest för den valda idrottaren, se [Träningsschema → Simtestet (CSS)](../traningsschema/traningsschema.md#simtestet-css).
 
 **Jämför:** markera två till fyra laktattester och tryck på *Jämför*. Kurvorna ritas i samma diagram, med det senaste testets trösklar utritade, och tabellen visar farten och pulsen vid LT1 och LT2 för varje test.
 
