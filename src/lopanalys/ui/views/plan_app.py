@@ -1,6 +1,7 @@
 """*Till appen* on the plan page: the plan for the athlete's app as a QR code, a link and a ``.troskel`` file.
 
-The three hold the same payload (plan/link.py). The QR code is drawn black on white whatever the theme, large
+The three hold the same plan (plan/link.py): the link and the QR code the short payload, with the request the app
+builds the workouts from, and the file the whole plan. The QR code is drawn black on white whatever the theme, large
 enough to scan from the screen. A link too long for one QR code (share/qr.py) gets a line that says so instead,
 pointing to the mail and the file, which have no limit.
 """

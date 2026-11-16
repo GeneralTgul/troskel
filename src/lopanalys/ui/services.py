@@ -1766,10 +1766,11 @@ def plan_ics(plan: Any) -> bytes:
 
 
 def plan_app(plan: Any) -> tuple[str, bytes]:
-    """The plan for the athlete's app: (the link, the contents of the ``.troskel`` file), from the same payload."""
+    """The plan for the athlete's app: (the link, the contents of the ``.troskel`` file). The link holds the short
+    payload when it gives the same plan (link.link_payload: the app builds the workouts), the file the whole plan."""
     from lopanalys.plan import link
     stored = link.stored_plan(plan)
-    return link.plan_link(stored), link.plan_file(stored)
+    return link.plan_link(link.link_payload(stored)), link.plan_file(stored)
 
 
 def plan_app_file_name(plan: Any) -> str:

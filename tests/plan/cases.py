@@ -83,3 +83,9 @@ CASES = {
     "two_a_day": request(FIVE + MORNING_BIKE, goals=(HALF, SEEDING, PARKRUN), level="trained", recent=330,
                          roles=RUN_BIKE, strength=1),
 }
+
+# A long plan with every sport: four sports, a morning workout beside the evening's on three days, every test
+# and 30 weeks. Its whole plan is too long for one QR code; the short link (plan.link.short_plan) is not.
+MANY_SPORTS_30 = request(for_sports(SEVEN, RUNNING, "bike", "ski", "swim") + for_sports(MORNING_BIKE, "bike", "swim"),
+                         weeks=30, level="trained", recent=None, roles=FOUR, strength=1,
+                         capacity=(TESTED, BIKE_TEST, SKIERG_TEST, SWIM_TEST))

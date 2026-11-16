@@ -10,6 +10,9 @@ The example plan is the demo runner of ``lopanalys.plan.demo`` (12 weeks, a half
 ``rebuild`` here is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
 ``texts`` is what the app shows of a workout in another sport (title, parts and their watt, time per 500 m or per
 100 m), written by text.py and resolve.py.
+``links`` is the short link's data (link.short_plan, format 2) of every plan above that has one: the app builds each
+of them with its engine and gets the stored plan back. ``demo.link.txt`` is the demo plan's link as Tröskel sends
+it (the short one) and ``demo.full.link.txt`` the link with the whole plan (format 1).
 """
 from __future__ import annotations
 
@@ -331,7 +334,27 @@ def engine_fixtures() -> dict[str, Any]:
             raise AssertionError(name)
     return {"engine_version": ENGINE_VERSION, "build": build, "roll": {"plan": codec.plan_to_dict(rolling), "request":
             codec.request_to_dict(rolling.request), "cases": roll}, "plans": plans, "rebuild": rebuilds,
-            "texts": text_fixtures(plans)}
+            "texts": text_fixtures(plans), "links": short_links(build, roll, rolling, plans)}
+
+
+def short_links(build: list[dict[str, Any]], roll: list[dict[str, Any]], rolling: Any,
+                plans: dict[str, Any]) -> dict[str, str]:
+    """The short link's data of the build cases, the roll cases and the stored plans ("build:<name>", "roll:<name>",
+    "plan:<name>"); a plan the short payload cannot give back (demo-done, with its statuses) has none."""
+    out: dict[str, str] = {}
+    req = {c["name"]: r for c, (_, r, _) in zip(build, _requests())}
+    whole: dict[str, dict[str, Any]] = {}
+    for c in build:
+        if "plan" in c:
+            whole[f"build:{c['name']}"] = link.stored_plan(codec.plan_from_dict(c["plan"], req[c["name"]]))
+    for c in roll:
+        whole[f"roll:{c['name']}"] = link.stored_plan(codec.plan_from_dict(c["plan"], rolling.request))
+    whole.update({f"plan:{n}": p for n, p in plans.items()})
+    for name, stored in whole.items():
+        short = link.short_plan(stored)
+        if short is not None:
+            out[name] = link.encode(short)
+    return out
 
 
 def _gz(data: Any) -> bytes:
@@ -344,7 +367,8 @@ def outputs() -> dict[Path, bytes]:
     plan = demo.demo_plan(12)
     stored = link.stored_plan(plan)
     out = {APP / "public" / "demo.troskel": link.plan_file(stored),
-           APP / "test" / "fixtures" / "demo.link.txt": (link.plan_link(stored) + "\n").encode("ascii"),
+           APP / "test" / "fixtures" / "demo.link.txt": (link.plan_link(link.link_payload(stored)) + "\n").encode("ascii"),
+           APP / "test" / "fixtures" / "demo.full.link.txt": (link.plan_link(stored) + "\n").encode("ascii"),
            APP / "test" / "fixtures" / "demo.sv.ics": ics.to_ics(plan).encode("utf-8")}
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
