@@ -10,6 +10,13 @@ import type {
 import { round, round2 } from "./py";
 
 export const RUNNING = "run";
+export const SWIM = "swim";
+/** Strength (#666 step 3): a sport outside the roles, no zones, a number of sessions a week on top. */
+export const STRENGTH = "strength";
+export const MAX_STRENGTH = 3;
+export const isStrength = (w: StoredWorkout) => w.sport === STRENGTH;
+/** PlanRequest.strength_count. */
+export const strengthCount = (r: StoredRequest) => Math.max(0, Math.min(MAX_STRENGTH, r.strength_sessions || 0));
 /** A sport without its own test borrows the zones of another: skis take the SkiErg's. */
 export const BORROWS: Record<string, string> = { ski: "skierg" };
 export const ROLES = ["main", "support", "maintenance"];
@@ -51,8 +58,9 @@ export function zoneSeconds(w: StoredWorkout): Map<string, number> {
   return out;
 }
 
+/** Week.minutes: the endurance minutes; strength comes on top. */
 export const weekMinutes = (wk: StoredWeek) =>
-  wk.sketch ? wk.sketch.minutes : wk.workouts.reduce((s, w) => s + minutes(w), 0);
+  wk.sketch ? wk.sketch.minutes : wk.workouts.reduce((s, w) => s + (isStrength(w) ? 0 : minutes(w)), 0);
 
 export function weekZoneMinutes(wk: StoredWeek): Map<string, number> {
   if (wk.sketch) return new Map(wk.sketch.zones.map(([z, m]) => [z, m]));
@@ -65,12 +73,14 @@ export function weekZoneMinutes(wk: StoredWeek): Map<string, number> {
 export function sketchOf(wk: StoredWeek): StoredWeek {
   if (wk.sketch) return wk;
   const zm = weekZoneMinutes(wk);
-  const plain = wk.workouts.filter((w) => w.goal == null);
+  const plain = wk.workouts.filter((w) => w.goal == null && !isStrength(w));
   const sketch: StoredSketch = {
     minutes: weekMinutes(wk), sessions: plain.length, quality: plain.filter((w) => w.quality).length,
     longest: plain.reduce((m, w) => Math.max(m, minutes(w)), 0),
     zones: [...zm.keys()].sort().map((z) => [z, round2(zm.get(z)!)]),
   };
+  const strength = wk.workouts.filter(isStrength).length;
+  if (strength) sketch.strength = strength;
   return { ...wk, workouts: wk.workouts.filter((w) => w.goal != null), sketch };
 }
 
@@ -90,6 +100,7 @@ export function normCapacity(c: StoredCapacity): StoredCapacity {
   const ln = c.speed_line;
   if (ln) out.speed_line = { slope: ln.slope, intercept: ln.intercept, speed_min: ln.speed_min, speed_max: ln.speed_max,
     ramp_top_kmh: ln.ramp_top_kmh ?? null, extrapolate_kmh: ln.extrapolate_kmh ?? 2.0 };
+  if (c.css_s100 != null) out.css_s100 = c.css_s100;
   return out;
 }
 
@@ -100,14 +111,19 @@ export const normSlot = (s: StoredSlot): StoredSlot => ({ weekday: s.weekday, ma
   sports: s.sports.map(sport), start: isoTime(s.start), role: s.role ?? "core" });
 
 export function normRequest(r: StoredRequest): StoredRequest {
-  return {
+  const out: StoredRequest = {
     format: CODEC_FORMAT, start: r.start, sports: r.sports.map(sport), availability: r.availability.map(normSlot),
     capacity: (r.capacity ?? []).map(normCapacity), goals: (r.goals ?? []).map(normGoal),
     duration_weeks: r.duration_weeks ?? null, level: r.level ?? "recreational",
     recent_weekly_minutes: r.recent_weekly_minutes ?? null,
     roles: (r.roles ?? []).map((x) => ({ sport: sport(x.sport), role: x.role ?? "main", share: x.share ?? 0 })),
   };
+  if (r.strength_sessions) out.strength_sessions = r.strength_sessions;
+  return out;
 }
+
+/** PlanRequest.multi_sport: more than one sport, strength included; every title then starts with its sport. */
+export const multiSport = (r: StoredRequest) => planSports(r).length > 1 || strengthCount(r) > 0;
 
 /** SportRole.weight: the share, or the role's default share. */
 export const roleWeight = (r: StoredRole) => (r.share > 0 ? r.share : ROLE_SHARE[r.role] ?? ROLE_SHARE.support);
@@ -149,6 +165,7 @@ export function normWeek(w: StoredWeek): StoredWeek {
     target_minutes: w.target_minutes, notes: (w.notes ?? []).map(normNote), workouts: w.workouts.map(normWorkout) };
   if (w.sketch) out.sketch = { minutes: w.sketch.minutes, sessions: w.sketch.sessions, quality: w.sketch.quality,
     longest: w.sketch.longest, zones: (w.sketch.zones ?? []).map(([z, m]) => [z, m]) };
+  if (out.sketch && w.sketch?.strength) out.sketch.strength = w.sketch.strength;
   return out;
 }
 

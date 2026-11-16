@@ -8,13 +8,15 @@ import type {
 } from "../model/types";
 import * as library from "./library";
 import {
-  BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, RUNNING, WEEKDAY_KEYS, capacityFor, estimated, mainSport, minutes,
-  note, ownCapacity, planRoles, roleWeight, sketchOf, speedFromHr, weekMinutes, zoneSeconds,
+  BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, capacityFor, estimated, mainSport,
+  minutes, note, ownCapacity, planRoles, roleWeight, sketchOf, speedFromHr, strengthCount, weekMinutes, zoneSeconds,
 } from "./models";
 import { LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5 } from "./periodize";
-import { addDays, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
+import { addDays, cmp, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
-export const ENGINE_VERSION = "5";
+export const ENGINE_VERSION = "6";
+/** No strength in the days before an A or B race (engine.STRENGTH_CLEAR_DAYS). */
+export const STRENGTH_CLEAR_DAYS = 3;
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -167,6 +169,8 @@ class Filler {
   readonly main: string;
   readonly slots: StoredSlot[];
   readonly longSlot: StoredSlot;
+  /** Strength: the days of the slots that allow it, else every day with an endurance slot (slot null). */
+  readonly strengthSlots = new Map<number, StoredSlot | null>();
   readonly goal: StoredGoal | null;
   readonly state: State = {
     steps: new Map(), last_long: null, max_minutes: null, base_i: 0, build_i: 0, sunday_hard: false,
@@ -183,6 +187,12 @@ class Filler {
     this.main = mainSport(request);
     this.slots = coreSlots(request);
     this.longSlot = longSlot(this.slots, this.main);
+    const own = new Map<number, StoredSlot>();
+    for (const s of request.availability)
+      if (s.role === "core" && s.sports.includes(STRENGTH) && s.max_minutes > 0 && s.weekday >= 0 && s.weekday <= 6)
+        if (!own.has(s.weekday) || s.max_minutes > own.get(s.weekday)!.max_minutes) own.set(s.weekday, s);
+    if (own.size) for (const wd of [...own.keys()].sort((a, b) => a - b)) this.strengthSlots.set(wd, own.get(wd)!);
+    else for (const s of this.slots) this.strengthSlots.set(s.weekday, null);
     const first = skeleton.weeks[0].monday;
     const last = addDays(skeleton.weeks[skeleton.weeks.length - 1].monday, 6);
     this.raceDates = new Set(request.goals.map((g) => g.date));
@@ -262,6 +272,7 @@ class Filler {
     const [ws, usedSteps, longMinutes] = result ?? [[], new Map<string, number>(), null];
     let workouts = ws;
     for (const g of spec.goals) workouts.push(this.workout(g.date, "race", null, { goal: g }));
+    workouts.push(...this.strength(spec, workouts));
     workouts = byDateKey(workouts);
 
     const notes: StoredNote[] = [note(`plan.week.focus.${spec.kind === "load" ? spec.block : spec.kind}`)];
@@ -282,6 +293,49 @@ class Filler {
     st.max_run = Math.max(st.max_run, sportMinutes(week).get(RUNNING) ?? 0);
     st.sunday_hard = workouts.some((w) => w.quality && weekday(w.date) === 6);
     return week;
+  }
+
+  /** engine._Filler._strength: the week's strength sessions on the days easiest for the legs. */
+  strength(spec: WeekSpec, workouts: StoredWorkout[]): StoredWorkout[] {
+    let n = strengthCount(this.request);
+    if (spec.kind === "race") n = Math.min(n, 1);
+    if (n === 0) return [];
+    const days = new Map([...this.strengthSlots.keys()].map((wd) => [wd, addDays(spec.monday, wd)]));
+    const closed = new Set<IsoDate>();
+    for (const g of this.request.goals) {
+      closed.add(g.date);
+      closed.add(addDays(g.date, -1));
+      if (isAB(g)) for (let k = 1; k <= STRENGTH_CLEAR_DAYS; k++) closed.add(addDays(g.date, -k));
+      if (g === this.goal) for (let k = 1; k < 7; k++) closed.add(addDays(g.date, k));
+    }
+    const cands = [...days.keys()].sort((a, b) => a - b).filter((wd) => !closed.has(days.get(wd)!));
+    if (!cands.length) return [];
+    const on = new Map(workouts.filter((w) => w.goal == null).map((w) => [w.date, w]));
+    const heavy = new Set(workouts.filter((w) => w.quality || w.family === "long" || w.goal != null).map((w) => w.date));
+    const beforeHard = new Map(cands.map((wd) => [wd, heavy.has(addDays(days.get(wd)!, 1)) ? 1 : 0]));
+    const own = (wd: number) => {
+      const w = on.get(days.get(wd)!);
+      return w === undefined ? 0 : w.quality || w.family === "long" ? 2 : 1;
+    };
+    let best: number[] | null = null;
+    let bestKey: number[] | null = null;
+    for (const combo of combinations(cands, Math.min(n, cands.length))) {
+      const key = [sum(combo.map((wd) => beforeHard.get(wd)!)), combo.length > 1 ? -Math.min(gap(combo), 2) : 0,
+        sum(combo.map(own))];
+      if (bestKey === null || cmp(key, bestKey) < 0) [best, bestKey] = [combo, key];
+    }
+    const chosen = best!;
+    const ids = spec.kind === "taper" || spec.kind === "race" ? chosen.map(() => library.STRENGTH_TAPER)
+      : library.STRENGTH_WEEK[chosen.length];
+    const roomiest = minBy(chosen, (wd) => [beforeHard.get(wd)!, own(wd), wd]);
+    const order = [roomiest, ...chosen.filter((wd) => wd !== roomiest)];
+    return order.map((wd, i) => {
+      const slot = this.strengthSlots.get(wd) ?? null;
+      const t = library.get(ids[i]);
+      const day = days.get(wd)!;
+      return { key: this.key(day, "-strength"), date: day, sport: STRENGTH, template_id: t.id, family: t.family,
+        quality: t.quality, start: slot ? slot.start : null, status: "planned", goal: null, parts: library.build(t.id) };
+    });
   }
 
   /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place, and then the
@@ -421,7 +475,8 @@ export function buildPlan(request: StoredRequest, o: BuildOptions = {}): StoredP
   }
   const notes = [...skeleton.notes];
   const cap = capacityFor(request, mainSport(request));
-  if (cap.anchors == null) notes.push(note("plan.note.no_test"));
+  if (cap.anchors == null && cap.css_s100 != null) { /* swimming as the main sport on a CSS test */ }
+  else if (cap.anchors == null) notes.push(note("plan.note.no_test"));
   else if (speedFromHr(cap)) notes.push(note("plan.note.speed_from_hr"));
   else if (estimated(cap)) notes.push(note("plan.note.estimated"));
   planRoles(request).forEach((r, i) => {

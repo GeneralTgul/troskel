@@ -457,5 +457,8 @@
   "assessments.protocol.bike.bikefit.name": "Bike fit, road",
   "assessments.protocol.bike.bikefit.desc": "{warmup} min warm-up in ERG mode that is not filmed, then {min} min at {w} W with the hands on the hoods. That stage is filmed from the side, and from the front with a second camera. The position changes with the load, so the power should be one the rider trains at, not easy spinning.",
   "assessments.protocol.skierg.ski.name": "Double poling technique",
-  "assessments.protocol.skierg.ski.desc": "{warmup} min warm-up that is not filmed, then {min} min at an even rate at {w} W. That stage is filmed from the side. The athlete holds the target shown on the TV and stands on the same taped spot every time, so that tests can be compared."
+  "assessments.protocol.skierg.ski.desc": "{warmup} min warm-up that is not filmed, then {min} min at an even rate at {w} W. That stage is filmed from the side. The athlete holds the target shown on the TV and stands on the same taped spot every time, so that tests can be compared.",
+  "assessments.css.error.missing": "Enter both times, 400 m and 200 m.",
+  "assessments.css.error.range": "The time looks wrong: the 200 m should be between 1:40 and 10:00, and the 400 m between 3:20 and 20:00.",
+  "assessments.css.error.order": "The 400 m should take more than twice as long as the 200 m. Are the times swapped?"
 }

@@ -182,7 +182,7 @@ def test_a_workout_in_another_sport_has_the_sport_in_its_title():
     titles = {(w.sport, w.template_id): w.title for w in p.workouts if w.goal is None}
     assert titles[(RUNNING, "easy")] == "Lugn löpning"
     assert titles[("bike", "bike_easy")] == "Cykel: lugnt pass i Z2"
-    assert titles[("swim", "easy")] == "Simning: lugnt pass"          # swimming keeps the running templates
+    assert titles[("swim", "swim_easy")] == "Simning: lugnt pass"
     set_language("en")
     assert next(w for w in p.workouts if w.template_id == "bike_easy").title == "Cycling: easy Z2 ride"
 

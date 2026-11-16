@@ -1,6 +1,6 @@
 # Träningsplanen
 
-*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)). Motorn, formuläret och utskriften har flera idrotter, med egna pass och mål för cykel och SkiErg; styrka och simtest är inte byggda. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
+*Hur programmet bygger ett träningsschema på testerna: datamodellen, planmotorn, säkerheten och utskriften. Planmotorn, utskriften, kalenderfilen, lagringen och sidan *Träningsschema* i programmet är byggda (se [Nuläget](#nuläget-vad-som-är-byggt)). Motorn fyller flera idrotter med varje idrotts egna pass, styrka och simning med ett manuellt simtest; formuläret och utskriften har idrotterna, men antalet styrkepass och simtestet finns inte i formuläret än. Målet är ett komplett test- och träningsprogram där idrottaren vet vad varje pass ska innehålla, och där träningen är skräddarsydd efter idrottarens kapacitet och mål.*
 
 Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
 
@@ -44,7 +44,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 |---|---|
 | Indata: idrottare med kapacitet per sport, idrotter med roll och andel, tillgänglighet per veckodag, mål (A, B, C) eller längd, nivå och nuvarande veckovolym | Byggt, också i formuläret ([handboken](handbok/traningsschema/traningsschema.md#flera-idrotter)) |
 | Block bakåt från målet, lätta veckor, omtest, volymökning, långpass, kvalitetspass med vila emellan | Byggt, se [Planmotorn](#2-planmotorn) |
-| Passbibliotek för löpning, cykel och SkiErg med texter på svenska och engelska | Byggt. Skidor har SkiErgens pass, simning löpningens med idrottens namn i titeln, se [Passbiblioteket](#passbiblioteket) |
+| Passbibliotek för löpning, cykel, SkiErg, simning och styrka med texter på svenska och engelska | Byggt. Skidor har SkiErgens pass, se [Passbiblioteket](#passbiblioteket) |
 | Zon till puls och fart ur testet (löpning), watt (cykel), watt och tid per 500 m (SkiErg), uppskattade zoner märkta, schema utan test | Byggt |
 | Ett omtest flyttar målen i puls och fart från en dag och framåt, utan att något pass byter dag | Byggt (`resolve.retest`), och erbjuds i programmet efter ett nytt test, se [Omtest och omläggning](#omtest-och-omläggning) |
 | Utskrift: översikt, läsanvisning och ett blad per vecka | Byggt. Utskriften på Windows är inte provad ([PROV.md](PROV.md)) |
@@ -56,8 +56,9 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Ombyggnad av resten av planen (nya pass och ny volym) efter ett omtest, sjukdom och missade pass | Inte byggt (resten av steg P4) |
 | Flera idrotter: veckotiden fördelad efter andelar, hårda dagar och långpass över idrotterna, platser med flera idrotter | Byggt (steg 1 av 4), se [Flera idrotter](#flera-idrotter) |
 | Cykelns och SkiErgens egna pass med mål i watt och tid per 500 m | Byggt (steg 2 av 4) |
+| Styrka (0–3 pass i veckan ovanpå uthållighetsveckan) och simning på ansträngning eller på ett manuellt CSS-test | Byggt i motorn och i appen (steg 3 av 4), se [Styrka](#styrka) och [Simning](#simning). Formuläret för simtestet och antalet styrkepass finns inte i programmet än |
 | Idrotterna i formuläret och utskriften: roll och andel, idrotterna per veckodag, en färg per idrott, idrottstabellen, watt i zonerna, veckans tid per idrott och belastningen | Byggt (steg 4 av 4), se [Utskriften](#4-utskriften). Inte provat på Windows ([PROV.md](PROV.md)) |
-| Styrka, simtest, återhämtningsblock efter ett mål, passkort | Inte byggt |
+| Återhämtningsblock efter ett mål, passkort | Inte byggt |
 
 ## 1. Datamodellen
 
@@ -70,6 +71,7 @@ PlanRequest                      det idrottaren och coachen anger
   capacity: [Capacity]           en per sport
   sports: [str]                  idrotterna när roles är tomt; den första (eller A-målets) är huvudidrott
   roles: [SportRole]             idrotterna med roll och andel; tomt i scheman sparade före flera idrotter
+  strength_sessions: int         styrkepass i veckan, 0–3 (coachen anger); sparas bara när det är satt
   goals: [Goal]                  tomt = plan utan tävlingsmål
   duration_weeks: int | None     längden när inget A-mål finns (förval 12)
   level: "beginner" | "recreational" | "trained"
@@ -94,6 +96,7 @@ Capacity                         nuvarande nivå i en sport
   anchors: Anchors | None        maxpuls, LT1 och LT2 som puls och fart (assessments/zone_systems.py)
   tested: date, source: str      testets datum och namn
   speed_line: SpeedLine | None   zontestets samband puls -> fart (lutning, skärning, uppmätt fartspann)
+  css_s100: float | None         simning: CSS-testets tempo i sekunder per 100 m (assessments/css.py)
   estimated                      sant utan uppmätta trösklar
 
 Plan
@@ -123,7 +126,7 @@ Workout
   status: "planned" | "done" | "moved" | "missed" | "skipped"
 
 Part                             en passdel
-  kind: "warmup" | "steady" | "work" | "cooldown" | "test" | "race"
+  kind: "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | "technique" | "strength" | "mobility"
   duration_s, repeat, rest_s, rest_zone
   zone: str | None               zonkod i Garmins fem zoner, t.ex. "Z4"
   rpe: int                       ansträngning 1–10, visas alltid
@@ -162,7 +165,7 @@ Modulen `src/lopanalys/plan/`:
 | Fil | Innehåll |
 |---|---|
 | `models.py` | Dataklasserna i [datamodellen](#1-datamodellen) |
-| `library.py` | Passbiblioteket som data: löpningens pass, som alla idrotter använder tills vidare |
+| `library.py` | Passbiblioteket som data: löpningens pass, varje annan idrotts pass på löpmallarnas platser, och styrkans pass utan zoner |
 | `periodize.py` | Block, veckotyper och veckovolym: var den börjar, vad veckan rymmer och hur fort den växer |
 | `engine.py` | `build_plan()`: passen läggs i platserna |
 | `resolve.py` | Zon till puls och fart (fart bara för löpning), och `retest()` |
@@ -220,7 +223,45 @@ Idrottaren anger idrotterna med en roll och en andel av veckotiden (`PlanRequest
 - **Appen** har samma regler i TypeScript och provas mot Python-motorn: tio fall med flera idrotter (bland dem cykel och SkiErg med test, cykel ensam och skidor som huvudidrott), och titel och delar med watt och tid per 500 m för varje mall i två scheman, på svenska och engelska. Appen visar watt och tid per 500 m i passkortet. Länken bär `power_low_w` och `power_high_w` bara i mål som har watt, så ett löpschema ser ut som förut och en äldre app läser det.
 - **Äldre scheman** (motor 4) har löpningens mallar också i cykelpassen. De läses som de är och visas med idrottens namn och cykelns watt.
 
-**Inte byggt (steg 3–4):** styrka som egna pass (0–3 i veckan, aldrig ersatta), simning och ett manuellt simtest (CSS); belastningen som tak för veckan. Inte heller två pass samma dag (en plats per veckodag gäller) eller ett mindre långpass i en stödjande idrott.
+- **Titlarna:** i ett schema med fler än en idrott, eller med styrka, börjar också löpningens pass med idrotten (*Löpning: lugnt pass*, `Plan.title`, `Workout.title_in`). Kalenderfilen och appen använder den titeln. Ett schema med bara löpning ser ut som förut.
+
+#### Styrka
+
+Styrka är en egen idrott utan zoner och utan test (`models.STRENGTH`, beslutet i #666 2026-11-15). Den har ingen roll eller andel: coachen anger antalet pass i veckan, 0–3 (`PlanRequest.strength_sessions`).
+
+- **Ovanpå uthållighetsveckan:** veckan fylls först som utan styrka och ändras aldrig för den. Veckans tid, taket på 10 %, antalet pass och långpasset räknar bara uthållighetspassen (`Week.endurance`). Styrkepasset är ingen hård dag och har ingen zontid. Belastningen är minuter × 0,8.
+- **Dagarna:** dagarna med en plats för styrka (en plats med idrotten `strength`, och passet får platsens klockslag). Utan sådana platser kan styrkan ligga på varje dag med en uthållighetsplats, som ett eget pass utan klockslag samma dag.
+- **Aldrig** på en loppdag eller dagen före ett lopp, inte de tre dagarna före ett A- eller B-lopp och inte efter målet. Loppveckan har högst ett styrkepass.
+- **Regeln för hårda dagar** (`engine._Filler._strength`): bland dagarna väljs de som i tur och ordning
+  1. ligger dagen före ett hårt pass eller långpasset så få gånger som möjligt,
+  2. har minst en dag emellan,
+  3. har minst uthållighet själva: först en dag utan pass, sedan en dag med ett lugnt pass, sist en hård dag eller långpassets dag,
+  4. kommer tidigast i veckan.
+- **Skälet:** hårda dagar och långpasset står kvar där reglerna för uthållighet lagt dem, och benen kommer utvilade till dem. Det följer förslaget att styrkan ska ligga på de lättaste dagarna och aldrig dagen före ett hårt benpass eller långpasset när det går. Går det inte (till exempel tre pass på tre platser för styrka) blir det överkroppspasset som hamnar före den hårda dagen.
+- **Passen:** ett pass i veckan är *helkropp*, två är *ben och bål* och *överkropp och rörlighet*, och tre är alla tre. Benpasset tar den valda dag som har mest utrymme. Nedtrappningen och loppveckan får *underhåll*: kortare, lättare och ingen tung belastning.
+- **Ett missat styrkepass ersätts aldrig.** Ingen regel flyttar pass, och veckorna efter har samma antal som förut.
+- **Lagringen:** `strength_sessions` och skissveckans `strength` sparas bara när de är satta, så ett schema utan styrka sparas som förut.
+
+#### Simning
+
+Simningen har egna mallar (se [Passbiblioteket](#passbiblioteket)) och följer upplevd ansträngning (RPE). Utan simtest visar passet zon och ansträngning, utan siffror.
+
+- **Simtestet** är ett manuellt test utan utrustning (`assessments/css.py`): 400 m och sedan, efter full vila, 200 m, båda så fort ett jämnt tempo tillåter. CSS-tempot per 100 m är (T400 − T200) / 2. Testet sparas som ett manuellt pass med `to_result` (`kind: "swim_css"`), och `capacity` ger planens `Capacity` för simning. Tiderna kontrolleras: 200 m mellan 1:40 och 10:00, 400 m mellan 3:20 och 20:00, och 400 m tar mer än dubbelt så lång tid som 200 m.
+- **Med ett simtest** får simpassen tempo per 100 m i varje zon (`resolve.SWIM_ZONES`), som sekunder runt CSS-tempot:
+
+| Zon | Tempo per 100 m |
+|---|---|
+| Z1 | långsammare än CSS + 15 s |
+| Z2 | CSS + 15 s till CSS + 7 s |
+| Z3 | CSS + 7 s till CSS + 3 s |
+| Z4 | CSS + 3 s till CSS − 2 s (tröskeln) |
+| Z5 | snabbare än CSS − 2 s |
+
+Banden följer Swim Smooths träning på CSS *(ej verifierat mot källa)*. Planen ger ingen puls i vattnet.
+
+- **Inte byggt:** formuläret för testet i programmet och en simsport bland testerna (`catalog.SPORT_TESTS`).
+
+**Inte byggt:** belastningen som tak för veckan. Inte heller två pass samma dag (en plats per veckodag gäller) eller ett mindre långpass i en stödjande idrott.
 
 ### Delmål och planer utan mål
 
@@ -277,7 +318,9 @@ Passen är data i `plan/library.py`, inte kod. Varje mall har familj, hårdaste 
 | Fartpass inför loppet | 3×2 min i zon 4 | Löpningens upplägg |
 
 - **Sweet spot** ligger i övre delen av zon 3 i klockans fem zoner, alltså mellan trösklarna men under zonen strax under LT2. Det brukar beskrivas som 88–94 % av FTP. Planen anger hela zonens watt.
-- **Inte byggt:** gång-löpning för nybörjare, styrka och rörlighet, och egna mallar för simning (steg 3). Ett test i en annan idrott än löpning är fortfarande *Test hos din coach* utan upplägg.
+- **Simning** har en mall på varje löpmalls plats, på ansträngning eller med tempo per 100 m ur CSS-testet: *lugnt pass*, *teknikpass* (teknikövningar i lugnt tempo, på återhämtningens plats), *långpass*, *intervaller* (8×3 min till 6×8 min strax under CSS med 30–60 s vila), *hårda intervaller* (10×1 min till 10×3 min), *växlande tempo* (på fartlekens plats), *korta intervaller* (8 till 24 × 30 s) och *fartpass inför loppet*.
+- **Styrka** har fyra mallar utan zoner: *helkropp* (45 min), *ben och bål* (40 min), *överkropp och rörlighet* (35 min) och *underhåll* (30 min). Varje mall har uppvärmning, styrka och rörlighet med ansträngning, se [Styrka](#styrka).
+- **Inte byggt:** gång-löpning för nybörjare. Ett test i en annan idrott än löpning är fortfarande *Test hos din coach* utan upplägg.
 
 ### Var en språkmodell kan hjälpa senare
 

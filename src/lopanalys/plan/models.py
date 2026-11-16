@@ -14,14 +14,19 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
-from lopanalys.core.i18n import t
+from lopanalys.core.i18n import has, t
 from lopanalys.core.sport import Sport
 
 # The sport keys: core.sport.Sport values ("run", "bike", "skierg") and the sports without a test in
-# Tröskel ("ski", "swim"). The bike, the SkiErg and skis have their own templates (plan.library.SPORT_TEMPLATES);
-# swimming uses the running templates with the sport's name until it gets its own (#666, step 3).
+# Tröskel ("ski", "swim"). The bike, the SkiErg, skis and swimming have their own templates
+# (plan.library.SPORT_TEMPLATES). Swimming has an optional manual test (assessments.css): its pace per 100 m.
 RUNNING = Sport.RUN.value
-PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", "swim")
+SWIM = "swim"
+PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", SWIM)
+# Strength (#666, step 3) is a sport of its own outside the roles: no zones, no test, a number of sessions a week
+# (PlanRequest.strength_sessions) on top of the endurance time, and never made up for when missed.
+STRENGTH = "strength"
+MAX_STRENGTH = 3
 # A sport without its own test borrows the zones of another: skis and roller skis take the SkiErg's.
 BORROWS = {"ski": Sport.SKIERG.value}
 # The roles of a sport in a plan, and the share of the weekly time each one gets when none is given.
@@ -30,9 +35,7 @@ ROLE_SHARE = {"main": 60, "support": 30, "maintenance": 10}
 # The load of a workout: minutes x zone factor x sport factor (#666, decided 2026-11-15). A part without a zone
 # (a test) counts as Z4; a race has no planned length.
 ZONE_LOAD = {"Z1": 0.5, "Z2": 1.0, "Z3": 1.5, "Z4": 2.5, "Z5": 3.5}
-SPORT_LOAD = {RUNNING: 1.0, Sport.BIKE.value: 0.7, Sport.SKIERG.value: 1.0, "ski": 1.0, "swim": 0.7, "strength": 0.8}
-# Templates whose title says "running": in another sport they take the title without it.
-_RUN_WORDED = ("easy", "recovery")
+SPORT_LOAD = {RUNNING: 1.0, Sport.BIKE.value: 0.7, Sport.SKIERG.value: 1.0, "ski": 1.0, SWIM: 0.7, STRENGTH: 0.8}
 
 LEVELS = ("beginner", "recreational", "trained")
 PRIORITIES = ("A", "B", "C")                      # A: the goal, B: a milestone (seeding race), C: a training race
@@ -86,6 +89,12 @@ class Capacity:
     tested: date | None = None
     source: str = ""                 # test name for the printout, e.g. "Laktattrappa"
     speed_line: SpeedLine | None = None
+    css_s100: float | None = None    # swimming: the critical swim speed of a CSS test, seconds per 100 m
+
+    @property
+    def known(self) -> bool:
+        """True when the plan can give targets: a test with heart rates, or a swimming test (CSS)."""
+        return self.anchors is not None or self.css_s100 is not None
 
     @property
     def speed_from_hr(self) -> bool:
@@ -143,6 +152,16 @@ class PlanRequest:
     level: str = "recreational"
     recent_weekly_minutes: int | None = None   # mean of the last 4-6 weeks, when known
     roles: tuple[SportRole, ...] = ()          # () : ``sports``, the first (or the A goal's) as the main sport
+    strength_sessions: int = 0                 # strength sessions a week, 0-3 (MAX_STRENGTH), set by the coach
+
+    @property
+    def strength_count(self) -> int:
+        return max(0, min(MAX_STRENGTH, self.strength_sessions or 0))
+
+    @property
+    def multi_sport(self) -> bool:
+        """More than one sport in the plan, strength included: every workout's title then starts with its sport."""
+        return len(self.plan_sports) > 1 or self.strength_count > 0
 
     def own_capacity(self, sport: str) -> Capacity | None:
         return next((c for c in self.capacity if c.sport == sport), None)
@@ -187,7 +206,8 @@ class PlanRequest:
 @dataclass(frozen=True)
 class Part:
     """One part of a workout. ``repeat`` > 1 is an interval set with ``rest_s`` between the repeats."""
-    kind: str                        # "warmup" | "steady" | "work" | "cooldown" | "test" | "race"
+    kind: str                        # "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | "technique"
+                                     # | "strength" | "mobility" (a strength session's parts have no zone)
     duration_s: int
     zone: str | None                 # zone code; None for a test or a race
     rpe: int                         # effort 1-10, always shown
@@ -226,19 +246,32 @@ class Workout:
         return round(self.seconds / 60)
 
     @property
+    def strength(self) -> bool:
+        return self.sport == STRENGTH
+
+    @property
     def title(self) -> str:
         """The template's title; in a sport other than running with the sport's name first."""
+        return self.title_in(False)
+
+    def title_in(self, multi_sport: bool) -> str:
+        """The title in a plan with one sport or several (``PlanRequest.multi_sport``): with several, running too
+        starts with its sport ("Löpning: lugnt pass"). The text without the sport is ``.title_any`` when the
+        template has one (the running templates, whose title says running), else ``.title``."""
         if self.goal:
             return self.goal.name
-        if self.sport == RUNNING:
+        if self.sport == RUNNING and not multi_sport:
             return t(f"plan.workout.{self.template_id}.title")
-        suffix = ".title_any" if self.template_id in _RUN_WORDED else ".title"
+        key = f"plan.workout.{self.template_id}.title_any"
         return t("plan.workout.in_sport", sport=t(f"plan.sport.{self.sport}"),
-                 title=t(f"plan.workout.{self.template_id}{suffix}"))
+                 title=t(key if has(key) else f"plan.workout.{self.template_id}.title"))
 
     @property
     def load(self) -> float:
-        """Minutes x zone factor x sport factor (ZONE_LOAD, SPORT_LOAD): comparable between sports."""
+        """Minutes x zone factor x sport factor (ZONE_LOAD, SPORT_LOAD): comparable between sports.
+        Strength has no zones: a fixed point a minute, times its factor."""
+        if self.strength:
+            return self.seconds / 60 * SPORT_LOAD[STRENGTH]
         zoned = sum(s / 60 * ZONE_LOAD[z] for z, s in self.zone_seconds().items())
         test = sum(p.total_s / 60 * ZONE_LOAD["Z4"] for p in self.parts if p.zone is None and p.kind == "test")
         return (zoned + test) * SPORT_LOAD.get(self.sport, 1.0)
@@ -272,6 +305,7 @@ class WeekSketch:
     quality: int                     # of them hard days (quality sessions and tests)
     longest: int                     # the longest run, minutes
     zones: tuple[tuple[str, float], ...] = ()    # minutes per zone
+    strength: int = 0                # strength sessions (not among ``sessions``)
 
 
 @dataclass
@@ -294,18 +328,29 @@ class Week:
         return self.monday + timedelta(days=6)
 
     @property
+    def endurance(self) -> list[Workout]:
+        """The workouts without the strength sessions: what the weekly time, its ceilings and the hard days count."""
+        return [w for w in self.workouts if not w.strength]
+
+    @property
     def minutes(self) -> int:
-        """Planned minutes. A race has no planned length and counts as zero."""
+        """Planned endurance minutes (strength comes on top). A race has no planned length and counts as zero."""
         if self.sketch is not None:
             return self.sketch.minutes
-        return sum(w.minutes for w in self.workouts)
+        return sum(w.minutes for w in self.endurance)
 
     @property
     def sessions(self) -> int:
-        """Workouts in the week, races not counted."""
+        """Endurance workouts in the week, races not counted."""
         if self.sketch is not None:
             return self.sketch.sessions
-        return len([w for w in self.workouts if w.goal is None])
+        return len([w for w in self.endurance if w.goal is None])
+
+    @property
+    def strength_sessions(self) -> int:
+        if self.sketch is not None:
+            return self.sketch.strength
+        return len([w for w in self.workouts if w.strength])
 
     @property
     def quality_sessions(self) -> int:
@@ -340,7 +385,7 @@ class Week:
         """The longest planned run of the week, in minutes. A race has no planned length and is left out."""
         if self.sketch is not None:
             return self.sketch.longest
-        return max((w.minutes for w in self.workouts if w.goal is None), default=0)
+        return max((w.minutes for w in self.endurance if w.goal is None), default=0)
 
     @property
     def hard_minutes(self) -> float:
@@ -391,6 +436,10 @@ class Plan:
     # The last week with workouts (1-based); the weeks after it are sketches (Week.sketch). None: every
     # week is detailed, as in plans saved before the rolling plan and plans built without a day.
     horizon: int | None = None
+
+    def title(self, workout: Workout) -> str:
+        """The workout's title in this plan: with the sport first when the plan has several (Workout.title_in)."""
+        return workout.title_in(self.request.multi_sport)
 
     def capacity_on(self, sport: str, day: date) -> Capacity:
         """The capacity a workout on ``day`` is shown with: the test that applied on that day."""

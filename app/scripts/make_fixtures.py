@@ -8,8 +8,8 @@ The example plan is the demo runner of ``lopanalys.plan.demo`` (12 weeks, a half
 ``engine.json.gz`` is what the app's TypeScript engine (app/src/engine) is checked against: plans that
 ``build_plan`` and ``roll_forward`` make from demo requests, and ``rebuild`` on the demo plans with new times.
 ``rebuild`` here is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
-``texts`` is what the app shows of a workout in another sport (title, parts and their watt or time per 500 m),
-written by text.py and resolve.py.
+``texts`` is what the app shows of a workout in another sport (title, parts and their watt, time per 500 m or per
+100 m), written by text.py and resolve.py.
 """
 from __future__ import annotations
 
@@ -150,17 +150,34 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
                              roles=(SportRole("ski", "main"), SportRole("skierg", "support"), SportRole("run", "maintenance")),
                              goals=(Goal("Skidlopp", date(2027, 3, 7), sport="ski", distance_km=45),)), None),
     ]
+    # Strength and swimming (#666, step 3): strength on the running days and in slots of its own, a race week, and a
+    # triathlon with swimming on a CSS test.
+    tri = ("run", "bike", "swim")
+    strength_slots = sl(DEMO_SLOTS + tuple((d, 45, "07:00:00", "core", ("strength",)) for d in (0, 2, 4)))
+    out += [
+        ("run-strength", replace(base, strength_sessions=2), None),
+        ("strength-slots", replace(base, availability=strength_slots, strength_sessions=3), None),
+        ("strength-one-cycle", replace(demo.demo_request(12, goal=False), strength_sessions=1), None),
+        ("strength-rolling", replace(demo.demo_request(20), strength_sessions=2), date(2026, 12, 23)),
+        ("triathlon-css", replace(base, availability=sl(tuple((d, 70 if d < 5 else 150, None, "core", tri) for d in range(7))),
+                                  capacity=base.capacity + (BIKE_TEST, SWIM_TEST), level="trained", recent_weekly_minutes=None,
+                                  roles=(SportRole("run", "main", 40), SportRole("bike", "support", 35),
+                                         SportRole("swim", "support", 25)), strength_sessions=1), None),
+        ("swim-without-test", replace(base, availability=sl(tuple((d, 60, None, "core", ("run", "swim")) for d in range(7))),
+                                      roles=(SportRole("run", "main"), SportRole("swim", "support"))), None),
+    ]
     return out
 
 
 BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
+SWIM_TEST = Capacity("swim", None, date(2026, 11, 10), "CSS-test", css_s100=115.0)    # 400 m 7:20, 200 m 3:30
 
 
 def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
     """What the app shows of a workout, written by the Python side (text.py, resolve.py): the title and every part
     as one line, in both languages, for the first workouts of each sport and template of a plan with several sports."""
     out = []
-    for name in ("bike-skierg-tested", "ski-main"):
+    for name in ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-test", "run-strength"):
         stored = plans[name]
         plan = codec.plan_from_dict(stored["plan"], codec.request_from_dict(stored["request"], stored["athlete"]))
         seen: set[tuple[str, str]] = set()
@@ -171,7 +188,7 @@ def text_fixtures(plans: dict[str, Any]) -> list[dict[str, Any]]:
             for lang in ("sv", "en"):
                 set_language(lang)
                 lines = [text.plain(x) for x in text.workout_lines(w, plan.capacity_on(w.sport, w.date), plan.zone_system)]
-                out.append({"plan": name, "key": w.key, "lang": lang, "title": w.title, "lines": lines})
+                out.append({"plan": name, "key": w.key, "lang": lang, "title": plan.title(w), "lines": lines})
     set_language("sv")
     return out
 
@@ -222,7 +239,7 @@ def engine_fixtures() -> dict[str, Any]:
     plans["demo-done"] = done
     run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
     plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
-    for name in ("bike-skierg-tested", "ski-main"):
+    for name in ("bike-skierg-tested", "ski-main", "triathlon-css", "swim-without-test", "run-strength"):
         plans[name] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == name), plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
     changes = [  # (name, plan, slots, unavailable, from)

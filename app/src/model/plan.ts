@@ -2,6 +2,7 @@
  * What the views read out of a stored plan: the numbers of models.py (seconds, minutes, zone time) and the
  * texts of text.py and resolve.py, in the current language. Nothing here changes the plan.
  */
+import { multiSport } from "../engine/models";
 import { has, t } from "../i18n";
 import type {
   IsoDate, StoredNote, StoredPart, StoredPlan, StoredWeek, StoredWorkout, ZoneCode, ZoneTarget, ZoneTargets,
@@ -17,7 +18,9 @@ export const partWork = (p: StoredPart) => p.repeat * p.duration_s;
 export const partTotal = (p: StoredPart) => partWork(p) + (p.repeat - 1) * p.rest_s;
 export const workoutSeconds = (w: StoredWorkout) => w.parts.reduce((s, p) => s + partTotal(p), 0);
 export const workoutMinutes = (w: StoredWorkout) => pyRound(workoutSeconds(w) / 60);
-export const weekMinutes = (wk: StoredWeek) => wk.workouts.reduce((s, w) => s + workoutMinutes(w), 0);
+/** Week.minutes: the endurance minutes; strength sessions come on top. */
+export const weekMinutes = (wk: StoredWeek) =>
+  wk.workouts.reduce((s, w) => s + (w.sport === "strength" ? 0 : workoutMinutes(w)), 0);
 
 export function zoneSeconds(w: StoredWorkout): Partial<Record<ZoneCode, number>> {
   const out: Partial<Record<ZoneCode, number>> = {};
@@ -47,14 +50,17 @@ export function mainZone(w: StoredWorkout): ZoneCode | null {
   return best;
 }
 
-/** The template's title; in a sport other than running with the sport's name first (plan.models.Workout.title). */
-export function workoutTitle(w: StoredWorkout): string {
+/** The template's title (plan.models.Workout.title_in): in a sport other than running, and in every sport of a plan
+ * with several (`multi`), with the sport's name first. */
+export function workoutTitle(w: StoredWorkout, multi = false): string {
   if (w.goal) return w.goal.name;
-  if (w.sport === "run") return t(`plan.workout.${w.template_id}.title`);
+  if (w.sport === "run" && !multi) return t(`plan.workout.${w.template_id}.title`);
   const any = `plan.workout.${w.template_id}.title_any`;
   return t("plan.workout.in_sport", { sport: t(`plan.sport.${w.sport}`),
     title: t(has(any) ? any : `plan.workout.${w.template_id}.title`) });
 }
+/** The title in its plan (Plan.title): with the sport first when the plan has several sports or strength. */
+export const planTitle = (stored: StoredPlan, w: StoredWorkout) => workoutTitle(w, multiSport(stored.request));
 export const workoutPurpose = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.purpose`);
 export const workoutHow = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.how`);
 
@@ -136,8 +142,17 @@ export function hrText(tg: ZoneTarget): string {
   return tg.hr_low ? t("plan.target.hr_above", { lo: tg.hr_low }) : "";
 }
 
-/** Running: min/km. The SkiErg: time per 500 m from the watt. The bike and the others: "" (resolve.Target.pace_text). */
+/** Time per 100 m "m:ss" in swimming (resolve.swim_str), "" without one. */
+export function swimStr(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return "";
+  const sec = pyRound(seconds);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+/** Running: min/km. The SkiErg: time per 500 m from the watt. Swimming: time per 100 m from a CSS test. The bike
+ * and the others: "" (resolve.Target.pace_text). */
 export function paceText(tg: ZoneTarget, sport = "run"): string {
+  if (sport === "swim") return range(swimStr(tg.swim_low_s), swimStr(tg.swim_high_s), "swim");
   if (sport === "skierg")
     return range(mark(splitStr(tg.power_low_w), tg.speed_low_approx), mark(splitStr(tg.power_high_w), tg.speed_high_approx), "split");
   if (sport !== "run") return "";

@@ -4,7 +4,7 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { keys, setLang, t } from "../src/i18n";
 import {
-  duration, hours, hrText, paceStr, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, plain,
+  duration, hours, hrText, paceStr, pyRound, splitStr, targetText, weekMinutes, workoutLines, workoutTitle, planTitle, plain,
 } from "../src/model/plan";
 import type { StoredPlan } from "../src/model/types";
 import { daysFromSlots, slotsFromDays } from "../src/model/times";
@@ -33,7 +33,8 @@ describe("a workout in another sport", () => {
     const w = demoPlan().plan.weeks[0].workouts.find((x) => x.template_id === "easy")!;
     expect(workoutTitle(w)).toBe("Lugn löpning");
     expect(workoutTitle({ ...w, sport: "bike" })).toBe("Cykel: lugnt pass");
-    expect(workoutTitle({ ...w, sport: "swim", template_id: "threshold" })).toBe("Simning: Tröskelintervaller");
+    expect(workoutTitle({ ...w, sport: "swim", template_id: "threshold" })).toBe("Simning: tröskelintervaller");
+    expect(workoutTitle(w, true)).toBe("Löpning: lugnt pass");
     setLang("en");
     expect(workoutTitle({ ...w, sport: "bike" })).toBe("Cycling: easy session");
     setLang("sv");
@@ -95,7 +96,7 @@ describe("the bike's and the SkiErg's targets (#666, step 2)", () => {
     setLang(c.lang);
     const stored = fx.plans[c.plan];
     const w = stored.plan.weeks.flatMap((wk) => wk.workouts).find((x) => x.key === c.key)!;
-    expect(workoutTitle(w)).toBe(c.title);
+    expect(planTitle(stored, w)).toBe(c.title);
     expect(workoutLines(stored, w).map(plain)).toEqual(c.lines);
   });
 

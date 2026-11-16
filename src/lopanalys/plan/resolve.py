@@ -12,6 +12,9 @@ a border a little outside the steps is marked ``≈``, further out it has no pac
 Each sport gets the target of its test's load (#666, step 2): running a pace in min/km, the bike watt, and
 the SkiErg watt and the time per 500 m (Concept2's formula, core.sport). Skis borrow the SkiErg's zones but
 not its watt: on snow the plan gives heart rate and effort. A sport without a test gives zone and effort only.
+
+Swimming (#666, step 3) has no heart rate test: on effort (RPE) only, or with a CSS test (assessments.css) the pace
+per 100 m of every zone as seconds around the CSS pace (SWIM_ZONES).
 """
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, convert
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import Sport, profile
 
-from .models import RUNNING, Capacity, Plan, SpeedLine
+from .models import RUNNING, SWIM, Capacity, Plan, SpeedLine
 
 APPROX = "≈"     # before a pace outside the measured steps of a zones test (report.builder.EXTRAPOLATED_MARK)
 POWER_SPORTS = (Sport.BIKE.value, Sport.SKIERG.value)   # the test's load is watt: the targets are watt
@@ -45,6 +48,22 @@ def split_str(watt: float | None) -> str:
     return profile(Sport.SKIERG).pace_str(watt)
 
 
+# The swimming zones around the CSS pace: seconds per 100 m added to it, (slower end, faster end); None: open.
+# Z4 lies around CSS (the threshold), Z5 faster, Z2 the long aerobic swimming 7-15 s slower (not verified against
+# a source: Swim Smooth's CSS training bands are the model).
+SWIM_ZONES: dict[str, tuple[float | None, float | None]] = {
+    "Z1": (None, 15.0), "Z2": (15.0, 7.0), "Z3": (7.0, 3.0), "Z4": (3.0, -2.0), "Z5": (-2.0, None)}
+
+
+def swim_str(seconds: float | None) -> str:
+    """Time per 100 m as 'm:ss' ('' without one)."""
+    if not seconds or seconds <= 0:
+        return ""
+    s = int(round(seconds))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+_SWIM = ("plan.target.swim", "plan.target.swim_slower", "plan.target.swim_faster")
 _PACE = ("plan.target.pace", "plan.target.pace_slower", "plan.target.pace_faster")
 _POWER = ("plan.target.power", "plan.target.power_slower", "plan.target.power_faster")
 _SPLIT = ("plan.target.split", "plan.target.split_slower", "plan.target.split_faster")
@@ -80,6 +99,9 @@ class Target:
     power_low_w: int | None = None
     power_high_w: int | None = None
     sport: str = RUNNING                   # the workout's sport: what the load is shown as
+    # Swimming with a CSS test: seconds per 100 m, the slower end first (None: the zone is open at that end).
+    swim_low_s: float | None = None
+    swim_high_s: float | None = None
 
     @property
     def hr_text(self) -> str:
@@ -91,7 +113,10 @@ class Target:
 
     @property
     def pace_text(self) -> str:
-        """Running: '4:21–4:10 min/km'. The SkiErg: '2:05–1:58 /500 m'. The bike has no pace."""
+        """Running: '4:21–4:10 min/km'. The SkiErg: '2:05–1:58 /500 m'. Swimming: '1:52–1:48 /100 m'. The bike has
+        no pace."""
+        if self.sport == SWIM:
+            return _range(swim_str(self.swim_low_s), swim_str(self.swim_high_s), _SWIM)
         if self.sport in SPLIT_SPORTS:
             return _range(_mark(split_str(self.power_low_w), self.speed_low_approx),
                           _mark(split_str(self.power_high_w), self.speed_high_approx), _SPLIT)
@@ -121,7 +146,9 @@ def targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM, sport: str 
     """Every zone of the system with its targets. {} when the athlete has no test and no max HR.
 
     ``sport``: the sport of the workouts the targets are for (None: the test's). Watt is given only in the
-    test's own sport, so skis on the SkiErg's test get heart rate only."""
+    test's own sport, so skis on the SkiErg's test get heart rate only. Swimming with a CSS test: ``swim_targets``."""
+    if capacity is not None and capacity.anchors is None and capacity.css_s100 and (sport or capacity.sport) == SWIM:
+        return swim_targets(capacity.css_s100)
     if capacity is None or capacity.anchors is None:
         return {}
     sport = sport or capacity.sport
@@ -145,6 +172,16 @@ def targets(capacity: Capacity | None, system: str = DEFAULT_SYSTEM, sport: str 
         else:
             out[z.code] = Target(z.code, z.name, z.hr_low, z.hr_high, power_low_w=_watt(low), power_high_w=_watt(high),
                                  **flags)
+    return out
+
+
+def swim_targets(css_s100: float) -> dict[str, Target]:
+    """Every zone's pace per 100 m from the CSS pace (SWIM_ZONES), rounded to tenths of a second."""
+    out = {}
+    for code, (slow, fast) in SWIM_ZONES.items():
+        out[code] = Target(code, t(f"assessments.zones.garmin.{code}.name"), sport=SWIM,
+                           swim_low_s=None if slow is None else round(css_s100 + slow, 1),
+                           swim_high_s=None if fast is None else round(css_s100 + fast, 1))
     return out
 
 

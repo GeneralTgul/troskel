@@ -5,7 +5,7 @@
  */
 import { t } from "../i18n";
 import { addDays } from "./dates";
-import { duration, plain, workoutLines, workoutMinutes, workoutPurpose, workoutHow, workoutSeconds, workoutTitle } from "./plan";
+import { duration, plain, workoutLines, workoutMinutes, workoutPurpose, workoutHow, workoutSeconds, planTitle } from "./plan";
 import type { IsoDate, StoredPlan, StoredWorkout } from "./types";
 
 export const PRODID = "-//Troskel//App//EN";
@@ -61,7 +61,7 @@ function localStamp(day: IsoDate, time: string, plusSeconds: number): string {
 
 function event(stored: StoredPlan, w: StoredWorkout, stamp: string): string[] {
   const secs = workoutSeconds(w);
-  const title = workoutTitle(w);
+  const title = planTitle(stored, w);
   const summary = w.goal || !workoutMinutes(w) ? title : `${title} · ${duration(secs)}`;
   const out = ["BEGIN:VEVENT", `UID:${w.key}@${UID_DOMAIN}`, `DTSTAMP:${stamp}`];
   if (w.start != null && secs) {

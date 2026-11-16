@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { t } from "../i18n";
 import { addDays, dayMonth, isoWeek, mondayOf, weekDays, weekdayShort } from "../model/dates";
-import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSeconds, workoutsOn, workoutTitle } from "../model/plan";
+import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSeconds, workoutsOn, planTitle } from "../model/plan";
 import type { IsoDate, StoredPlan } from "../model/types";
 import { clock, zoneColor, ZoneChip } from "./parts";
 
@@ -47,7 +47,7 @@ export function Week({ stored, today, onCalendar }: { stored: StoredPlan; today:
               </div>
               {ws.length ? ws.map((w) => (
                 <div class="day-w" key={w.key}>
-                  <div class="day-title">{workoutTitle(w)}</div>
+                  <div class="day-title">{planTitle(stored, w)}</div>
                   <div class="day-meta">
                     {workoutSeconds(w) ? <span class="num">{duration(workoutSeconds(w))}</span> : null}
                     {w.start ? <span>{clock(w.start)}</span> : null}
