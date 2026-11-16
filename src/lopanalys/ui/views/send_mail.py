@@ -1,6 +1,6 @@
 """Skicka till idrottaren: the question before a mail is sent, and the sending itself.
 
-The report (PDF) and the tests' FIT files, or the training plan (PDF and calendar file), go to the
+The report (PDF) and the tests' FIT files, or the training plan (PDF, calendar file and the app's file), go to the
 athlete's own address, from the SMTP account under Inställningar → E-post. Nothing is sent without
 the consent box "contact", and never before the coach has seen the address and the attachments and
 pressed *Skicka*. What is noted afterwards is the test's id (or the plan's log), the time and what
@@ -28,6 +28,7 @@ log = logging.getLogger(__name__)
 
 FIT_MIME = "application/vnd.ant.fit"
 ICS_MIME = "text/calendar"
+TROSKEL_MIME = "application/json"   # the .troskel file is the plan's JSON (plan/link.py)
 
 
 class SendDialog(QDialog):
@@ -112,7 +113,8 @@ def send_to_athlete(parent: QWidget, ctx: AppContext, athlete: Athlete | None, s
 
 def send_plan_to_athlete(parent: QWidget, ctx: AppContext, athlete: Athlete | None, plan: Any, plan_row: int | None,
                          make_pdf: Callable[[Path], Any], on_end: Callable[[], None] | None = None) -> Any:
-    """Mail the training plan to the athlete: the printout as PDF and the calendar file, after the question.
+    """Mail the training plan to the athlete: the printout as PDF, the calendar file and the plan for the app
+    (the ``.troskel`` file, and the link in the text), after the question.
 
     ``plan`` is the saved plan and ``plan_row`` its row: the mailing is noted in the plan's log
     (``plan_events``, kind "mailed"). ``make_pdf(path)`` writes the printout there (on the GUI thread).
@@ -124,18 +126,22 @@ def send_plan_to_athlete(parent: QWidget, ctx: AppContext, athlete: Athlete | No
         return None
     start = plan.start.isoformat()
     pdf_name, ics_name = (f"{t('ui.mail.plan_file')}-{start}.{ext}" for ext in ("pdf", "ics"))
-    subject, body = services.plan_mail_greeting(athlete, plan, ctx.branding())
-    what = ["plan", "ics"]
+    app_name = services.plan_app_file_name(plan)
+    app_link, app_file = services.plan_app(plan)
+    subject, body = services.plan_mail_greeting(athlete, plan, ctx.branding(), app_link)
+    what = ["plan", "ics", "app"]
 
     def files() -> list[tuple[str, bytes, str]]:
-        return [(pdf_name, _pdf_bytes(make_pdf), "application/pdf"), (ics_name, services.plan_ics(plan), ICS_MIME)]
+        return [(pdf_name, _pdf_bytes(make_pdf), "application/pdf"), (ics_name, services.plan_ics(plan), ICS_MIME),
+                (app_name, app_file, TROSKEL_MIME)]
 
     def note() -> dict[str, Any]:
         entry = ctx.store.db.log_plan_event(plan_row, "mailed", {"what": what}) if plan_row is not None else {}
         log.info("training plan mailed to the athlete (%s)", ", ".join(what))
         return entry
 
-    return _ask_and_send(parent, ctx, athlete, [(t("ui.mail.att.plan"), pdf_name), (t("ui.mail.att.ics"), ics_name)],
+    return _ask_and_send(parent, ctx, athlete, [(t("ui.mail.att.plan"), pdf_name), (t("ui.mail.att.ics"), ics_name),
+                                                (t("ui.mail.att.app"), app_name)],
                          subject, body, files, note, None, end, None, t("ui.mail.warn_plan"))
 
 

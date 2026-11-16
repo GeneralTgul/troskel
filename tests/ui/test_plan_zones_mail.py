@@ -6,6 +6,7 @@ The mail goes to a pretend SMTP server on 127.0.0.1 (tests/share/fake_smtp.py): 
 from __future__ import annotations
 
 import importlib.util
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from PySide6.QtWidgets import QDialog, QMessageBox
 
 from lopanalys.assessments import library
 from lopanalys.core.models import Athlete, Session, TestKind
-from lopanalys.plan import RUNNING
+from lopanalys.plan import RUNNING, link
 from lopanalys.plan.resolve import targets
 from lopanalys.share import mail
 from lopanalys.ui import services
@@ -181,7 +182,8 @@ def test_send_the_plan_after_the_health_declaration(demo_window, smtp, no_pdf, m
     (dlg,) = shown
     day = v.plan.start.isoformat()
     assert dlg.address.text() == ADDRESS
-    assert f"traningsschema-{day}.pdf" in dlg.attachments.text() and f"traningsschema-{day}.ics" in dlg.attachments.text()
+    assert all(f"traningsschema-{day}.{ext}" in dlg.attachments.text() for ext in ("pdf", "ics", "troskel"))
+    assert "Fil till appen" in dlg.attachments.text()
     assert "schemat är inte lösenordsskyddat" in " ".join(w.text() for w in dlg.findChildren(type(dlg.address)))
     qtbot.waitUntil(lambda: v._mailing is None, timeout=10000)
     (msg,) = smtp.messages
@@ -189,8 +191,13 @@ def test_send_the_plan_after_the_health_declaration(demo_window, smtp, no_pdf, m
     body = msg.get_body(preferencelist=("plain",)).get_content().replace("\r\n", "\n")
     assert body.startswith("Hej Erik!") and f"{len(v.plan.weeks)} veckor från {day}" in body
     assert "iPhone" in body and "Android" in body and "Kim Coach\nTröskel Test" in body
+    # the app's link on a line of its own, and the .troskel file beside: both the plan that was saved
+    (line,) = [x for x in body.splitlines() if x.startswith("Öppna schemat i appen: ")]
+    app_link = line.removeprefix("Öppna schemat i appen: ")
+    assert app_link.startswith(link.APP_URL + "#p=") and link.read_link(app_link) == link.stored_plan(stored.plan)
     files = {p.get_filename(): p for p in msg.iter_attachments()}
-    assert set(files) == {f"traningsschema-{day}.pdf", f"traningsschema-{day}.ics"}
+    assert set(files) == {f"traningsschema-{day}.pdf", f"traningsschema-{day}.ics", f"traningsschema-{day}.troskel"}
+    assert json.loads(files[f"traningsschema-{day}.troskel"].get_content()) == link.read_link(app_link)
     assert files[f"traningsschema-{day}.pdf"].get_content() == b"%PDF-1.7 schema"
     ics = files[f"traningsschema-{day}.ics"]
     assert ics.get_content_type() == "text/calendar"
@@ -199,9 +206,9 @@ def test_send_the_plan_after_the_health_declaration(demo_window, smtp, no_pdf, m
     # the mailed PDF was temporary, and the plan's log says what went, never the address
     assert not no_pdf[0].exists() and win.ctx.store.db.saved_files(erik.id) == []
     events = win.ctx.store.db.plan_events(stored.row_id)
-    assert events[-1]["kind"] == "mailed" and events[-1]["detail"] == {"what": ["plan", "ics"]}
+    assert events[-1]["kind"] == "mailed" and events[-1]["detail"] == {"what": ["plan", "ics", "app"]}
     assert ADDRESS not in str(events)
-    assert v.mail_note.text().startswith("Skickat till idrottaren") and "schemat + kalenderfilen" in v.mail_note.text()
+    assert v.mail_note.text().startswith("Skickat till idrottaren") and "schemat + kalenderfilen + appfilen" in v.mail_note.text()
 
 
 def test_nothing_is_sent_when_the_coach_cancels(demo_window, smtp, no_pdf, monkeypatch):
@@ -224,3 +231,5 @@ def test_plan_greeting_without_a_name_or_business():
     subject, body = mail.plan_greeting("", "2026-11-16", 12)
     assert subject == "Ditt träningsschema" and body.startswith("Hej!") and "12 veckor från 2026-11-16" in body
     assert "http" not in body and "www" not in body                       # no links: less like spam
+    _, body = mail.plan_greeting("", "2026-11-16", 12, app_link="https://example.se/app/#p=abc")
+    assert "\n\nÖppna schemat i appen: https://example.se/app/#p=abc\n\n" in body                # only the app's

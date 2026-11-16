@@ -43,7 +43,7 @@ DEMO_TEST_DATES = (datetime(2026, 4, 14, 8, 30, tzinfo=timezone.utc),
 VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost", "testerna", "testerna-cykel",
          "historik", "simtest",
          "jamforelse", "resultat-laktat", "resultat-zoner", "resultat-klocka", "resultat-vo2max", "skicka",
-         "traningsschema", "traningsschema-idrotter", "traningsschema-mal",
+         "traningsschema", "traningsschema-idrotter", "traningsschema-mal", "till-appen",
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
          "protokoll-lopteknik", "nytt-test-kamera", "nytt-test-band-och-puls", "nytt-test-kontroll",
          "nytt-test-kontroll-utan-kamera",
@@ -545,6 +545,17 @@ class Studio:
         self.wait(100)
         bar.setValue(bar.maximum())
         return self.win
+
+    def till_appen(self) -> Any:
+        """*Till appen*: the QR code, the link and *Spara som fil* for the previewed plan. Nothing is saved."""
+        from lopanalys.ui import services
+        from lopanalys.ui.views.plan_app import AppDialog
+        v = self._plan()
+        link, data = services.plan_app(v.plan)
+        dlg = AppDialog(link, data, Path("traningsschema.troskel"), self.win)
+        dlg.show()
+        self.extra.append(dlg)
+        return dlg
 
     def resultat_maxpuls(self) -> Any:
         from lopanalys.assessments.protocol import Phase

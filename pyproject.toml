@@ -22,6 +22,7 @@ dependencies = [
     "Pillow>=10",            # HPND: key frames in reports
     "ifaddr>=0.2",           # MIT: network adapters, finds GoPros on USB
     "cryptography>=42",      # Apache-2.0/BSD: the encrypted backup (AES-256-GCM, scrypt)
+    "segno>=1.6",            # BSD-3-Clause: the QR code with the plan for the athlete's app (share/qr.py)
     "pygrabber>=0.2; sys_platform == 'win32'",  # MIT: DirectShow camera names
 ]
 

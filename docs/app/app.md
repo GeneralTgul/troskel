@@ -7,6 +7,7 @@
 
 - [Vad appen gör](#vad-appen-gör)
 - [Hur schemat kommer till appen](#hur-schemat-kommer-till-appen)
+  - [Från coach till idrottare](#från-coach-till-idrottare)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
 - [Bygga och köra lokalt](#bygga-och-köra-lokalt)
@@ -48,6 +49,17 @@ Samma data går också
 - som fil, `<namn>.troskel`, som är samma JSON i läsbar form (*Öppna en fil*).
 
 Innehållet är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`), uträknade ur testet när coachen skickar schemat. Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `plan_link`, `plan_file`, `read_link`).
+
+### Från coach till idrottare
+
+I Tröskel ger coachen idrottaren schemat på sidan *Träningsschema* ([handboken](../handbok/traningsschema/traningsschema.md#till-appen)):
+
+- ***Till appen*** visar en ruta med QR-koden, länken med *Kopiera* och *Spara som fil* (`.troskel`). Idrottaren skannar koden med telefonens kamera eller öppnar länken i telefonen.
+- ***Skicka till idrottaren*** mejlar schemat med raden *Öppna schemat i appen:* och länken, och med filen `.troskel` som bilaga bredvid PDF:en och kalenderfilen.
+
+Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och kalenderfilen. Länken, koden och filen görs ur samma payload (`stored_plan`), och QR-koden ritas med segno (`src/lopanalys/share/qr.py`). Den största QR-koden rymmer 2 953 tecken med lägsta felrättningen. En längre länk får ingen kod, och rutan hänvisar till mejlet eller filen.
+
+Efter *Förnya* eller ett nytt test ger *Till appen* det nya schemat, med samma schema-id och samma start. Appen har ett schema i taget: varje inläst schema ersätter det sparade (`setPlan` i `app/src/model/storage.ts`) och tar bort tider under *Mina tider* som inte har räknats in än.
 
 ## Mina tider och planmotorn
 

@@ -57,6 +57,7 @@
 | Lagring | SQLite i `%APPDATA%\Lopanalys` | En fil per coach, enkel backup |
 | Kryptering | cryptography (Apache-2.0/BSD) | Säkerhetskopian: AES-256-GCM med nyckel ur scrypt |
 | FIT-fil | Egen kodare i ren Python (`share/fit.py`) | Inget nytt beroende att bygga in i exe-filen. Formatet är öppet, och filen läses tillbaka i proven |
+| QR-kod | segno (BSD-3-Clause), ren Python (`share/qr.py`) | Schemat till idrottarens app som QR-kod på skärmen. Litet och utan andra beroenden |
 | E-post | Pythons `smtplib` mot coachens eget SMTP-konto | Ingen egen mejltjänst och inget biträde utöver coachens e-postleverantör. Lösenordet skyddas med Windows dataskydd (DPAPI) genom `ctypes` |
 | Paketering | PyInstaller i GitHub Actions (Windows) | En installerbar exe |
 
@@ -97,9 +98,9 @@ src/lopanalys/
                 plan_builder.py (träningsschemats utskrift), templates/, assets/
   share/        fit.py (testet som FIT-aktivitet, och en läsare för kontroll),
                 fit_read.py (klockans FIT-fil: löpdynamiken från HRM-Pro+, för kontrollen av löptekniken), mail.py (SMTP, mallen för hälsningen),
-                secret.py (lösenordet skyddat: DPAPI på Windows, nyckelfil annars)
+                secret.py (lösenordet skyddat: DPAPI på Windows, nyckelfil annars), qr.py (QR-koden till appen)
   ui/           app.py, main_window.py, lock.py (PIN-kod och lås efter vila),
-                views/ (idrottare, test, live, laktat, rapport, träningsschema, testerna, inställningar, send_mail.py), widgets/
+                views/ (idrottare, test, live, laktat, rapport, träningsschema, testerna, inställningar, send_mail.py, plan_app.py), widgets/
   i18n/         <modul>.sv.json, <modul>.en.json
 ```
 

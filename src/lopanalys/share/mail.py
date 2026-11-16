@@ -192,15 +192,20 @@ def greeting(first_name: str, day: str, coach: str = "", business: str = "", *, 
     return subject, "\n".join(lines) + "\n"
 
 
-def plan_greeting(first_name: str, start: str, weeks: int, coach: str = "", business: str = "") -> tuple[str, str]:
+def plan_greeting(first_name: str, start: str, weeks: int, coach: str = "", business: str = "",
+                  app_link: str = "") -> tuple[str, str]:
     """(subject, body) of the mail with the training plan: the PDF to read and the calendar file, with
-    how the calendar file is opened in a phone. Signed as the report's mail (``greeting``)."""
+    how the calendar file is opened in a phone, and the link that opens the plan in the athlete's app
+    when ``app_link`` is given (the ``.troskel`` file is attached beside). Signed as the report's mail
+    (``greeting``)."""
     who = business.strip() or coach.strip()
     subject = t("share.mail.plan_subject_from", who=who) if who else t("share.mail.plan_subject")
     lines = [t("share.mail.hello", name=first_name.strip()) if first_name.strip() else t("share.mail.hello_plain"), "",
              t("share.mail.plan_body", weeks=weeks, start=start), "", t("share.mail.plan_ics"),
-             t("share.mail.plan_ics_iphone"), t("share.mail.plan_ics_android"), "", t("share.mail.plan_ics_update"),
-             "", t("share.mail.questions"), "", t("share.mail.regards")]
+             t("share.mail.plan_ics_iphone"), t("share.mail.plan_ics_android"), "", t("share.mail.plan_ics_update")]
+    if app_link:
+        lines += ["", t("share.mail.plan_app", link=app_link)]
+    lines += ["", t("share.mail.questions"), "", t("share.mail.regards")]
     lines += [x.strip() for x in (coach, business) if x and x.strip()]
     return subject, "\n".join(lines) + "\n"
 

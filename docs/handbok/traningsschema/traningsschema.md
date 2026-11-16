@@ -1,6 +1,6 @@
 # Träningsschema
 
-*Bygga ett träningsschema på ett test, i en idrott eller flera, spara det på idrottaren, förnya det fyra veckor i taget, skriva ut det, ge idrottaren passen som kalenderfil och mejla schemat. Tillbaka till [handboken](../handbok.md).*
+*Bygga ett träningsschema på ett test, i en idrott eller flera, spara det på idrottaren, förnya det fyra veckor i taget, skriva ut det, ge idrottaren passen som kalenderfil och schemat i appen, och mejla schemat. Tillbaka till [handboken](../handbok.md).*
 
 <!-- toc -->
 ## Innehåll
@@ -14,6 +14,7 @@
 - [Förnya schemat](#förnya-schemat)
 - [Hälsodeklarationen](#hälsodeklarationen)
 - [Spara och lämna ut](#spara-och-lämna-ut)
+  - [Till appen](#till-appen)
   - [Skicka schemat med e-post](#skicka-schemat-med-e-post)
 - [Efter ett nytt test](#efter-ett-nytt-test)
 - [Det som inte är provat](#det-som-inte-är-provat)
@@ -130,7 +131,7 @@ Bara de närmaste fyra veckorna har pass: veckan schemat byggs och de tre veckor
 - **Samma underlag ger samma pass.** En förnyelse gör om ingenting: en vecka får samma pass som den skulle ha fått om hela schemat hade haft pass från början.
 - **Ett nytt test** förnyar också, se [Efter ett nytt test](#efter-ett-nytt-test).
 
-Efter en förnyelse: skriv ut schemat igen eller spara en ny kalenderfil, så får idrottaren de nya veckorna. Kalenderfilen och veckobladen har bara veckorna med pass. Skissen står som en tabell sist i utskriften.
+Efter en förnyelse: skriv ut schemat igen, spara en ny kalenderfil eller ge idrottaren schemat i appen igen med [*Till appen*](#till-appen), så får idrottaren de nya veckorna. Kalenderfilen och veckobladen har bara veckorna med pass. Skissen står som en tabell sist i utskriften.
 
 Scheman som sparades innan schemat blev rullande har pass i alla veckor och behöver aldrig förnyas.
 
@@ -142,7 +143,7 @@ Sist i formuläret finns tre rutor. Gå igenom dem med idrottaren:
 2. inget av svaren hindrar träningen, eller så har en läkare sagt ja till den,
 3. idrottaren vet att schemat är ett träningsråd och inte sjukvård.
 
-**Alla tre måste vara ibockade innan schemat skrivs ut, sparas som PDF eller som kalenderfil, eller skickas till idrottaren.** Annars säger programmet till och lämnar inte ut något. Förhandsvisa och spara går utan rutorna. Datumet för deklarationen sparas med schemat, och efter 12 månader är rutorna tomma igen.
+**Alla tre måste vara ibockade innan schemat skrivs ut, sparas som PDF eller som kalenderfil, går till appen eller skickas till idrottaren.** Annars säger programmet till och lämnar inte ut något. Förhandsvisa och spara går utan rutorna. Datumet för deklarationen sparas med schemat, och efter 12 månader är rutorna tomma igen.
 
 ## Spara och lämna ut
 
@@ -152,21 +153,38 @@ Sist i formuläret finns tre rutor. Gå igenom dem med idrottaren:
 | *Skriv ut* | Skriver ut schemat på den skrivare du väljer |
 | *Spara PDF* | Sparar utskriften som PDF |
 | *Kalenderfil* | Sparar passen som en `.ics`-fil som idrottaren öppnar i telefonens kalender. En ny import av ett ändrat schema skriver över passen i stället för att dubblera dem |
-| *Skicka till idrottaren* | Mejlar PDF:en och kalenderfilen till idrottarens adress, se [Skicka schemat med e-post](#skicka-schemat-med-e-post) |
+| *Till appen* | Visar schemat för idrottarens app som QR-kod, som länk och som fil, se [Till appen](#till-appen) |
+| *Skicka till idrottaren* | Mejlar PDF:en, kalenderfilen och filen till appen till idrottarens adress, med länken till appen i texten, se [Skicka schemat med e-post](#skicka-schemat-med-e-post) |
 | *Avbryt* | Tar tillbaka formuläret till det sparade schemat |
 | *Ta bort schemat* | Tar bort schemat. Testerna ligger kvar |
 
-*Skriv ut*, *Spara PDF*, *Kalenderfil* och *Skicka till idrottaren* sparar alltid schemat först, så att det idrottaren får är det som finns i programmet. Lämnar du sidan med osparade ändringar frågar programmet om de ska kastas.
+*Skriv ut*, *Spara PDF*, *Kalenderfil*, *Till appen* och *Skicka till idrottaren* sparar alltid schemat först, så att det idrottaren får är det som finns i programmet. Lämnar du sidan med osparade ändringar frågar programmet om de ska kastas.
 
 Ett sparat schema ändras inte av att det öppnas, och inte av en ny programversion. Det byggs om först när du ändrar något i formuläret och sparar.
 
-**Om uppgifterna:** schemat sparas i databasen på idrottaren och tas bort när idrottaren tas bort. Det följer med i *Exportera allt*. PDF:en och kalenderfilen innehåller idrottarens namn, och programmet kommer ihåg var de sparades så att raderingen hittar dem.
+**Om uppgifterna:** schemat sparas i databasen på idrottaren och tas bort när idrottaren tas bort. Det följer med i *Exportera allt*. PDF:en, kalenderfilen och filen till appen innehåller idrottarens namn, och programmet kommer ihåg var de sparades så att raderingen hittar dem.
+
+### Till appen
+
+*Till appen* ger idrottaren schemat i [appen för idrottaren](../../app/app.md), som visar dagens pass, veckan och hela schemat i telefonen. Knappen öppnar en ruta med tre vägar till samma schema:
+
+- **QR-koden:** idrottaren skannar den på skärmen med telefonens kamera. Telefonen öppnar appen med schemat.
+- **Länken**, med *Kopiera*, till exempel för ett sms eller ett meddelande som idrottaren öppnar i telefonen.
+- ***Spara som fil***: `traningsschema_<startdatum>.troskel`, som idrottaren öppnar i appen med *Öppna en fil*.
+
+Appen sparar schemat i telefonen. Schemat skickas inte via någon server: allt står i länken, koden eller filen. Länken innehåller idrottarens namn och schemat, så ge den bara till idrottaren.
+
+En QR-kod rymmer en länk på cirka 2 900 tecken, ungefär ett schema på tolv veckor. Är länken längre står det i rutan i stället för koden: skicka då schemat med e-post, där länken och filen följer med, eller spara filen och ge idrottaren den.
+
+Efter [*Förnya*](#förnya-schemat) eller [*Lägg om schemat*](#efter-ett-nytt-test) ger *Till appen* det nya schemat. Appen har ett schema i taget, och ett nytt ersätter det gamla.
+
+![Rutan Till appen: QR-koden, länken med Kopiera och knappen Spara som fil](images/till-appen.png)
 
 ### Skicka schemat med e-post
 
 *Skicka till idrottaren* använder samma e-postkonto och samma fråga som när resultatet skickas, se [Skicka till idrottaren](../resultat/resultat.md#skicka-till-idrottaren). Knappen är grå, med skälet bredvid, när idrottaren saknar e-postadress, inte har kryssat i *Kontakt om uppföljning* i samtycket eller när e-posten inte är inställd under *Inställningar → E-post*.
 
-Innan något skickas visar programmet adressen, de två bilagorna (`traningsschema-<startdatum>.pdf` och `.ics`), ämnet och texten. Ämnet är *Ditt träningsschema från* företaget eller coachen. Texten säger hur kalenderfilen öppnas i en iPhone och i en Android-telefon, och går att ändra. Mejlet går iväg först när du trycker *Skicka*.
+Innan något skickas visar programmet adressen, de tre bilagorna (`traningsschema-<startdatum>.pdf`, `.ics` och `.troskel`), ämnet och texten. Ämnet är *Ditt träningsschema från* företaget eller coachen. Texten säger hur kalenderfilen öppnas i en iPhone och i en Android-telefon, har en rad *Öppna schemat i appen:* med länken till appen, och går att ändra. Mejlet går iväg först när du trycker *Skicka*.
 
 Efteråt står det bredvid knappen när schemat senast skickades. Programmet antecknar tiden och vad som skickades i schemats logg, aldrig adressen. PDF:en som mejlas sparas inte på datorn.
 
@@ -186,8 +204,8 @@ När idrottaren har gjort ett nytt laktattest, maxpulstest eller zontest i löpn
 - **Inget pass byter dag,** varken bakåt eller framåt. Veckorna, blocken och passens innehåll är desamma.
 - **Schemat förnyas,** så att passen går till och med tre veckor efter den vecka du står i (som [*Förnya*](#förnya-schemat)).
 
-Skriv ut schemat igen eller spara en ny kalenderfil efteråt, så får idrottaren de nya målen. Vill du i stället ha ett helt nytt schema från i dag: välj det nya testet under *Bygger på testet*, ändra startdatumet och spara.
+Skriv ut schemat igen, spara en ny kalenderfil eller använd *Till appen* efteråt, så får idrottaren de nya målen. Vill du i stället ha ett helt nytt schema från i dag: välj det nya testet under *Bygger på testet*, ändra startdatumet och spara.
 
 ## Det som inte är provat
 
-Utskriften på en riktig skrivare, kalenderfilen i en telefon och schemat med e-post till en riktig inkorg är inte provade än, och inte heller formuläret och utskriften med flera idrotter på Windows. Läget står i [PROV.md](../../PROV.md).
+Utskriften på en riktig skrivare, kalenderfilen i en telefon, QR-koden från *Till appen* med en riktig telefon och schemat med e-post till en riktig inkorg är inte provade än, och inte heller formuläret och utskriften med flera idrotter på Windows. Läget står i [PROV.md](../../PROV.md).

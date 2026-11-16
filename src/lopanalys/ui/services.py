@@ -1685,11 +1685,24 @@ def plan_ics(plan: Any) -> bytes:
     return ics.to_ics(plan).encode("utf-8")
 
 
-def plan_mail_greeting(athlete: Athlete, plan: Any, branding: dict[str, Any]) -> tuple[str, str]:
-    """(subject, body) of the mail with the training plan (share.mail.plan_greeting)."""
+def plan_app(plan: Any) -> tuple[str, bytes]:
+    """The plan for the athlete's app: (the link, the contents of the ``.troskel`` file), from the same payload."""
+    from lopanalys.plan import link
+    stored = link.stored_plan(plan)
+    return link.plan_link(stored), link.plan_file(stored)
+
+
+def plan_app_file_name(plan: Any) -> str:
+    """``traningsschema-<start>.troskel``, as the mail's other attachments."""
+    from lopanalys.plan.link import FILE_SUFFIX
+    return f"{t('ui.mail.plan_file')}-{plan.start.isoformat()}{FILE_SUFFIX}"
+
+
+def plan_mail_greeting(athlete: Athlete, plan: Any, branding: dict[str, Any], app_link: str = "") -> tuple[str, str]:
+    """(subject, body) of the mail with the training plan (share.mail.plan_greeting), with the app's link."""
     from lopanalys.share import mail
     return mail.plan_greeting(athlete.first_name, plan.start.isoformat(), len(plan.weeks),
-                              branding.get("coach") or "", branding.get("business") or "")
+                              branding.get("coach") or "", branding.get("business") or "", app_link=app_link)
 
 
 def plan_mailed_text(store: Store, stored: StoredPlan | None) -> str:

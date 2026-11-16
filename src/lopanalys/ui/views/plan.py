@@ -2,8 +2,9 @@
 
 The form on the left states what the plan engine needs (the test, the level, the time per weekday,
 the goal and milestones or a length); the overview on the right shows the plan it gives. The plan
-is saved per athlete, printed, saved as PDF and as a calendar file, and mailed to the athlete (both
-files, views/send_mail.py). Nothing leaves the program before every box of the health declaration
+is saved per athlete, printed, saved as PDF and as a calendar file, handed to the athlete's app (*Till appen*:
+a QR code, a link and a .troskel file, views/plan_app.py) and mailed to the athlete (the files and the app's
+link, views/send_mail.py). Nothing leaves the program before every box of the health declaration
 is ticked.
 
 The plan rolls (plan.rolling): only the next four weeks have workouts, the rest is a sketch. A row
@@ -339,6 +340,8 @@ class PlanView(QWidget):
         self.preview_btn.clicked.connect(lambda: self.preview())
         self.ics_btn = button(t("ui.plan.ics"), "calendar")
         self.ics_btn.clicked.connect(lambda: self.save_ics())
+        self.app_btn = button(t("ui.plan.app"), "phone")
+        self.app_btn.clicked.connect(lambda: self.to_app())
         self.print_btn = button(t("ui.res.print"), "printer")
         self.print_btn.clicked.connect(lambda: self.print_plan())
         self.pdf_btn = button(t("ui.res.pdf"), "pdf")
@@ -347,7 +350,7 @@ class PlanView(QWidget):
         self.mail_btn.clicked.connect(lambda: self.send_to_athlete())
         self.save_btn = button(t("ui.common.save"), "save", kind="primary")
         self.save_btn.clicked.connect(lambda: self.save())
-        for w in (self.cancel_btn, self.preview_btn, self.ics_btn, self.print_btn, self.pdf_btn, self.mail_btn,
+        for w in (self.cancel_btn, self.preview_btn, self.ics_btn, self.app_btn, self.print_btn, self.pdf_btn, self.mail_btn,
                   self.save_btn):
             row.addWidget(w)
         outer.addLayout(row)
@@ -1096,6 +1099,26 @@ class PlanView(QWidget):
             return False
         services.register_report(self.ctx.store, Path(fn), self.athlete)   # so erasing the person finds it
         QMessageBox.information(self, t("ui.plan.ics"), t("ui.plan.file_saved", path=fn))
+        return True
+
+    def to_app(self) -> bool:
+        """*Till appen*: the saved plan as a QR code, a link and a ``.troskel`` file for the athlete's app. The same
+        rules as the other ways out; after *Förnya* it gives the renewed plan, which the app takes in its place."""
+        from lopanalys.ui.views.plan_app import AppDialog
+        plan = self._for_output()
+        if plan is None:
+            return False
+        try:
+            link, data = services.plan_app(plan)
+        except Exception as e:
+            log.exception("the plan for the app failed")
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.plan.err_app", detail=str(e)))
+            return False
+        target = self._target(".troskel")
+        dlg = AppDialog(link, data, target, self,
+                        on_saved=lambda p: services.register_report(self.ctx.store, p, self.athlete))
+        self._app_dialog = dlg
+        dlg.exec()
         return True
 
     def send_to_athlete(self) -> bool:

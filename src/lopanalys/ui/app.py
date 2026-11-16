@@ -181,6 +181,7 @@ SELFCHECK_MODULES = (
     "jinja2", "PIL.Image", "cryptography.hazmat.primitives.ciphers.aead", "cryptography.hazmat.primitives.kdf.scrypt",
     "lopanalys.storage.privacy", "PySide6.QtWebEngineWidgets", "PySide6.QtPdf", "PySide6.QtPrintSupport",
     "lopanalys.share.fit", "lopanalys.share.mail", "lopanalys.share.secret", "smtplib", "ssl", "email.message",
+    "lopanalys.share.qr", "segno",
 )
 
 

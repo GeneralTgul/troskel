@@ -13,6 +13,7 @@
  "share.mail.plan_ics_iphone": "- iPhone: tryck på filen i mejlet och välj Lägg till alla.",
  "share.mail.plan_ics_android": "- Android: öppna filen med telefonens kalender. Går det inte, importera den i Google Kalender på en dator (Inställningar → Importera och exportera).",
  "share.mail.plan_ics_update": "Får du ett nytt schema senare ersätter den nya kalenderfilen passen i stället för att lägga dem dubbelt.",
+ "share.mail.plan_app": "Öppna schemat i appen: {link}",
  "share.mail.questions": "Hör av dig om du undrar över något.",
  "share.mail.regards": "Hälsningar",
  "share.mail.test_subject": "Provmejl från Tröskel",

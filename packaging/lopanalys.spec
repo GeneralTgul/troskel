@@ -32,7 +32,9 @@ a = Analysis(
                                                     "cryptography.hazmat.primitives.ciphers.aead",
                                                     "cryptography.hazmat.primitives.kdf.scrypt",
                                                     # mail to the athlete (share/mail.py), imported lazily from the UI
-                                                    "smtplib", "ssl", "email.message", "email.mime.application"],
+                                                    "smtplib", "ssl", "email.message", "email.mime.application",
+                                                    # the QR code for the athlete's app (share/qr.py), imported lazily
+                                                    "segno"],
     excludes=["tkinter", "PySide6.Qt3DCore", "PySide6.QtQuick3D", "PySide6.QtDesigner"],
 )
 pyz = PYZ(a.pure)

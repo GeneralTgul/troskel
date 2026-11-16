@@ -13,6 +13,7 @@
  "share.mail.plan_ics_iphone": "- iPhone: tap the file in the mail and choose Add All.",
  "share.mail.plan_ics_android": "- Android: open the file with the phone's calendar. If that does not work, import it in Google Calendar on a computer (Settings → Import & export).",
  "share.mail.plan_ics_update": "If you get a new plan later, the new calendar file replaces the workouts instead of adding them twice.",
+ "share.mail.plan_app": "Open the plan in the app: {link}",
  "share.mail.questions": "Get in touch if you have any questions.",
  "share.mail.regards": "Best regards",
  "share.mail.test_subject": "Test mail from Tröskel",
