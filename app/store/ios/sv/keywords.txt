@@ -1,0 +1,1 @@
+träningsschema,löpning,träning,coach,puls,zoner,tröskel,laktat,pulszoner,veckoschema,kondition

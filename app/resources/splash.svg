@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <!-- The start image: the mark small in the middle on ink, so that it survives any crop. -->
+  <rect width="2732" height="2732" fill="#141A21"/>
+  <g transform="translate(1366 1366) scale(18) translate(-12 -12)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10" stroke="#22A699" stroke-width="1.6"/>
+    <path d="M6 13.5h3l2-5 2.5 9 2-4H19" stroke="#E9EEF3" stroke-width="1.8"/>
+  </g>
+</svg>
