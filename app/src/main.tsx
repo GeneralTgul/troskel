@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
-import { Store } from "./model/storage";
+import { openStore } from "./model/storage";
 import "./styles.css";
 
 function download(name: string, text: string, type: string) {
@@ -18,10 +18,11 @@ function download(name: string, text: string, type: string) {
 // ?view=week opens a view directly (screenshots, a shortcut on the home screen).
 const view = new URLSearchParams(location.search).get("view") as Tab | null;
 
-render(
+// The app store builds read Capacitor Preferences first (asynchronous); the browser has localStorage at once.
+openStore().then((store) => render(
   <App
     tab={view && TABS.includes(view) ? view : undefined}
-    store={new Store()}
+    store={store}
     engine={engine}
     loadDemo={() => fetch(`${import.meta.env.BASE_URL}demo.troskel`).then((r) => r.text())}
     incoming={location.href}
@@ -31,7 +32,7 @@ render(
     hasCamera={!!navigator.mediaDevices?.getUserMedia}
   />,
   document.getElementById("app")!,
-);
+));
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   addEventListener("load", () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));

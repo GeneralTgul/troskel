@@ -65,7 +65,17 @@ Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriv
 
 ## Integritet
 
-Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna och språkvalet sparas bara i webbläsarens lagring på enheten, och *Ta bort all data på enheten* tömmer den.
+Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna och språkvalet sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
+
+Var de sparas står i `app/src/model/storage.ts`:
+
+- **Webbversionen** (GitHub Pages och på hemskärmen) sparar i webbläsarens `localStorage`.
+- **Appen i butikerna** sparar med Capacitor Preferences, som är telefonens egen lagring för appar (UserDefaults på iOS, SharedPreferences på Android). iOS kan tömma en webbvys `localStorage` när telefonen har ont om plats, men inte Preferences. `Capacitor.isNativePlatform()` väljer lagringen.
+- Preferences är asynkron. Appen läser därför in allt en gång vid starten (`openStore` i `main.tsx`) och läser sedan ur minnet och skriver igenom till Preferences, i ordning. Vyerna är synkrona som förut. Går Preferences inte att läsa startar appen med `localStorage` i stället.
+- En installerad app som sparat i `localStorage` förut flyttar sina data till Preferences första gången, när Preferences är tom, och tömmer sedan `localStorage`. Misslyckas flytten ligger de kvar där.
+- *Ta bort all data på enheten* tömmer både Preferences och `localStorage`.
+
+Proven står i `app/test/storage.test.ts`. I en riktig telefon är lagringen inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
 
 ## Bygga och köra lokalt
 
