@@ -1,3 +1,4 @@
+import { mainSport } from "../engine/models";
 import { t } from "../i18n";
 import { addDays, daysBetween, dayMonth, mondayOf } from "../model/dates";
 import { hours, noteText, planEnd, planStart, targetText, weekMinutes, weekZoneMinutes, zoneName } from "../model/plan";
@@ -19,8 +20,9 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
   const start = planStart(stored);
   const end = planEnd(stored);
   const thisWeek = mondayOf(today);
-  const cap = stored.request.capacity.find((c) => c.sport === (stored.request.sports[0] ?? "run"));
-  const zt = stored.targets[stored.request.sports[0] ?? "run"] ?? {};
+  const main = mainSport(stored.request);
+  const cap = stored.request.capacity.find((c) => c.sport === main);
+  const zt = stored.targets[main] ?? {};
   return (
     <section class="view overview two-col">
       <div class="col">
