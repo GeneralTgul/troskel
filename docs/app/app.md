@@ -68,6 +68,7 @@ När idrottaren sparar nya tider räknar appen om schemat från i morgon med pla
 `rebuild(stored, { slots, unavailable, from })` i `app/src/engine/index.ts` ger ett nytt sparat schema:
 
 - Underlaget får de nya tiderna, och motorn bygger hela schemat på nytt med samma schema-id. Blocken och målet ligger kvar, och veckotiden följer vad de nya tiderna rymmer. En ny dag får schemats alla idrotter, och en dag som fanns behåller sina.
+- *Mina tider* har en rad per veckodag, dagens första tid. En andra tid samma dag (två pass samma dag, som coachen ger i Tröskel) ligger kvar som den var så länge dagen är på, och försvinner med dagen.
 - En vecka som slutar före `from` ligger kvar som den sparades. I veckan som `from` faller i ligger passen före `from` kvar med sin status, och resten är nytt.
 - I ett rullande schema står gränsen för passen kvar. Veckorna efter den blir skisser av det nya schemat, så att *Förnya* i Tröskel senare ger samma pass.
 - De dagar som inte går stryks passen (loppen ligger kvar). Motorn flyttar dem inte till en annan dag, eftersom motorn i Python inte har dagar som faller bort.

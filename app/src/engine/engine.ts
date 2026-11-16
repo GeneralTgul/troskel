@@ -11,12 +11,17 @@ import {
   BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, capacityFor, estimated, mainSport,
   minutes, note, ownCapacity, planRoles, roleWeight, sketchOf, speedFromHr, strengthCount, weekMinutes, zoneSeconds,
 } from "./models";
-import { LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5 } from "./periodize";
+import {
+  LEVEL, type Level, MAX_WEEKLY_INCREASE, type Skeleton, type WeekSpec, coreSlots, longSlot, periodize, round5, secondSlots,
+} from "./periodize";
 import { addDays, cmp, combinations, daysBetween, floordiv, isoYearWeek, maxBy, minBy, mod, sortedBy, sum, weekday } from "./py";
 
-export const ENGINE_VERSION = "7";
+export const ENGINE_VERSION = "8";
 /** No strength in the days before an A or B race (engine.STRENGTH_CLEAR_DAYS). */
 export const STRENGTH_CLEAR_DAYS = 3;
+/** The key suffix of a day's second workout, and its weight when the easy minutes are shared (engine.SECOND). */
+export const SECOND = "-2";
+export const SECOND_WEIGHT = 0.7;
 export const MAX_HARD_SHARE = 0.25;
 export const MIN_SESSION = 30;
 export const LONG_SHARE = 0.33;
@@ -169,6 +174,7 @@ class Filler {
   readonly main: string;
   readonly slots: StoredSlot[];
   readonly longSlot: StoredSlot;
+  readonly seconds: StoredSlot[];
   /** Strength: the days of the slots that allow it, else every day with an endurance slot (slot null). */
   readonly strengthSlots = new Map<number, StoredSlot | null>();
   readonly goal: StoredGoal | null;
@@ -187,6 +193,7 @@ class Filler {
     this.main = mainSport(request);
     this.slots = coreSlots(request);
     this.longSlot = longSlot(this.slots, this.main);
+    this.seconds = secondSlots(request, this.slots);
     const own = new Map<number, StoredSlot>();
     for (const s of request.availability)
       if (s.role === "core" && s.sports.includes(STRENGTH) && s.max_minutes > 0 && s.weekday >= 0 && s.weekday <= 6)
@@ -213,11 +220,11 @@ class Filler {
   }
 
   workout(day: IsoDate, templateId: string, slot: StoredSlot | null,
-    o: { minutes?: number | null; step?: number; goal?: StoredGoal | null } = {}): StoredWorkout {
+    o: { minutes?: number | null; step?: number; goal?: StoredGoal | null; suffix?: string } = {}): StoredWorkout {
     const t = library.get(templateId);
     const goal = o.goal ?? null;
     return {
-      key: this.key(day, goal ? "-race" : ""), date: day, sport: goal ? goal.sport : this.main, template_id: templateId, family: t.family,
+      key: this.key(day, goal ? "-race" : o.suffix ?? ""), date: day, sport: goal ? goal.sport : this.main, template_id: templateId, family: t.family,
       quality: t.quality, start: slot ? slot.start : null, status: "planned", goal: goal ? { ...goal } : null,
       parts: library.build(templateId, { minutes: o.minutes, step: o.step ?? 0 }),
     };
@@ -245,11 +252,14 @@ class Filler {
     if (st.max_minutes !== null) ceiling = Math.min(ceiling, floor5((1 + MAX_WEEKLY_INCREASE) * st.max_minutes));
     if (spec.kind !== "load" && st.load_target)
       ceiling = Math.min(ceiling, round5(spec.target_minutes * st.load_actual / st.load_target));
-    const n = Math.min(avail.length, level.max_sessions, Math.max(1, floordiv(ceiling, MIN_SESSION)));
+    const availDays = new Set(avail.map((s) => s.weekday));
+    const seconds = spec.kind !== "taper" && spec.kind !== "race" ? this.seconds.filter((s) => availDays.has(s.weekday)) : [];
+    const n = Math.min(avail.length + seconds.length, level.max_sessions, Math.max(1, floordiv(ceiling, MIN_SESSION)));
     const majorRace = spec.goals.some(isAB);
     const longDay = addDays(spec.monday, this.longSlot.weekday);
     const wantLong = n >= 2 && avail.includes(this.longSlot) && !majorRace && !this.raceDates.has(addDays(longDay, -1));
-    const chosen = avail.length ? spread(avail, n, wantLong ? this.longSlot : null) : [];
+    const chosen = avail.length ? spread(avail, Math.min(n, avail.length), wantLong ? this.longSlot : null) : [];
+    const doubles = n - chosen.length; // second workouts of a day: only once every day has one
     const day = new Map(chosen.map((s) => [s.weekday, addDays(spec.monday, s.weekday)]));
     const longWd = this.longSlot.weekday;
     const early = this.request.level === "beginner" && spec.index <= BEGINNER_EARLY_WEEKS;
@@ -264,7 +274,7 @@ class Filler {
       const fams = families(spec, q, st, this.goal, early);
       const downs = fams.length ? Math.max(...fams.map((f) => library.get(f).steps.length)) : 1;
       for (let down = 0; down < downs; down++) {
-        result = this.assemble(spec, chosen, day, qSlots, fams, down, ceiling, wantLong);
+        result = this.assemble(spec, chosen, day, qSlots, fams, down, ceiling, wantLong, seconds, doubles);
         if (result !== null) break;
       }
       if (result !== null) break;
@@ -310,12 +320,13 @@ class Filler {
     }
     const cands = [...days.keys()].sort((a, b) => a - b).filter((wd) => !closed.has(days.get(wd)!));
     if (!cands.length) return [];
-    const on = new Map(workouts.filter((w) => w.goal == null).map((w) => [w.date, w]));
+    const on = new Map<IsoDate, StoredWorkout[]>();
+    for (const w of workouts) if (w.goal == null) on.set(w.date, [...(on.get(w.date) ?? []), w]);
     const heavy = new Set(workouts.filter((w) => w.quality || w.family === "long" || w.goal != null).map((w) => w.date));
     const beforeHard = new Map(cands.map((wd) => [wd, heavy.has(addDays(days.get(wd)!, 1)) ? 1 : 0]));
-    const own = (wd: number) => {
-      const w = on.get(days.get(wd)!);
-      return w === undefined ? 0 : w.quality || w.family === "long" ? 2 : 1;
+    const own = (wd: number) => { // two workouts in a day count as a hard day
+      const ws = on.get(days.get(wd)!) ?? [];
+      return !ws.length ? 0 : ws.length > 1 || ws.some((w) => w.quality || w.family === "long") ? 2 : 1;
     };
     let best: number[] | null = null;
     let bestKey: number[] | null = null;
@@ -340,12 +351,12 @@ class Filler {
 
   /** engine._Filler._sports: every workout of the week (no races) gets its sport, in place, and then the
    * sport's template in the place of the running one (library.inSport: the same minutes). */
-  sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>): void {
-    if (this.roles.length >= 2) this.assign(spec, workouts, slotOf);
+  sports(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>): void {
+    if (this.roles.length >= 2) this.assign(spec, workouts, slotOf, secondOf);
     for (const w of workouts) [w.template_id, w.parts] = library.inSport(w.parts, w.template_id, w.sport);
   }
 
-  assign(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>): void {
+  assign(spec: WeekSpec, workouts: StoredWorkout[], slotOf: Map<number, StoredSlot>, secondOf: Map<number, StoredSlot>): void {
     const share = shares(this.roles, spec.block);
     const total = sum(workouts.map(minutes));
     const done = new Map(this.roles.map((r) => [r.sport, 0]));
@@ -355,8 +366,21 @@ class Filler {
     const order = sortedBy(workouts, (w) => [mainFirst(w) ? 0 : w.quality ? 1 : 2,
       mainFirst(w) || w.quality ? 0 : -minutes(w), w.date]);
     const or = <T>(xs: T[], els: T[]) => (xs.length ? xs : els);
+    const dayOf = new Map<IsoDate, StoredWorkout[]>();
+    for (const w of workouts) dayOf.set(w.date, [...(dayOf.get(w.date) ?? []), w]);
+    const assigned = new Set<string>();
+    const allowedOf = (w: StoredWorkout) => {
+      const slot = (w.key.endsWith(SECOND) ? secondOf : slotOf).get(weekday(w.date))!;
+      return this.roles.filter((r) => slot.sports.includes(r.sport));
+    };
     for (const w of order) {
-      const allowed = this.roles.filter((r) => slotOf.get(weekday(w.date))!.sports.includes(r.sport));
+      let allowed = allowedOf(w);
+      const others = dayOf.get(w.date)!.filter((o) => o !== w);
+      if (others.length) { // not the sport of the day's other workout, and leave that one a sport of its own
+        let free = allowed.filter((r) => others.every((o) => !assigned.has(o.key) || o.sport !== r.sport));
+        free = or(free.filter((r) => others.every((o) => assigned.has(o.key) || allowedOf(o).some((x) => x.sport !== r.sport))), free);
+        allowed = or(free, allowed);
+      }
       let cands = or(w.quality ? allowed.filter((r) => r.role !== "maintenance") : allowed, allowed);
       cands = or(cands.filter((r) => r.role !== "maintenance" || count.get(r.sport) === 0), cands);
       cands = or(cands.filter((r) => r.sport !== RUNNING || runCap === null || done.get(RUNNING)! + minutes(w) <= runCap), cands);
@@ -365,11 +389,14 @@ class Filler {
       w.sport = pick;
       done.set(pick, done.get(pick)! + minutes(w));
       count.set(pick, count.get(pick)! + 1);
+      assigned.add(w.key);
     }
+    for (const w of workouts.filter((x) => x.key.endsWith(SECOND)))
+      if (dayOf.get(w.date)!.some((o) => o !== w && o.sport === w.sport)) workouts.splice(workouts.indexOf(w), 1);
   }
 
   assemble(spec: WeekSpec, chosen: StoredSlot[], day: Map<number, IsoDate>, qSlots: StoredSlot[], fams: string[],
-    down: number, ceiling: number, wantLong: boolean): Assembled | null {
+    down: number, ceiling: number, wantLong: boolean, seconds: StoredSlot[], doubles: number): Assembled | null {
     const st = this.state;
     const level = this.level;
     const workouts: StoredWorkout[] = [];
@@ -411,18 +438,38 @@ class Filler {
     if (st.sunday_hard || this.longSlot.weekday === 6) heavy.add(addDays(spec.monday, -1));
     const easySlots = chosen.filter((s) => !taken.has(day.get(s.weekday)!));
     const items: Item[] = [];
+    const kinds = new Map<number, string>();
     for (const s of easySlots) {
       const d = day.get(s.weekday)!;
       const recovery = chosen.length >= 4 && easySlots.length >= 2 && heavy.has(addDays(d, -1));
       const t = library.get(recovery ? "recovery" : "easy");
       const hi = Math.min(s.max_minutes, t.max_minutes, this.capped.get(d) ?? 10_000,
         spec.kind === "race" ? RACE_WEEK_MAX : 10_000);
-      if (hi >= t.min_minutes) items.push([s.weekday, recovery ? 0.7 : 1.0, t.min_minutes, hi]);
+      if (hi >= t.min_minutes) {
+        items.push([s.weekday, recovery ? 0.7 : 1.0, t.min_minutes, hi]);
+        kinds.set(s.weekday, t.id);
+      }
     }
-    const kinds = new Map(items.map(([wd, w]) => [wd, w < 1.0 ? "recovery" : "easy"]));
+    // A day's second workout (keyed weekday + 7): easy, a recovery workout on a hard day, on the days without a hard
+    // session or a long run first, never on the long run's day or around a race.
+    const extra = sortedBy(seconds.filter((s) => !this.blocked.has(day.get(s.weekday)!) && !this.capped.has(day.get(s.weekday)!)
+      && !(longMinutes && s.weekday === this.longSlot.weekday)),
+    (s) => [taken.has(day.get(s.weekday)!) ? 1 : 0, -s.max_minutes, s.weekday]).slice(0, Math.max(0, doubles));
+    for (const s of extra) {
+      const t = library.get(taken.has(day.get(s.weekday)!) ? "recovery" : "easy");
+      const hi = Math.min(s.max_minutes, t.max_minutes);
+      if (hi >= t.min_minutes) {
+        items.push([s.weekday + 7, SECOND_WEIGHT, t.min_minutes, hi]);
+        kinds.set(s.weekday + 7, t.id);
+      }
+    }
     const byWd = new Map(chosen.map((s) => [s.weekday, s]));
+    const secondOf = new Map(extra.map((s) => [s.weekday, s]));
     const shares = share(Math.max(0, left), items);
-    for (const [wd, m] of shares) workouts.push(this.workout(day.get(wd)!, kinds.get(wd)!, byWd.get(wd)!, { minutes: m }));
+    for (const [k, m] of shares) {
+      if (k < 7) workouts.push(this.workout(day.get(k)!, kinds.get(k)!, byWd.get(k)!, { minutes: m }));
+      else workouts.push(this.workout(day.get(k - 7)!, kinds.get(k)!, secondOf.get(k - 7)!, { minutes: m, suffix: SECOND }));
+    }
     // With few slots the easy runs fill up: what is left goes to the long run, within its own limits.
     const spare = floor5(left - [...shares.values()].reduce((a, b) => a + b, 0));
     if (longMinutes && spec.kind === "load" && st.last_long && spare >= 5) {
@@ -434,7 +481,7 @@ class Filler {
       }
     }
     // Every workout in its sport, before the checks: another sport's template may hold more hard minutes.
-    this.sports(spec, workouts, byWd);
+    this.sports(spec, workouts, byWd, secondOf);
     if (workouts.reduce((s, w) => s + minutes(w), 0) > ceiling || hardShare(workouts) > MAX_HARD_SHARE) return null;
     return [workouts, used, longMinutes];
   }

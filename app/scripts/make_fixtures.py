@@ -178,9 +178,17 @@ def _requests() -> list[tuple[str, PlanRequest, date | None]]:
         ("skierg-alone-cycle", replace(cycle, availability=one("skierg"), capacity=(skierg,), roles=(SportRole("skierg"),)),
          None),
     ]
+    # Two workouts a day (#666): a morning on the bike beside the evening run, more sessions than days, and strength.
+    out += [
+        ("two-a-day", replace(base, availability=sl(DEMO_SLOTS + MORNING_BIKE), level="trained", recent_weekly_minutes=330,
+                              roles=(SportRole("run", "main"), SportRole("bike", "support")), strength_sessions=1), None),
+        ("two-a-day-rolling", replace(demo.demo_request(20), availability=sl(DEMO_SLOTS + MORNING_BIKE), level="trained",
+                                      roles=(SportRole("run", "main"), SportRole("bike", "support"))), date(2026, 12, 2)),
+    ]
     return out
 
 
+MORNING_BIKE = tuple((d, 45, "07:00:00", "core", ("bike",)) for d in (1, 3, 5))
 BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
 SWIM_TEST = Capacity("swim", None, date(2026, 11, 10), "CSS-test", css_s100=115.0)    # 400 m 7:20, 200 m 3:30
 
@@ -258,6 +266,7 @@ def engine_fixtures() -> dict[str, Any]:
     plans["demo-done"] = done
     run_bike = next(r for n, r, _ in _requests() if n == "run-bike")
     plans["run-bike"] = link.stored_plan(build_plan(run_bike, plan_id="demo"))
+    plans["two-a-day"] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == "two-a-day"), plan_id="demo"))
     for name in TEXT_PLANS:
         plans[name] = link.stored_plan(build_plan(next(r for n, r, _ in _requests() if n == name), plan_id="demo"))
     demo_slots = _slots(*DEMO_SLOTS)
@@ -283,6 +292,9 @@ def engine_fixtures() -> dict[str, Any]:
         ("beginner-two-days", "beginner", _slots((1, 40), (5, 60)), [], "2026-11-17"),
         ("run-bike-fewer", "run-bike", _slots((1, 75, None, "core", ("run", "bike")), (3, 75, None, "core", ("bike",)),
                                               (6, 120, None, "core", ("run", "bike"))), ["2026-12-10"], "2026-11-30"),
+        ("two-a-day-no-mornings", "two-a-day", demo_slots, [], "2026-12-01"),
+        ("two-a-day-more-mornings", "two-a-day", _slots(*DEMO_SLOTS, *MORNING_BIKE, (0, 40, "06:30:00", "core", ("bike",))),
+         ["2026-12-03"], "2026-11-24"),
         ("trained-cycle-fewer", "trained-cycle", _slots(*DEMO_SLOTS[:1], *DEMO_SLOTS[2:4]), ["2026-12-03"], "2026-11-30"),
     ]
     rebuilds = []

@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import pytest
 
 from lopanalys.core.i18n import set_language
 from lopanalys.plan import Goal, Slot, build_plan, library, resolve
-from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, periodize
+from lopanalys.plan.periodize import LEVEL, core_slots, first_week_minutes, periodize, second_slots
 
 from . import cases as c
 
@@ -46,19 +47,38 @@ def test_weeks_are_whole_and_in_order(plan):
 
 def test_availability_is_respected(plan):
     slots = {s.weekday: s for s in core_slots(plan.request)}
+    seconds = {s.weekday: s for s in second_slots(plan.request)}
     for w in plan.workouts:
         if w.goal or w.strength:
             continue
-        slot = slots[w.date.weekday()]           # KeyError: a workout on a day without a slot
+        slot = (seconds if w.key.endswith("-2") else slots)[w.date.weekday()]   # KeyError: a day without a slot
         assert w.minutes <= slot.max_minutes, w
         assert w.start == slot.start
-    days = [w.date for w in plan.workouts if not w.strength]
-    assert len(days) == len(set(days)), "two endurance workouts on one day"
+        assert w.sport in slot.sports, w
+    days: dict = {}
+    for w in plan.workouts:
+        if not w.strength:
+            days.setdefault(w.date, []).append(w)
+    for d, ws in days.items():
+        assert len(ws) <= 2, d
+        if len(ws) == 2:          # two workouts a day: two sports, one of them on the day's second slot, never two hard
+            assert ws[0].sport != ws[1].sport and sum(w.key.endswith("-2") for w in ws) == 1, d
+            assert sum(w.quality for w in ws) <= 1 and not any(w.key.endswith("-2") and w.quality for w in ws), d
     assert len({w.key for w in plan.workouts}) == len(plan.workouts)
 
 
+def _day_kind(ws):
+    """A day with two workouts is hard when one of them is."""
+    return SimpleNamespace(quality=any(w.quality for w in ws), family="long" if any(w.family == "long" for w in ws)
+                           else ws[0].family, goal=next((w.goal for w in ws if w.goal), None), key=ws[0].key)
+
+
 def test_never_two_hard_days_in_a_row_and_none_before_the_long_run(plan):
-    by_day = {w.date: w for w in plan.workouts if not w.strength}
+    days: dict = {}
+    for w in plan.workouts:
+        if not w.strength:
+            days.setdefault(w.date, []).append(w)
+    by_day = {d: _day_kind(ws) for d, ws in days.items()}
     for d, w in by_day.items():
         nxt = by_day.get(d + timedelta(days=1))
         if w.quality and nxt is not None:

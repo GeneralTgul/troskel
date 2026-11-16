@@ -71,6 +71,26 @@ export function coreSlots(r: StoredRequest, sport: string | null = null): Stored
   return [...best.keys()].sort((a, b) => a - b).map((d) => best.get(d)!);
 }
 
+/** periodize.second_slots (#666, two workouts a day): beside the day's core slot, another core slot at another
+ * clock time, when the two allow two different sports of the plan. At most one a day (the longest), in weekday order. */
+export function secondSlots(r: StoredRequest, first: StoredSlot[] | null = null): StoredSlot[] {
+  const sports = planSports(r);
+  if (sports.length < 2) return [];
+  const days = new Map((first ?? coreSlots(r)).map((s) => [s.weekday, s]));
+  const best = new Map<number, StoredSlot>();
+  for (const s of r.availability) {
+    const p = days.get(s.weekday);
+    if (p === undefined || s === p || s.role !== "core" || s.max_minutes <= 0) continue;
+    if (s.start == null || p.start == null || s.start === p.start) continue;
+    const mine = s.sports.filter((x) => sports.includes(x));
+    const theirs = p.sports.filter((x) => sports.includes(x));
+    if (!mine.some((a) => theirs.some((b) => a !== b))) continue;
+    const b = best.get(s.weekday);
+    if (!b || s.max_minutes > b.max_minutes) best.set(s.weekday, s);
+  }
+  return [...best.keys()].sort((a, b) => a - b).map((d) => best.get(d)!);
+}
+
 /** The long run's slot: the longest slot for the main sport, the later day on a tie (else the longest of all). */
 export function longSlot(all: StoredSlot[], main: string): StoredSlot {
   const own = all.filter((s) => s.sports.includes(main));
@@ -88,7 +108,8 @@ export function weekCapacity(r: StoredRequest, sport: string | null = null): num
   if (!slots.length) return 0;
   const ls = longSlot(slots, mainSport(r));
   const easyMax = library.get("easy").max_minutes;
-  const held = slots.map((s) => (s === ls ? Math.min(s.max_minutes, level.long_cap) : Math.min(s.max_minutes, easyMax)))
+  const seconds = sport === null ? secondSlots(r, slots) : [];
+  const held = [...slots, ...seconds].map((s) => (s === ls ? Math.min(s.max_minutes, level.long_cap) : Math.min(s.max_minutes, easyMax)))
     .sort((a, b) => b - a);
   return held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
 }

@@ -43,6 +43,7 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | *Tillgänglig tid* | Minuter per veckodag | Så länge idrottaren kan träna den dagen, 20–480 minuter. En tom dag får inget pass |
 | | Klockslag | Valfritt. Passet får den tiden i kalenderfilen, annars blir det en heldagshändelse |
 | | Idrotterna den dagen | Bara med flera idrotter: *Alla* eller de idrotter som går den dagen, till exempel bara cykel en dag utan löpband |
+| | *+* (en andra tid samma dag) | Bara med flera idrotter: en rad till under dagen, *Andra passet*, med egna minuter, klockslag och idrotter. Båda tiderna behöver ett klockslag, och de ska vara olika. *−* tar bort den andra tiden, se [Två pass samma dag](#två-pass-samma-dag) |
 | *Mål* | *Schemat slutar med ett mål (lopp)* | Namn, datum, distans och måltid. Schemat räknas bakåt från loppet |
 | | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig. Ett *Träningslopp* ersätter ett av veckans hårda pass |
 | | *Inget mål: ange längd* | Antal veckor, minst 4. Schemat slutar med ett nytt test |
@@ -59,9 +60,18 @@ Under *Idrotter* finns löpning, cykel, SkiErg, skidor och simning. Löpning är
 
 Under varje idrott utom löpning står vad zonerna bygger på: idrottens senaste laktat-, maxpuls- eller zontest, annars maxpulsen i idrotten (uppskattade zoner), annars bara zon och ansträngning. Skidor lånar SkiErgens zoner. Simning tar tempot per 100 m ur idrottarens senaste [simtest](#simtestet-css), och går på upplevd ansträngning när det inte finns något. Med flera idrotter får varje veckodag en knapp för idrotterna den dagen, där *Alla* är förvalt.
 
-![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, och tisdagen bara för cykel](images/idrotter.png)
+![Formuläret med löpning som huvudidrott och cykel som stödjande idrott, tisdagen bara för cykel och en andra tid på torsdagen för cykel kl. 07:00](images/idrotter.png)
 
 Hur motorn fördelar passen över idrotterna står i [Träningsplanen → Flera idrotter](../../TRANINGSPLAN.md#flera-idrotter).
+
+#### Två pass samma dag
+
+Med flera idrotter kan en veckodag ha två tider: tryck *+* bredvid dagen och fyll i *Andra passet*, till exempel 45 minuter cykel kl. 07:00 bredvid löpningen kl. 18:00. Schemat använder den andra tiden så här:
+
+- **Bara när veckan vill ha fler pass än det finns dagar.** En motionär har högst fem pass i veckan, så med fem dagar blir det inga dubbla dagar utom i en vecka med lopp.
+- **Det andra passet är alltid lugnt** och i en annan idrott än dagens första. Är dagens första pass hårt blir det andra ett återhämtningspass.
+- **Aldrig två hårda pass samma dag.** En dag med två pass räknas som hård om något av dem är hårt.
+- **Aldrig** på långpassets dag, dagarna runt ett lopp eller i nedtrappningen och loppveckan. Dagar utan hårt pass får det andra passet först.
 
 ### Simtestet (CSS)
 

@@ -20,6 +20,8 @@ SEVEN = tuple(Slot(d, 90 if d < 5 else 180) for d in range(7))
 # Swimming's manual test (#666, step 3): 400 m in 7:20 and 200 m in 3:30 give CSS 1:55 per 100 m.
 SWIM_TEST = Capacity("swim", None, date(2026, 11, 10), "CSS-test", css_s100=115.0)
 # Strength in slots of its own: Monday, Wednesday and Friday mornings.
+# Two workouts a day (#666): the evening's run and a morning on the bike on Tuesday, Thursday and Saturday.
+MORNING_BIKE = tuple(Slot(d, 45, ("bike",), time(7)) for d in (1, 3, 5))
 STRENGTH_SLOTS = (Slot(0, 45, ("strength",), time(7)), Slot(2, 45, ("strength",), time(7)),
                   Slot(4, 45, ("strength",), time(7)))
 
@@ -74,4 +76,7 @@ CASES = {
     "triathlon_swim": request(for_sports(SEVEN, RUNNING, "bike", "swim"), level="trained", recent=360,
                               goals=(Goal("Triathlon", date(2027, 5, 29), distance_km=51.5),),
                               capacity=(TESTED, BIKE_TEST, SWIM_TEST), roles=TRIATHLON, strength=1),
+    # Two workouts a day (#666): more sessions than days, a morning bike beside the evening run, and strength.
+    "two_a_day": request(FIVE + MORNING_BIKE, goals=(HALF, SEEDING, PARKRUN), level="trained", recent=330,
+                         roles=RUN_BIKE, strength=1),
 }

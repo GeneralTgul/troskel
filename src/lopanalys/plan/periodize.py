@@ -97,6 +97,31 @@ def core_slots(request: PlanRequest, sport: str | None = None) -> list:
     return [best[d] for d in sorted(best)]
 
 
+def second_slots(request: PlanRequest, first: list | None = None) -> list:
+    """The second slot of a weekday (#666, two workouts a day): beside the day's core slot (``core_slots``), another
+    core slot at another clock time, when the two slots between them allow two different sports of the plan. At
+    most one a day (the longest), in weekday order. A plan with one sport has none: two workouts in one day are
+    always two different sports."""
+    sports = request.plan_sports
+    if len(sports) < 2:
+        return []
+    days = {s.weekday: s for s in (first if first is not None else core_slots(request))}
+    best: dict[int, object] = {}
+    for s in request.availability:
+        p = days.get(s.weekday)
+        if p is None or s is p or s.role != "core" or s.max_minutes <= 0:
+            continue
+        if s.start is None or p.start is None or s.start == p.start:
+            continue
+        mine = [x for x in s.sports if x in sports]
+        theirs = [x for x in p.sports if x in sports]
+        if not any(a != b for a in mine for b in theirs):
+            continue
+        if s.weekday not in best or s.max_minutes > best[s.weekday].max_minutes:
+            best[s.weekday] = s
+    return [best[d] for d in sorted(best)]
+
+
 def long_slot(slots: list, main_sport: str):
     """The long run's slot all through the plan: the longest slot for the main sport, the later day on a tie
     (the longest slot of all when no slot has the main sport)."""
@@ -105,16 +130,18 @@ def long_slot(slots: list, main_sport: str):
 
 
 def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
-    """The minutes a week can really hold: the level's number of sessions in the longest core slots,
-    the long run within the level's longest long run and every other run within an easy run's length."""
+    """The minutes a week can really hold: the level's number of sessions in the longest core slots (and the
+    second slots of the days, ``second_slots``), the long run within the level's longest long run and every other
+    run within an easy run's length."""
     level = LEVEL[request.level]
     slots = core_slots(request, sport)
     if not slots:
         return 0
     long = long_slot(slots, request.main_sport)
     easy_max = library.get("easy").max_minutes
+    seconds = second_slots(request, slots) if sport is None else []
     held = sorted((min(s.max_minutes, level.long_cap) if s is long else min(s.max_minutes, easy_max)
-                   for s in slots), reverse=True)
+                   for s in slots + seconds), reverse=True)
     return sum(held[:level.max_sessions])
 
 

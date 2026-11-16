@@ -20,6 +20,11 @@ The rules (docs/TRANINGSPLAN.md):
     The week is filled with the running templates; a workout in the bike, the SkiErg or on skis then takes
     the sport's own template in the same place, just as long (library.in_sport), and the week is checked
     again (the hard share) with them.
+  - Two workouts a day (#666): a day with a second slot at another clock time (periodize.second_slots) gets a
+    second workout only when every day of the week already has one and the week wants more sessions. The second
+    workout is always easy (a recovery workout on a hard day), in another sport than the day's first, never on the
+    long run's day or the days around a race, and on the days without a hard session or a long run first. A day
+    with two workouts is a hard day when one of them is.
   - Strength (#666, step 3): the coach sets 0-3 sessions a week (PlanRequest.strength_sessions). They come on
     top of the endurance week, which is filled first and never changes for them (``_Filler._strength``):
     never on a race day, the day before a race or the three days before an A or B race; at most one in the race
@@ -41,11 +46,13 @@ from itertools import combinations
 from . import library
 from .models import (BORROWS, EASY_ZONES, RUNNING, STRENGTH, WEEKDAY_KEYS, Goal, Note, Plan, PlanRequest, Slot,
                      SportRole, Week, WeekSketch, Workout)
-from .periodize import LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5
+from .periodize import (LEVEL, MAX_WEEKLY_INCREASE, Level, Skeleton, WeekSpec, core_slots, long_slot, periodize, round5,
+                        second_slots)
 
-ENGINE_VERSION = "7"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
+ENGINE_VERSION = "8"           # 2: the volume grows from what the athlete trains; 3: the rolling plan; 4: several sports;
                                # 5: the bike's and the SkiErg's own workouts; 6: strength and swimming;
-                               # 7: each sport's own test, and the sweet spot as a band of the threshold power
+                               # 7: each sport's own test, and the sweet spot as a band of the threshold power;
+                               # 8: two workouts a day
 MAX_HARD_SHARE = 0.25         # of a week's zoned time above LT1
 MIN_SESSION = 30              # minutes of weekly volume per session before another slot is used
 LONG_SHARE = 0.33             # the long run's share of the week
@@ -60,6 +67,8 @@ STEP_BACK = 2                 # steps an easy or taper week goes back in a progr
 DETAIL_WEEKS = 4              # weeks with workouts in a rolling plan: the week of the day and three more
 SHARE_SHIFT = {"peak": 0.5, "taper": 0.75}   # the part of the other sports' share the main sport takes
 STRENGTH_CLEAR_DAYS = 3       # no strength in the days before an A or B race
+SECOND = "-2"                 # the key suffix of a day's second workout (periodize.second_slots)
+SECOND_WEIGHT = 0.7           # a second workout's weight when the easy minutes are shared, as a recovery run's
 
 
 def floor5(minutes: float) -> int:
@@ -207,6 +216,7 @@ class _Filler:
                                                        else {s.weekday: None for s in self.slots})
         # The long run has one home all through the plan: the longest slot of the main sport, the later day on a tie.
         self.long_slot = long_slot(self.slots, self.main)
+        self.seconds = second_slots(request, self.slots)
         self.state = _State()
         first, last = skeleton.weeks[0].monday, skeleton.weeks[-1].monday + timedelta(days=6)
         self.blocked: set[date] = set()       # no quality session on these days
@@ -227,10 +237,10 @@ class _Filler:
         return f"{self.plan_id}-{iso.year % 100:02d}{iso.week:02d}-{WEEKDAY_KEYS[day.weekday()]}{suffix}"
 
     def _workout(self, day: date, template_id: str, slot: Slot | None, *, minutes: int | None = None,
-                 step: int = 0, goal: Goal | None = None) -> Workout:
+                 step: int = 0, goal: Goal | None = None, suffix: str = "") -> Workout:
         tpl = library.get(template_id)
         sport = goal.sport if goal else self.main     # _sports sets the sport of the others
-        return Workout(self._key(day, "-race" if goal else ""), day, sport, template_id, tpl.family, tpl.quality,
+        return Workout(self._key(day, "-race" if goal else suffix), day, sport, template_id, tpl.family, tpl.quality,
                        library.build(template_id, minutes=minutes, step=step), slot.start if slot else None, goal)
 
     def _place(self, cands: list[Slot], q: int, fixed_hard: list[int]) -> list[Slot] | None:
@@ -256,12 +266,15 @@ class _Filler:
         if spec.kind != "load" and st.load_target:
             # Easy, test and taper weeks are a share of what the last load week really held.
             ceiling = min(ceiling, round5(spec.target_minutes * st.load_actual / st.load_target))
-        n = min(len(avail), level.max_sessions, max(1, ceiling // MIN_SESSION))
+        avail_days = {s.weekday for s in avail}
+        seconds = [s for s in self.seconds if s.weekday in avail_days] if spec.kind not in ("taper", "race") else []
+        n = min(len(avail) + len(seconds), level.max_sessions, max(1, ceiling // MIN_SESSION))
         major_race = any(g.priority in ("A", "B") for g in spec.goals)
         long_day = spec.monday + timedelta(days=self.long_slot.weekday)
         want_long = (n >= 2 and self.long_slot in avail and not major_race
                      and long_day - timedelta(days=1) not in self.race_dates)   # no long run the day after a race
-        chosen = _spread(avail, n, self.long_slot if want_long else None) if avail else []
+        chosen = _spread(avail, min(n, len(avail)), self.long_slot if want_long else None) if avail else []
+        doubles = n - len(chosen)     # second workouts of a day: only once every day has one
         day = {s.weekday: spec.monday + timedelta(days=s.weekday) for s in chosen}
         long_wd = self.long_slot.weekday
         early = self.request.level == "beginner" and spec.index <= BEGINNER_EARLY_WEEKS
@@ -278,7 +291,7 @@ class _Filler:
                 continue
             fams = _families(spec, q, st, self.goal, early)
             for down in range(max(len(library.get(f).steps) for f in fams) if fams else 1):
-                result = self._assemble(spec, chosen, day, q_slots, fams, down, ceiling, want_long)
+                result = self._assemble(spec, chosen, day, q_slots, fams, down, ceiling, want_long, seconds, doubles)
                 if result is not None:
                     break
             if result is not None:
@@ -331,13 +344,16 @@ class _Filler:
         cands = [wd for wd in sorted(days) if days[wd] not in closed]
         if not cands:
             return []
-        on = {w.date: w for w in workouts if w.goal is None}
+        on: dict[date, list[Workout]] = {}
+        for w in workouts:
+            if w.goal is None:
+                on.setdefault(w.date, []).append(w)
         heavy = {w.date for w in workouts if w.quality or w.family == "long" or w.goal is not None}
         before_hard = {wd: days[wd] + timedelta(days=1) in heavy for wd in cands}
 
-        def own(wd: int) -> int:
-            w = on.get(days[wd])
-            return 0 if w is None else 2 if (w.quality or w.family == "long") else 1
+        def own(wd: int) -> int:      # two workouts in a day count as a hard day
+            ws = on.get(days[wd], [])
+            return 0 if not ws else 2 if len(ws) > 1 or any(w.quality or w.family == "long" for w in ws) else 1
 
         best, best_key = None, None
         for combo in combinations(cands, min(n, len(cands))):
@@ -360,7 +376,8 @@ class _Filler:
                                library.build(tid), slot.start if slot else None))
         return out
 
-    def _sports(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
+    def _sports(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot],
+                second_of: dict[int, Slot]) -> None:
         """Gives every workout of the week (races not among them) its sport, in place, and then the sport's
         template in the place of the running one (library.in_sport: the same minutes).
 
@@ -368,13 +385,14 @@ class _Filler:
         longest first: each to the sport furthest behind its share of the week's minutes, among the sports its
         slot allows (ties: the order of the roles). A maintenance sport is never hard and gets one workout a
         week, and running is left out once it would pass 10 % above its biggest week, as long as the slot
-        allows another sport."""
+        allows another sport. Two workouts in a day get two sports: a day's second workout that cannot is dropped."""
         if len(self.roles) >= 2:
-            self._assign(spec, workouts, slot_of)
+            self._assign(spec, workouts, slot_of, second_of)
         for w in workouts:
             w.template_id, w.parts = library.in_sport(w.parts, w.template_id, w.sport)
 
-    def _assign(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot]) -> None:
+    def _assign(self, spec: WeekSpec, workouts: list[Workout], slot_of: dict[int, Slot],
+                second_of: dict[int, Slot]) -> None:
         share = shares(self.roles, spec.block)
         total = sum(w.minutes for w in workouts)
         done = {r.sport: 0 for r in self.roles}
@@ -383,8 +401,23 @@ class _Filler:
         main_first = lambda w: w.family == "long" or w.template_id == "test"
         order = sorted(workouts, key=lambda w: (0 if main_first(w) else 1 if w.quality else 2,
                                                 0 if main_first(w) or w.quality else -w.minutes, w.date))
+        day_of: dict[date, list[Workout]] = {}
+        for w in workouts:
+            day_of.setdefault(w.date, []).append(w)
+        assigned: set[str] = set()
+
+        def allowed_of(w: Workout) -> list[SportRole]:
+            slot = (second_of if w.key.endswith(SECOND) else slot_of)[w.date.weekday()]
+            return [r for r in self.roles if r.sport in slot.sports]
+
         for w in order:
-            allowed = [r for r in self.roles if r.sport in slot_of[w.date.weekday()].sports]
+            allowed = allowed_of(w)
+            others = [o for o in day_of[w.date] if o is not w]
+            if others:    # not the sport of the day's other workout, and leave that one a sport of its own
+                free = [r for r in allowed if all(o.key not in assigned or o.sport != r.sport for o in others)]
+                free = [r for r in free if all(o.key in assigned or any(x.sport != r.sport for x in allowed_of(o))
+                                               for o in others)] or free
+                allowed = free or allowed
             cands = ([r for r in allowed if r.role != "maintenance"] if w.quality else allowed) or allowed
             cands = [r for r in cands if r.role != "maintenance" or count[r.sport] == 0] or cands
             cands = [r for r in cands if r.sport != RUNNING or run_cap is None
@@ -396,9 +429,13 @@ class _Filler:
             w.sport = pick
             done[pick] += w.minutes
             count[pick] += 1
+            assigned.add(w.key)
+        for w in [w for w in workouts if w.key.endswith(SECOND)]:
+            if any(o is not w and o.sport == w.sport for o in day_of[w.date]):
+                workouts.remove(w)
 
     def _assemble(self, spec: WeekSpec, chosen: list[Slot], day: dict[int, date], q_slots: list[Slot],
-                  fams: list[str], down: int, ceiling: int, want_long: bool,
+                  fams: list[str], down: int, ceiling: int, want_long: bool, seconds: list[Slot], doubles: int,
                   ) -> tuple[list[Workout], dict[str, int], int | None] | None:
         st, level = self.state, self.level
         workouts: list[Workout] = []
@@ -443,6 +480,7 @@ class _Filler:
             heavy.add(spec.monday - timedelta(days=1))
         easy_slots = [s for s in chosen if day[s.weekday] not in taken]
         items = []
+        kinds: dict[int, str] = {}
         for s in easy_slots:
             d = day[s.weekday]
             recovery = len(chosen) >= 4 and len(easy_slots) >= 2 and d - timedelta(days=1) in heavy
@@ -451,11 +489,26 @@ class _Filler:
                      RACE_WEEK_MAX if spec.kind == "race" else 10_000)
             if hi >= tpl.min_minutes:
                 items.append((s.weekday, 0.7 if recovery else 1.0, tpl.min_minutes, hi))
-        kinds = {wd: ("recovery" if w < 1.0 else "easy") for wd, w, _, _ in items}
+                kinds[s.weekday] = tpl.id
+        # A day's second workout (keyed weekday + 7): easy, a recovery workout on a hard day, on the days without a
+        # hard session or a long run first, never on the long run's day or around a race.
+        extra = sorted((s for s in seconds if day[s.weekday] not in self.blocked and day[s.weekday] not in self.capped
+                        and not (long_minutes and s.weekday == self.long_slot.weekday)),
+                       key=lambda s: (day[s.weekday] in taken, -s.max_minutes, s.weekday))[:max(0, doubles)]
+        for s in extra:
+            tpl = library.get("recovery" if day[s.weekday] in taken else "easy")
+            hi = min(s.max_minutes, tpl.max_minutes)
+            if hi >= tpl.min_minutes:
+                items.append((s.weekday + 7, SECOND_WEIGHT, tpl.min_minutes, hi))
+                kinds[s.weekday + 7] = tpl.id
         by_wd = {s.weekday: s for s in chosen}
+        second_of = {s.weekday: s for s in extra}
         shares = _share(max(0, left), items)
-        for wd, minutes in shares.items():
-            workouts.append(self._workout(day[wd], kinds[wd], by_wd[wd], minutes=minutes))
+        for k, minutes in shares.items():
+            if k < 7:
+                workouts.append(self._workout(day[k], kinds[k], by_wd[k], minutes=minutes))
+            else:
+                workouts.append(self._workout(day[k - 7], kinds[k], second_of[k - 7], minutes=minutes, suffix=SECOND))
         # With few slots the easy runs fill up: what is left goes to the long run, within its own limits.
         spare = floor5(left - sum(shares.values()))
         if long_minutes and spec.kind == "load" and st.last_long and spare >= 5:
@@ -465,7 +518,7 @@ class _Filler:
                 i = next(i for i, w in enumerate(workouts) if w.family == "long")
                 workouts[i] = self._workout(workouts[i].date, workouts[i].template_id, self.long_slot, minutes=long_minutes)
         # Every workout in its sport, before the checks: another sport's template may hold more hard minutes.
-        self._sports(spec, workouts, by_wd)
+        self._sports(spec, workouts, by_wd, second_of)
         if sum(w.minutes for w in workouts) > ceiling or _hard_share(workouts) > MAX_HARD_SHARE:
             return None
         return workouts, used, long_minutes

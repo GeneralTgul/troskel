@@ -528,14 +528,19 @@ class Studio:
         return self.win
 
     def traningsschema_idrotter(self) -> Any:
-        """The form with running and cycling: the sports' rows and the button per weekday, the plan previewed."""
+        """The form with running and cycling: the sports' rows, the button per weekday and a second time on Thursday
+        (the bike in the morning), the plan previewed."""
         v = self._plan()
         v.sport_rows["bike"].check.setChecked(True)
         v.day_sports[1].actions_["bike"].setChecked(True)
+        v.second_btns[3].click()
+        v.minutes2[3].setText("45")
+        v.clocks2[3].setText("07:00")
+        v.day_sports2[3].actions_["bike"].setChecked(True)
         assert v.preview(), v.error.text()
         self.wait(100)
         bar = v.form_scroll.verticalScrollBar()
-        bar.setValue(v.sport_rows["run"].y() - 120)
+        bar.setValue(v.sport_rows["bike"].y() - 30)      # the sports and the days down to the second time on Thursday
         self.wait(300)
         return self.win
 

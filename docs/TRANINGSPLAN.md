@@ -58,6 +58,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Cykelns och SkiErgens egna pass med mål i watt och tid per 500 m, sweet spot som 88–94 % av tröskelwatten och ett eget test per idrott | Byggt (steg 2 av 4), se [Passbiblioteket](#passbiblioteket) och [Testet per idrott](#testet-per-idrott) |
 | Styrka (0–3 pass i veckan ovanpå uthållighetsveckan) och simning på ansträngning eller på ett manuellt CSS-test | Byggt i motorn och i appen (steg 3 av 4), se [Styrka](#styrka) och [Simning](#simning). Antalet styrkepass väljs i formuläret, och simtestet skrivs in från *Historik* |
 | Idrotterna i formuläret och utskriften: roll och andel, idrotterna per veckodag, en färg per idrott, idrottstabellen, watt i zonerna, veckans tid per idrott och belastningen | Byggt (steg 4 av 4), se [Utskriften](#4-utskriften). Inte provat på Windows ([PROV.md](PROV.md)) |
+| Två pass samma dag: en andra tid på en veckodag ger ett lugnt pass i en annan idrott | Byggt, se [Två pass samma dag](#två-pass-samma-dag) |
 | Återhämtningsblock efter ett mål, passkort | Inte byggt |
 
 ## 1. Datamodellen
@@ -264,7 +265,16 @@ Banden följer Swim Smooths träning på CSS *(ej verifierat mot källa)*. Plane
 
 - **Inte byggt:** formuläret för testet i programmet och en simsport bland testerna (`catalog.SPORT_TESTS`).
 
-**Inte byggt:** belastningen som tak för veckan. Inte heller två pass samma dag (en plats per veckodag gäller) eller ett mindre långpass i en stödjande idrott.
+#### Två pass samma dag
+
+En veckodag kan ha en andra plats (`periodize.second_slots`): en kärnplats till samma dag, på ett annat klockslag, när de två platserna tillsammans tillåter två olika av planens idrotter. Den längsta sådana platsen används, högst en om dagen. Ett schema med en idrott har inga andra platser. I formuläret är det *+* bredvid dagen ([handboken](handbok/traningsschema/traningsschema.md#två-pass-samma-dag)).
+
+- **Antalet pass** räknas på dagarna och de andra platserna tillsammans, inom nivåns antal pass. Dagarna tas först, så ett andra pass kommer bara när varje dag redan har ett och veckan vill ha fler. Det veckan rymmer (`periodize.week_capacity`) räknar de andra platserna som lugna pass.
+- **Det andra passet är lugnt**, ett återhämtningspass på en dag med ett hårt pass, och får en mindre del av de lugna minuterna (vikten 0,7, som återhämtningen). Det läggs först på dagar utan hårt pass eller långpass, aldrig på långpassets dag, dagarna runt ett lopp eller dagarna före ett A- eller B-lopp, och inte i nedtrappningen eller loppveckan. Nyckeln slutar på `-2`.
+- **Två idrotter:** dagens två pass får olika idrotter. Varje pass får sin idrott som förut (`engine._Filler._assign`), men inte den idrott dagens andra pass redan fått, och inte en som lämnar det andra utan idrott. Går det ändå inte stryks det andra passet.
+- **Hårda dagar:** aldrig två hårda pass samma dag, och en dag med två pass är hård om något av dem är hårt. Styrkan räknar en dag med två pass som en hård dag när den väljer dagar.
+
+**Inte byggt:** belastningen som tak för veckan och ett mindre långpass i en stödjande idrott.
 
 ### Delmål och planer utan mål
 

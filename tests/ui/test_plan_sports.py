@@ -194,3 +194,38 @@ def test_strength_sessions_are_asked_saved_and_read_back(demo_window, erik):
     assert v.strength.currentData() == 2 and not v.dirty()
     v.strength.setCurrentIndex(v.strength.findData(0))
     assert v.dirty()
+
+
+def test_a_second_time_on_a_weekday_is_asked_saved_and_read_back(demo_window, erik):
+    """Two workouts a day (#666): with more than one sport the + beside a day opens a second time."""
+    win = demo_window
+    win.open_plan(erik)
+    v = win.plan
+    _fill(v)
+    for h in v.health.values():
+        h.setChecked(True)
+    assert all(b.isHidden() for b in v.second_btns)               # one sport: no second time
+    _tick(v, "bike")
+    assert all(b.isVisibleTo(v) for b in v.second_btns) and v.minutes2[1].isHidden()
+    v.level.setCurrentIndex(v.level.findData("trained"))
+    v.clocks[1].setText("18:00")
+    v.second_btns[1].click()
+    assert v.minutes2[1].isVisibleTo(v) and v.second_btns[1].text() == "−"
+    v.minutes2[1].setText("45")
+    assert v.collect() is None and v.error.text() == "Tisdag: två pass samma dag behöver två olika klockslag."
+    v.clocks2[1].setText("7")
+    v.day_sports2[1].actions_["bike"].setChecked(True)
+    req = v.collect()
+    tue = [s for s in req.availability if s.weekday == 1]
+    assert [(s.max_minutes, f"{s.start:%H:%M}", s.sports) for s in tue] == [(75, "18:00", (RUNNING, "bike")),
+                                                                         (45, "07:00", ("bike",))]
+    assert v.preview() and any(w.key.endswith("-2") for w in v.plan.workouts)
+    assert v.save() and not v.dirty()
+    win._plan_back()
+    win.open_plan(erik)
+    assert v.second_btns[1].isChecked() and v.minutes2[1].text() == "45" and v.clocks2[1].text() == "07:00"
+    assert v.day_sports2[1].chosen() == ("bike",) and not v.second_btns[2].isChecked() and not v.dirty()
+    v.second_btns[1].click()                                       # closing it removes the second time
+    assert v.minutes2[1].text() == "" and v.dirty()
+    assert [s.weekday for s in v.collect().availability].count(1) == 1
+    v.revert()

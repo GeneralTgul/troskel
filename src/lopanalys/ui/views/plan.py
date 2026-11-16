@@ -15,7 +15,9 @@ Several sports (#666, step 4): the coach ticks the plan's sports, each with a ro
 maintenance) and a share of the weekly time in tens of percent, 60/30/10 by default. Running's zones come
 from the chosen test; every other sport takes its own newest test (services.sport_capacity). A weekday can
 allow some of the sports only: the button beside the day says which, *Alla* by default. Strength is a number of
-sessions a week (0-3) on top of the endurance time, placed by the engine.
+sessions a week (0-3) on top of the endurance time, placed by the engine. With more than one sport a weekday can have
+a second time (the *+* beside the day): a second slot with its own minutes, clock time and sports, which the engine
+uses for a second, easy workout in another sport (plan.periodize.second_slots).
 
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
@@ -399,22 +401,46 @@ class PlanView(QWidget):
         self.minutes: list[NumberEdit] = []
         self.clocks: list[QLineEdit] = []
         self.day_sports: list[DaySports] = []
+        # The second time of a day (two workouts a day): a row under the day, opened with its + button.
+        self.minutes2: list[NumberEdit] = []
+        self.clocks2: list[QLineEdit] = []
+        self.day_sports2: list[DaySports] = []
+        self.second_btns: list[QToolButton] = []
+        self.second_rows: list[list[QWidget]] = []
         for i, key in enumerate(WEEKDAY_KEYS):
-            dg.addWidget(label(t(f"ui.plan.day.{key}")), i, 0)
-            m = NumberEdit("min")
-            m.setObjectName(f"minutes_{key}")
-            c = SelectAllEdit()
-            c.setPlaceholderText(t("ui.plan.clock_placeholder"))
-            c.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9:.]{0,5}"), c))
-            ds = DaySports()
-            ds.setObjectName(f"sports_{key}")
-            ds.changed.connect(self._changed)
-            dg.addWidget(m, i, 1)
-            dg.addWidget(c, i, 2)
-            dg.addWidget(ds, i, 3)
-            self.minutes.append(m)
-            self.clocks.append(c)
-            self.day_sports.append(ds)
+            dg.addWidget(label(t(f"ui.plan.day.{key}")), 2 * i, 0)
+            row: list[QWidget] = [label(t("ui.plan.second_label"), "Hint")]
+            dg.addWidget(row[0], 2 * i + 1, 0)
+            for n, (mins, clocks, sports) in enumerate(((self.minutes, self.clocks, self.day_sports),
+                                                        (self.minutes2, self.clocks2, self.day_sports2))):
+                suffix = "" if n == 0 else "_2"
+                m = NumberEdit("min")
+                m.setObjectName(f"minutes_{key}{suffix}")
+                c = SelectAllEdit()
+                c.setPlaceholderText(t("ui.plan.clock_placeholder"))
+                c.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9:.]{0,5}"), c))
+                ds = DaySports()
+                ds.setObjectName(f"sports_{key}{suffix}")
+                ds.changed.connect(self._changed)
+                dg.addWidget(m, 2 * i + n, 1)
+                dg.addWidget(c, 2 * i + n, 2)
+                dg.addWidget(ds, 2 * i + n, 3)
+                mins.append(m)
+                clocks.append(c)
+                sports.append(ds)
+                if n:
+                    row += [m, c, ds]
+            b = QToolButton()
+            b.setObjectName(f"second_{key}")
+            b.setText("+")
+            b.setCheckable(True)
+            b.setToolTip(t("ui.plan.second_add"))
+            b.toggled.connect(lambda on, i=i: self._second_toggled(i, on))
+            dg.addWidget(b, 2 * i, 4)
+            self.second_btns.append(b)
+            self.second_rows.append(row)
+            for w in row:
+                w.setVisible(False)
         dg.setColumnStretch(0, 2)
         dg.setColumnStretch(1, 3)
         dg.setColumnStretch(2, 3)
@@ -477,7 +503,7 @@ class PlanView(QWidget):
         v.addStretch(1)
 
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
-                  self.start.edit, *self.minutes, *self.clocks):
+                  self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
             w.textChanged.connect(self._changed)
         for cb in (self.test, self.level, self.strength):
             cb.currentIndexChanged.connect(self._changed)
@@ -549,6 +575,8 @@ class PlanView(QWidget):
                 tuple(r.snapshot() for r in self.sport_rows.values()), self.strength.currentData(),
                 tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
                                                                                   self.day_sports)),
+                tuple((m.value(), c.text().strip(), d.chosen()) if self._second_on(i) else None
+                      for i, (m, c, d) in enumerate(zip(self.minutes2, self.clocks2, self.day_sports2))),
                 self.mode.currentData(), self.goal_name.text().strip(), self.goal_date.text().strip(),
                 self.goal_km.value(), self.goal_target.text().strip(), tuple(r.snapshot() for r in self.milestones),
                 self.weeks.value(), self.start.text().strip())
@@ -582,10 +610,29 @@ class PlanView(QWidget):
         """The days offer the plan's sports, and are asked only when there is more than one;
         the running test is chosen only when running is in the plan."""
         sports = self.chosen_sports()
-        for d in self.day_sports:
+        for d in self.day_sports + self.day_sports2:
             d.offer(sports)
+        for d in self.day_sports:
             d.setVisible(len(sports) > 1)
+        for i, b in enumerate(self.second_btns):        # two workouts a day are two sports
+            b.setVisible(len(sports) > 1)
+            for w in self.second_rows[i]:
+                w.setVisible(self._second_on(i))
         self.test_box.setVisible(RUNNING in sports or not sports)
+        self._changed()
+
+    def _second_on(self, i: int) -> bool:
+        """The weekday's second time is open and the plan has more than one sport."""
+        return self.second_btns[i].isChecked() and len(self.chosen_sports()) > 1
+
+    def _second_toggled(self, i: int, on: bool) -> None:
+        self.second_btns[i].setText("−" if on else "+")
+        if not on:
+            self.minutes2[i].clear()
+            self.clocks2[i].clear()
+            self.day_sports2[i].set_chosen(())
+        for w in self.second_rows[i]:
+            w.setVisible(self._second_on(i))
         self._changed()
 
     def _sport_basis(self) -> None:
@@ -680,14 +727,16 @@ class PlanView(QWidget):
         for r in list(self.milestones):
             self._remove_milestone(r)
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
-                  self.start.edit, *self.minutes, *self.clocks):
+                  self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
             w.clear()
+        for b in self.second_btns:
+            b.setChecked(False)
         req = st.plan.request if st else None
         roles = {r.sport: r for r in req.plan_roles()} if req else {RUNNING: SportRole(RUNNING, "main")}
         for sp, row in self.sport_rows.items():
             r = roles.get(sp)
             row.set(r.role if r else "support", r.share if r else 0, r is not None)
-        for d in self.day_sports:
+        for d in self.day_sports + self.day_sports2:
             d.set_chosen(())
         self.strength.setCurrentIndex(max(0, self.strength.findData(req.strength_count if req else 0)))
         self._sport_basis()
@@ -699,11 +748,20 @@ class PlanView(QWidget):
             self.test.setCurrentIndex(self.test.findData(st.session_id))
             self.level.setCurrentIndex(max(0, self.level.findData(req.level)))
             self.recent.setValue(req.recent_weekly_minutes or 0)
+            seen: set[int] = set()
             for s in req.availability:
-                self.minutes[s.weekday].setValue(s.max_minutes)
-                self.clocks[s.weekday].setText(f"{s.start:%H:%M}" if s.start else "")
+                if s.role != "core" or not 0 <= s.weekday <= 6 or (s.weekday in seen and self.second_btns[s.weekday].isChecked()):
+                    continue
+                second = s.weekday in seen           # the day's second time
+                if second:
+                    self.second_btns[s.weekday].setChecked(True)
+                seen.add(s.weekday)
+                mins, clocks, sports = ((self.minutes2, self.clocks2, self.day_sports2) if second
+                                        else (self.minutes, self.clocks, self.day_sports))
+                mins[s.weekday].setValue(s.max_minutes)
+                clocks[s.weekday].setText(f"{s.start:%H:%M}" if s.start else "")
                 if set(roles) - set(s.sports):           # not every sport of the plan: the day's own
-                    self.day_sports[s.weekday].set_chosen(tuple(s.sports))
+                    sports[s.weekday].set_chosen(tuple(s.sports))
             main = st.plan.goal
             self.mode.setCurrentIndex(0 if main else 1)
             if main:
@@ -870,6 +928,19 @@ class PlanView(QWidget):
             except ValueError:
                 return self._fail(t("ui.plan.err_clock", day=day))
             slots.append(Slot(i, int(v), self.day_sports[i].chosen() or sports, start=start))
+            if self._second_on(i):
+                m2, c2 = self.minutes2[i].value(), self.clocks2[i].text().strip()
+                if m2 is None and not c2:
+                    continue
+                if m2 is None or not MIN_SLOT <= m2 <= MAX_SLOT:
+                    return self._fail(t("ui.plan.err_minutes", day=day, lo=MIN_SLOT, hi=MAX_SLOT))
+                try:
+                    start2 = parse_clock(c2)
+                except ValueError:
+                    return self._fail(t("ui.plan.err_clock", day=day))
+                if start is None or start2 is None or start == start2:
+                    return self._fail(t("ui.plan.err_second_clock", day=day))
+                slots.append(Slot(i, int(m2), self.day_sports2[i].chosen() or sports, start=start2))
         if not slots:
             return self._fail(t("plan.error.no_slots"))
         try:
