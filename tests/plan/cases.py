@@ -17,12 +17,17 @@ THREE = (Slot(1, 60), Slot(3, 60), Slot(6, 90))
 BIKE_TEST = Capacity("bike", Anchors(185, 48, 140, 160, 180.0, 240.0, sport="bike"), date(2026, 11, 1), "Laktattrappa")
 SKIERG_TEST = Capacity("skierg", Anchors(188, 48, 150, 168, 160.0, 210.0, sport="skierg"), date(2026, 11, 1), "Laktattrappa")
 SEVEN = tuple(Slot(d, 90 if d < 5 else 180) for d in range(7))
+# Swimming's manual test (#666, step 3): 400 m in 7:20 and 200 m in 3:30 give CSS 1:55 per 100 m.
+SWIM_TEST = Capacity("swim", None, date(2026, 11, 10), "CSS-test", css_s100=115.0)
+# Strength in slots of its own: Monday, Wednesday and Friday mornings.
+STRENGTH_SLOTS = (Slot(0, 45, ("strength",), time(7)), Slot(2, 45, ("strength",), time(7)),
+                  Slot(4, 45, ("strength",), time(7)))
 
 
 def request(slots=FIVE, *, goals=(), weeks=None, level="recreational", recent=200, capacity=(TESTED,),
-            start=START, roles=()) -> PlanRequest:
+            start=START, roles=(), strength=0) -> PlanRequest:
     return PlanRequest("Exempel Löpare", start, slots, capacity, goals=tuple(goals), duration_weeks=weeks,
-                       level=level, recent_weekly_minutes=recent, roles=tuple(roles))
+                       level=level, recent_weekly_minutes=recent, roles=tuple(roles), strength_sessions=strength)
 
 
 def for_sports(slots, *sports: str) -> tuple:
@@ -34,6 +39,7 @@ RUN_BIKE = (SportRole(RUNNING, "main"), SportRole("bike", "support"))
 FOUR = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("ski", "support", 20),
         SportRole("swim", "maintenance"))
 RUN_BIKE_ERG = (SportRole(RUNNING, "main"), SportRole("bike", "support"), SportRole("skierg", "support", 20))
+TRIATHLON = (SportRole(RUNNING, "main", 40), SportRole("bike", "support", 35), SportRole("swim", "support", 25))
 
 
 HALF = Goal("Halvmaran", date(2027, 2, 6), distance_km=21.1, target="under 1:45")       # Saturday of week 12
@@ -61,4 +67,11 @@ CASES = {
                         goals=(Goal("Skidlopp", date(2027, 3, 6), sport="ski", distance_km=45),),
                         capacity=(TESTED, SKIERG_TEST),
                         roles=(SportRole("ski", "main"), SportRole("skierg", "support"), SportRole(RUNNING, "maintenance"))),
+    # Strength and swimming (#666, step 3): running with two strength sessions on the running days, three in slots
+    # of their own, and a triathlon with swimming on its CSS test and one strength session.
+    "run_strength_2": request(goals=(HALF, SEEDING, PARKRUN), strength=2),
+    "run_strength_slots_3": request(FIVE + STRENGTH_SLOTS, weeks=16, strength=3),
+    "triathlon_swim": request(for_sports(SEVEN, RUNNING, "bike", "swim"), level="trained", recent=360,
+                              goals=(Goal("Triathlon", date(2027, 5, 29), distance_km=51.5),),
+                              capacity=(TESTED, BIKE_TEST, SWIM_TEST), roles=TRIATHLON, strength=1),
 }

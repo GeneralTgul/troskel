@@ -1,5 +1,5 @@
-"""The workout library, as data: running, and the bike and the SkiErg in the places of the running templates.
-Every workout in a plan comes from a template here.
+"""The workout library, as data: running; the bike, the SkiErg and swimming in the places of the running
+templates; and strength, which has no zones. Every workout in a plan comes from a template here.
 
 A template refers to zones, never to heart rates or paces. Quality templates carry their progression
 as ``steps`` (total work time grows step by step); the engine picks the step, it never invents a
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .models import RUNNING, Part
+from .models import RUNNING, STRENGTH, SWIM, Part
 
 MIN = 60
 
@@ -128,13 +128,59 @@ _BIKE = (
 )
 _SKIERG = tuple(_like(run_id, f"skierg_{run_id}") for run_id in (
     "easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills", "opener"))
-TEMPLATES.update({tpl.id: tpl for tpl in _BIKE + _SKIERG})
-# Sport -> running template -> the sport's template. A sport not here (swimming) keeps the running templates.
+# Swimming (#666, step 3): on effort (RPE) without numbers, or with the pace per 100 m of a CSS test. Easy swimming,
+# technique (drills at an easy effort, in the place of the recovery run) and intervals with short rests.
+_SWIM = (
+    _like("easy", "swim_easy"), _like("recovery", "swim_technique"), _like("long", "swim_long"),
+    _like("long_progressive", "swim_long_progressive"),
+    # Intervals just below the CSS pace, 30-60 s rest at the wall. Total work 24 -> 48 min.
+    _like("threshold", "swim_intervals", _steps(
+        "threshold", (10, 8, 3 * MIN, 30, "Z4", 7), (10, 10, 3 * MIN, 30, "Z4", 7), (10, 9, 4 * MIN, 30, "Z4", 7),
+        (10, 6, 6 * MIN, 45, "Z4", 7), (10, 5, 8 * MIN, MIN, "Z4", 7), (10, 6, 8 * MIN, MIN, "Z4", 7))),
+    # Hard intervals faster than CSS, a minute's rest. Number first, then length (10 -> 30 min of work).
+    _like("vo2max", "swim_hard", _steps(
+        "vo2max", (15, 10, MIN, MIN, "Z5", 9), (15, 12, MIN, MIN, "Z5", 9), (15, 8, 2 * MIN, MIN, "Z5", 9),
+        (15, 10, 2 * MIN, MIN, "Z5", 9), (15, 8, 3 * MIN, MIN, "Z5", 9), (15, 10, 3 * MIN, MIN, "Z5", 9))),
+    # Mixed pace: longer blocks between the thresholds with easy swimming between, in the place of the fartlek.
+    _like("fartlek", "swim_mixed", _steps(
+        "fartlek", (10, 4, 4 * MIN, MIN, "Z3", 6, "Z2"), (10, 5, 4 * MIN, MIN, "Z3", 6, "Z2"),
+        (10, 6, 4 * MIN, MIN, "Z3", 6, "Z2"), (10, 4, 6 * MIN, MIN, "Z3", 6, "Z2"), (10, 5, 6 * MIN, MIN, "Z3", 6, "Z2"))),
+    # Short sprints, 30 s on and 30 s off, in the place of the hills.
+    _like("hills", "swim_sprints", _steps(
+        "hills", (15, 8, 30, 30, "Z5", 8), (15, 12, 30, 30, "Z5", 8), (15, 16, 30, 30, "Z5", 8),
+        (15, 20, 30, 30, "Z5", 8), (15, 24, 30, 30, "Z5", 8))),
+    _like("opener", "swim_opener", _steps("opener", (10, 4, MIN, MIN, "Z4", 6))),
+)
+TEMPLATES.update({tpl.id: tpl for tpl in _BIKE + _SKIERG + _SWIM})
+# Sport -> running template -> the sport's template. Every endurance sport has its own now; a test and a race
+# stay as they are.
 SPORT_TEMPLATES: dict[str, dict[str, str]] = {
     "bike": {tpl.base: tpl.id for tpl in _BIKE},
     "skierg": {tpl.base: tpl.id for tpl in _SKIERG},
+    SWIM: {tpl.base: tpl.id for tpl in _SWIM},
 }
 SPORT_TEMPLATES["ski"] = SPORT_TEMPLATES["skierg"]
+
+
+# ---- strength (#666, step 3): no zones, a fixed length, effort only. Never in the place of an endurance workout:
+# the engine adds the sessions to the week (engine._Filler._strength).
+def _strength(warm_min: int, main_min: int, rpe: int, mobility_min: int) -> tuple[tuple[Part, ...], ...]:
+    return ((Part("warmup", warm_min * MIN, None, 3), Part("strength", main_min * MIN, None, rpe),
+             Part("mobility", mobility_min * MIN, None, 2)),)
+
+
+_STRENGTH = (
+    Template("strength_full", "strength", False, None, _strength(10, 30, 7, 5), sport=STRENGTH),
+    Template("strength_legs", "strength", False, None, _strength(10, 25, 7, 5), sport=STRENGTH),
+    Template("strength_upper", "strength", False, None, _strength(8, 20, 6, 7), sport=STRENGTH),
+    # The taper and the race week: shorter and lighter, no heavy loads.
+    Template("strength_maintenance", "strength", False, None, _strength(8, 15, 5, 7), sport=STRENGTH),
+)
+TEMPLATES.update({tpl.id: tpl for tpl in _STRENGTH})
+# The week's strength sessions by their number: the legs in the day with most room before a hard day (the engine).
+STRENGTH_WEEK = {1: ("strength_full",), 2: ("strength_legs", "strength_upper"),
+                 3: ("strength_legs", "strength_full", "strength_upper")}
+STRENGTH_TAPER = "strength_maintenance"
 
 
 def for_sport(template_id: str, sport: str) -> str:
@@ -179,5 +225,7 @@ def build(template_id: str, *, minutes: int | None = None, step: int = 0) -> lis
     kind = tpl.base or template_id
     if kind == "long_progressive":
         return [Part("steady", (minutes - 20) * MIN, "Z2", 4), Part("steady", 20 * MIN, "Z3", 6)]
+    if template_id == "swim_technique":   # drills, easy all through
+        return [Part("technique", minutes * MIN, "Z2", 3)]
     rpe = {"recovery": 2, "long": 4}.get(kind, 3)
     return [Part("steady", minutes * MIN, "Z2", rpe)]

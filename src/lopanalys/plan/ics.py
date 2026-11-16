@@ -52,7 +52,8 @@ def _description(w: Workout, plan: Plan) -> str:
 
 
 def _event(w: Workout, plan: Plan, stamp: str) -> list[str]:
-    summary = w.title if w.goal or not w.minutes else f"{w.title} · {duration(w.seconds)}"
+    title = plan.title(w)
+    summary = title if w.goal or not w.minutes else f"{title} · {duration(w.seconds)}"
     out = ["BEGIN:VEVENT", f"UID:{w.key}@{UID_DOMAIN}", f"DTSTAMP:{stamp}"]
     if w.start is not None and w.seconds:
         begin = datetime.combine(w.date, w.start)

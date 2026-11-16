@@ -40,6 +40,8 @@ export interface StoredCapacity {
   tested: IsoDate | null;
   source: string;
   speed_line?: StoredSpeedLine;
+  /** Swimming: the CSS pace of a manual swim test, seconds per 100 m (only when there is one). */
+  css_s100?: number;
 }
 
 export interface StoredSlot {
@@ -78,6 +80,8 @@ export interface StoredRequest {
   recent_weekly_minutes: number | null;
   /** Several sports (#666); missing or [] in a plan saved before them: the sports in `sports`. */
   roles?: StoredRole[];
+  /** Strength sessions a week, 0-3 (#666 step 3); only when set. */
+  strength_sessions?: number;
 }
 
 export type PartKind = "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | string;
@@ -112,6 +116,7 @@ export interface StoredSketch {
   quality: number; // of them hard days
   longest: number; // the longest run, minutes
   zones: [ZoneCode | string, number][]; // minutes per zone
+  strength?: number; // strength sessions, not among `sessions` (only when there are any)
 }
 
 export interface StoredWeek {
@@ -163,6 +168,9 @@ export interface ZoneTarget {
    * plans sent before #666 step 2). The speed_*_approx flags mark them as they mark the pace. */
   power_low_w?: number | null;
   power_high_w?: number | null;
+  /** Swimming with a CSS test: seconds per 100 m, the slower end first (only in a swimming target). */
+  swim_low_s?: number | null;
+  swim_high_s?: number | null;
 }
 
 export type ZoneTargets = Partial<Record<ZoneCode, ZoneTarget>>;

@@ -1,6 +1,6 @@
 /**
- * The workout library, as data: a port of lopanalys/plan/library.py. Running, and the bike and the SkiErg in
- * the places of the running templates. Every workout in a plan comes from a template here. Quality templates
+ * The workout library, as data: a port of lopanalys/plan/library.py. Running; the bike, the SkiErg and
+ * swimming in the places of the running templates; and strength, which has no zones. Every workout in a plan comes from a template here. Quality templates
  * carry their progression as `steps`; the engine picks the step and never invents a workout.
  */
 import type { StoredPart, ZoneCode } from "../model/types";
@@ -105,13 +105,41 @@ const BIKE: Template[] = [
 ];
 const SKIERG: Template[] = ["easy", "recovery", "long", "long_progressive", "threshold", "vo2max", "fartlek", "hills",
   "opener"].map((id) => like(id, `skierg_${id}`));
-for (const t of [...BIKE, ...SKIERG]) TEMPLATES[t.id] = t;
+/** Swimming (#666 step 3): on effort (RPE), or with the pace per 100 m of a CSS test. */
+const SWIM: Template[] = [
+  like("easy", "swim_easy"), like("recovery", "swim_technique"), like("long", "swim_long"),
+  like("long_progressive", "swim_long_progressive"),
+  like("threshold", "swim_intervals", steps("threshold", [10, 8, 3 * MIN, 30, "Z4", 7], [10, 10, 3 * MIN, 30, "Z4", 7],
+    [10, 9, 4 * MIN, 30, "Z4", 7], [10, 6, 6 * MIN, 45, "Z4", 7], [10, 5, 8 * MIN, MIN, "Z4", 7],
+    [10, 6, 8 * MIN, MIN, "Z4", 7])),
+  like("vo2max", "swim_hard", steps("vo2max", [15, 10, MIN, MIN, "Z5", 9], [15, 12, MIN, MIN, "Z5", 9],
+    [15, 8, 2 * MIN, MIN, "Z5", 9], [15, 10, 2 * MIN, MIN, "Z5", 9], [15, 8, 3 * MIN, MIN, "Z5", 9],
+    [15, 10, 3 * MIN, MIN, "Z5", 9])),
+  like("fartlek", "swim_mixed", steps("fartlek", [10, 4, 4 * MIN, MIN, "Z3", 6, "Z2"], [10, 5, 4 * MIN, MIN, "Z3", 6, "Z2"],
+    [10, 6, 4 * MIN, MIN, "Z3", 6, "Z2"], [10, 4, 6 * MIN, MIN, "Z3", 6, "Z2"], [10, 5, 6 * MIN, MIN, "Z3", 6, "Z2"])),
+  like("hills", "swim_sprints", steps("hills", [15, 8, 30, 30, "Z5", 8], [15, 12, 30, 30, "Z5", 8],
+    [15, 16, 30, 30, "Z5", 8], [15, 20, 30, 30, "Z5", 8], [15, 24, 30, 30, "Z5", 8])),
+  like("opener", "swim_opener", steps("opener", [10, 4, MIN, MIN, "Z4", 6])),
+];
+for (const t of [...BIKE, ...SKIERG, ...SWIM]) TEMPLATES[t.id] = t;
 
 /** Sport -> running template -> the sport's template (library.SPORT_TEMPLATES). */
 export const SPORT_TEMPLATES: Record<string, Record<string, string>> = {
   bike: Object.fromEntries(BIKE.map((t) => [t.base, t.id])),
   skierg: Object.fromEntries(SKIERG.map((t) => [t.base, t.id])),
+  swim: Object.fromEntries(SWIM.map((t) => [t.base, t.id])),
 };
+
+// ---- strength (library.py, #666 step 3): no zones, a fixed length, effort only.
+const strength = (id: string, warm: number, main: number, rpe: number, mobility: number): Template =>
+  tpl(id, "strength", false, null, { steps: [[part("warmup", warm * MIN, null, 3), part("strength", main * MIN, null, rpe),
+    part("mobility", mobility * MIN, null, 2)]] });
+for (const t of [strength("strength_full", 10, 30, 7, 5), strength("strength_legs", 10, 25, 7, 5),
+  strength("strength_upper", 8, 20, 6, 7), strength("strength_maintenance", 8, 15, 5, 7)]) TEMPLATES[t.id] = t;
+/** The week's strength sessions by their number (library.STRENGTH_WEEK); the first takes the roomiest day. */
+export const STRENGTH_WEEK: Record<number, string[]> = { 1: ["strength_full"], 2: ["strength_legs", "strength_upper"],
+  3: ["strength_legs", "strength_full", "strength_upper"] };
+export const STRENGTH_TAPER = "strength_maintenance";
 SPORT_TEMPLATES.ski = SPORT_TEMPLATES.skierg;
 
 export const forSport = (id: string, sport: string): string => SPORT_TEMPLATES[sport]?.[id] ?? id;
@@ -152,6 +180,7 @@ export function build(id: string, o: { minutes?: number | null; step?: number } 
   const kind = t.base || id;
   if (kind === "long_progressive")
     return [part("steady", (o.minutes - 20) * MIN, "Z2", 4), part("steady", 20 * MIN, "Z3", 6)];
+  if (id === "swim_technique") return [part("technique", o.minutes * MIN, "Z2", 3)];
   const rpe = ({ recovery: 2, long: 4 } as Record<string, number>)[kind] ?? 3;
   return [part("steady", o.minutes * MIN, "Z2", rpe)];
 }

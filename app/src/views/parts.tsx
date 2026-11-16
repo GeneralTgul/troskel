@@ -2,7 +2,7 @@
 import { t } from "../i18n";
 import { dayMonth, weekdayLong } from "../model/dates";
 import {
-  duration, mainZone, targetsOn, workoutHow, workoutLines, workoutPurpose, workoutSeconds, workoutTitle, zoneName,
+  duration, mainZone, targetsOn, workoutHow, workoutLines, workoutPurpose, workoutSeconds, planTitle, zoneName,
   hrText, paceText, powerText,
 } from "../model/plan";
 import type { IsoDate, StoredPlan, StoredWorkout, ZoneCode } from "../model/types";
@@ -47,7 +47,7 @@ export function WorkoutCard({ stored, w, big = false }: { stored: StoredPlan; w:
           {w.quality && !w.goal ? <span class="tag">{t("ui.workout.quality")}</span> : null}
           {w.goal ? <span class="tag">{t("ui.workout.race")}</span> : null}
         </div>
-        <h3>{workoutTitle(w)}</h3>
+        <h3>{planTitle(stored, w)}</h3>
         <div class="stats">
           {secs ? <span class="num">{duration(secs)}</span> : null}
           {zone ? <ZoneChip zone={zone} /> : null}

@@ -32,12 +32,16 @@ _TARGET_FIELDS = ("hr_low", "hr_high", "speed_low_kmh", "speed_high_kmh", "estim
 # The bike's and the SkiErg's watt (#666, step 2): only in a target that has them, so a running plan's payload
 # is as before and an app without the fields reads it as before.
 _POWER_FIELDS = ("power_low_w", "power_high_w")
+# Swimming's pace per 100 m from a CSS test (#666, step 3), in the same way: only in a swimming target.
+_SWIM_FIELDS = ("swim_low_s", "swim_high_s")
 
 
 def _target_dict(tg: Target) -> dict[str, Any]:
     d = {k: getattr(tg, k) for k in _TARGET_FIELDS}
     if tg.power_low_w or tg.power_high_w:
         d.update({k: getattr(tg, k) for k in _POWER_FIELDS})
+    if tg.swim_low_s or tg.swim_high_s:
+        d.update({k: getattr(tg, k) for k in _SWIM_FIELDS})
     return d
 
 
@@ -51,7 +55,7 @@ def _targets(plan: Plan) -> dict[str, dict[str, dict[str, Any]]]:
     SkiErg's heart rates, without its watt)."""
     out = {c.sport: zone_targets(c, plan.zone_system) for c in plan.request.capacity}
     for sport in plan.request.plan_sports:
-        if sport not in out and plan.request.capacity_for(sport).anchors is not None:
+        if sport not in out and plan.request.capacity_for(sport).known:
             out[sport] = zone_targets(plan.request.capacity_for(sport), plan.zone_system, sport)
     return out
 
