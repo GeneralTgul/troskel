@@ -146,5 +146,19 @@
  "ui.about.wall_title": "Wall mode",
  "ui.about.wall_switch": "Use wall mode",
  "ui.about.wall": "For a tablet on the wall: the screen stays on, and the app goes back to today and this week after 3 minutes without a touch.",
- "ui.about.wall_no_lock": "This device cannot keep the screen on from the app. Set the screen timeout in the device's settings. The app still goes back to today."
+ "ui.about.wall_no_lock": "This device cannot keep the screen on from the app. Set the screen timeout in the device's settings. The app still goes back to today.",
+ "ui.health.loaded": "The health data is read.",
+ "ui.health.error": "The link with health data could not be read.",
+ "ui.health.form": "Today's form",
+ "ui.health.tired": "Take it easy today",
+ "ui.health.fresh": "Train as planned",
+ "ui.health.hrv": "HRV {value} ms against your mean {mean}",
+ "ui.health.rhr": "Resting heart rate {value} against your mean {mean}",
+ "ui.health.sleep": "Only {value} hours of sleep last night",
+ "ui.health.missing": "Not counted today: {what}.",
+ "ui.health.name.hrv": "HRV",
+ "ui.health.name.rhr": "resting heart rate",
+ "ui.health.name.sleep": "sleep",
+ "ui.health.auto": "From Health",
+ "ui.health.auto_on": "From Health, done {date}"
 }

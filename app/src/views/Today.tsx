@@ -3,6 +3,8 @@ import { addDays, dayMonth, mondayOf } from "../model/dates";
 import { planEnd, planStart, workoutsOn } from "../model/plan";
 import type { IsoDate, StoredPlan } from "../model/types";
 import { Extras, SeasonStrip, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
+import type { HealthData } from "../model/health";
+import { FormCard } from "./health";
 import { dayLabel, WorkoutCard } from "./parts";
 
 function nextWorkoutDay(stored: StoredPlan, after: IsoDate): IsoDate | null {
@@ -12,7 +14,8 @@ function nextWorkoutDay(stored: StoredPlan, after: IsoDate): IsoDate | null {
   return best;
 }
 
-export function Today({ stored, today, log = NO_LOG, onLog = ignore }: { stored: StoredPlan; today: IsoDate } & Partial<LogProps>) {
+export function Today({ stored, today, log = NO_LOG, onLog = ignore, health = null }:
+  { stored: StoredPlan; today: IsoDate; health?: HealthData | null } & Partial<LogProps>) {
   const tomorrow = addDays(today, 1);
   const now = workoutsOn(stored, today);
   const next = workoutsOn(stored, tomorrow);
@@ -25,6 +28,7 @@ export function Today({ stored, today, log = NO_LOG, onLog = ignore }: { stored:
         <h2>{t("ui.today.title")} <span class="date">{dayLabel(today)}</span></h2>
         {start && today < start ? <p class="notice">{t("ui.today.before", { date: dayMonth(start) })}</p> : null}
         {end && today > end ? <p class="notice">{t("ui.today.after")}</p> : null}
+        <FormCard health={health} today={today} />
         {now.length ? (
           now.map((w) => (
             <WorkoutCard key={w.key} stored={stored} w={w} big>

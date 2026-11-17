@@ -1,6 +1,6 @@
 /**
- * Everything the app keeps, on the device only: the plan, the athlete's new times, what the athlete has ticked off
- * and the settings.
+ * Everything the app keeps, on the device only: the plan, the athlete's new times, what the athlete has ticked off,
+ * the phone's health data and the settings.
  * The browser (the PWA) keeps it in localStorage. The app store builds keep it in Capacitor Preferences
  * (UserDefaults on iOS, SharedPreferences on Android), because iOS may empty a web view's localStorage when
  * the phone runs short of space. Preferences is asynchronous: `openStore` reads everything once at start,
@@ -9,6 +9,7 @@
 import { Capacitor } from "@capacitor/core";
 import type { Lang } from "../i18n";
 import type { NewAvailability } from "../engine";
+import { checkHealth, HEALTH_FORMAT, HEALTH_KIND, type HealthData } from "./health";
 import { checkPlan } from "./link";
 import { checkLog, type TrainingLog } from "./log";
 import type { StoredPlan } from "./types";
@@ -20,7 +21,7 @@ export interface Backend {
 }
 
 const PREFIX = "troskel.";
-const KEYS = ["plan", "demo", "times", "settings", "log"] as const;
+const KEYS = ["plan", "demo", "times", "settings", "log", "health"] as const;
 
 /** An asynchronous key-value store, such as Capacitor Preferences. */
 export interface AsyncBackend {
@@ -185,6 +186,20 @@ export class Store {
 
   setLog(l: TrainingLog): void {
     this.write("log", l);
+  }
+
+  /** The phone's health data (health.ts): the watch's workouts and the night's values, the last six weeks. */
+  health(): HealthData | null {
+    const h = this.read<HealthData>("health");
+    try {
+      return h ? checkHealth({ ...h, kind: HEALTH_KIND, format: HEALTH_FORMAT }) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setHealth(h: HealthData): void {
+    this.write("health", h);
   }
 
   settings(): Settings {

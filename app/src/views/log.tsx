@@ -10,6 +10,7 @@ import {
 import { hours, planEnd, planStart, planTitle, workoutMinutes } from "../model/plan";
 import { season } from "../model/season";
 import type { IsoDate, StoredPlan, StoredWorkout } from "../model/types";
+import { AutoNote } from "./health";
 
 export interface LogProps {
   log: TrainingLog;
@@ -36,6 +37,7 @@ export function StatusPicker({ stored, w, log, onLog }: { stored: StoredPlan; w:
             onClick={() => pick(s)}>{t(`ui.log.${s}`)}</button>
         ))}
       </div>
+      <AutoNote mark={log.marks[w.key] ?? null} day={w.date} />
       {mark?.status === "partial" ? (
         <label class="status-minutes">
           <span class="small">{t("ui.log.minutes")}</span>

@@ -261,6 +261,7 @@ Här ändras bilden: uppgifterna lämnar rummet, och en leverantör blir personu
 - **Rättigheterna ska fungera online också:** radering och utdrag ska nå molnet i samma handgrepp, och samtycket får en egen ruta för online-delen.
 - **Konsekvensbedömning:** gör en enkel innan online-delen byggs. Den är inte säkert ett krav i den här skalan, men den är billig och IMY rekommenderar den vid tvekan.
 - **Synk från klockor** (Garmin, Polar, Strava) betyder fler hälsouppgifter och fler parter. Ta det som en egen fråga.
+- **Hälsodatan i appen** ([Appen → Hälsodatan](app/app.md#hälsodatan)): passen, sömnen, vilopulsen och HRV ur telefonens hälsodata är känsliga uppgifter. Appen läser dem bara lokalt, ur en länk som telefonen själv gör (på iPhone en genväg), sparar de senaste 42 dagarna på enheten och skickar dem inte vidare. Länkens data står efter `#` och når aldrig någon server. *Ta bort all data på enheten* tar bort den. Coachen ser den inte.
 
 ### Öppen källkod
 

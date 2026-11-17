@@ -146,5 +146,19 @@
  "ui.about.wall_title": "Väggläget",
  "ui.about.wall_switch": "Använd väggläget",
  "ui.about.wall": "För en surfplatta på väggen: skärmen hålls tänd, och appen går tillbaka till i dag och den här veckan efter 3 minuter utan tryck.",
- "ui.about.wall_no_lock": "Den här enheten kan inte hålla skärmen tänd från appen. Ställ in skärmens tidsgräns i enhetens inställningar. Appen går ändå tillbaka till i dag."
+ "ui.about.wall_no_lock": "Den här enheten kan inte hålla skärmen tänd från appen. Ställ in skärmens tidsgräns i enhetens inställningar. Appen går ändå tillbaka till i dag.",
+ "ui.health.loaded": "Hälsodatan är inläst.",
+ "ui.health.error": "Länken med hälsodata gick inte att läsa.",
+ "ui.health.form": "Dagsformen",
+ "ui.health.tired": "Ta det lugnt i dag",
+ "ui.health.fresh": "Kör som planerat",
+ "ui.health.hrv": "HRV {value} ms mot ditt snitt {mean}",
+ "ui.health.rhr": "Vilopuls {value} mot ditt snitt {mean}",
+ "ui.health.sleep": "Bara {value} timmars sömn i natt",
+ "ui.health.missing": "Räknas inte i dag: {what}.",
+ "ui.health.name.hrv": "HRV",
+ "ui.health.name.rhr": "vilopuls",
+ "ui.health.name.sleep": "sömn",
+ "ui.health.auto": "Från Hälsa",
+ "ui.health.auto_on": "Från Hälsa, gjort {date}"
 }
