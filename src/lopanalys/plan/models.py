@@ -247,6 +247,9 @@ class Workout:
     start: time | None = None
     goal: Goal | None = None         # set on a race
     status: str = "planned"          # "planned" | "done" | "moved" | "missed" | "skipped"
+    # A title written for this workout, in place of the template's: a plan written outside the engine
+    # (``Plan.source``) gives every workout its own. "": the template's title.
+    name: str = ""
 
     @property
     def seconds(self) -> int:
@@ -269,6 +272,8 @@ class Workout:
         """The title in a plan with one sport or several (``PlanRequest.multi_sport``): with several, running too
         starts with its sport ("Löpning: lugnt pass"). The text without the sport is ``.title_any`` when the
         template has one (the running templates, whose title says running), else ``.title``."""
+        if self.name:
+            return self.name
         if self.goal:
             return self.goal.name
         if self.sport == RUNNING and not multi_sport:
@@ -447,6 +452,13 @@ class Plan:
     # The last week with workouts (1-based); the weeks after it are sketches (Week.sketch). None: every
     # week is detailed, as in plans saved before the rolling plan and plans built without a day.
     horizon: int | None = None
+    # Who wrote the plan: "" the engine. Anything else (e.g. "schedule") is a plan written outside the engine, week
+    # by week; nothing rebuilds it with the engine (the app's own times are locked), a new plan replaces it.
+    source: str = ""
+
+    @property
+    def from_engine(self) -> bool:
+        return not self.source
 
     def title(self, workout: Workout) -> str:
         """The workout's title in this plan: with the sport first when the plan has several (Workout.title_in)."""

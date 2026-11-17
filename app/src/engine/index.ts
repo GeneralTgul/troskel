@@ -58,6 +58,7 @@ export const stub: Engine = {
 };
 
 export function rebuild(stored: StoredPlan, { slots, unavailable, from }: NewAvailability): StoredPlan {
+  if (stored.plan.source) throw new Error("the plan was written outside the engine");
   const request = normRequest({ ...stored.request, availability: slots });
   const old = normPlan(stored.plan);
   const fresh = buildPlan(request, { planId: old.id, created: old.created });

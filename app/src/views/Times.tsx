@@ -4,6 +4,7 @@ import type { Engine } from "../engine";
 import { planSports } from "../engine/models";
 import { addDays, dayMonth, weekdayLong } from "../model/dates";
 import type { PendingTimes } from "../model/storage";
+import { fromEngine } from "../model/plan";
 import { daysFromSlots, slotsFromDays, type DayTimes } from "../model/times";
 import type { IsoDate, StoredPlan } from "../model/types";
 
@@ -47,6 +48,24 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
     onSaveTimes(p);
     setMsg(t("ui.times.saved_pending"));
   };
+
+  // A plan written outside the engine (a schedule, week by week): saving would rebuild it with the engine and
+  // replace its workouts, so the times are shown but not changed here.
+  if (!fromEngine(stored))
+    return (
+      <section class="view times">
+        <h2>{t("ui.times.title")}</h2>
+        <p class="notice" role="status">{t("ui.times.locked")}</p>
+        <ol class="time-rows">
+          {days.map((d, i) => (
+            <li key={i} class={d.on ? "" : "is-off"}>
+              <span class="day-name">{weekdayLong(i)}</span>
+              {d.on ? <span class="small muted">{d.start || t("ui.times.any_time")} · {d.minutes} {t("ui.times.minutes").toLowerCase()}</span> : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
 
   return (
     <section class="view times">

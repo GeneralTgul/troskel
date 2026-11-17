@@ -76,6 +76,7 @@
  "ui.times.pending": "Du sparade nya tider {date}. De används när din coach skickar ett nytt schema.",
  "ui.times.failed": "Det gick inte att räkna om schemat. Tiderna är sparade.",
  "ui.times.extra": "Extra",
+ "ui.times.locked": "Schemat är skrivet vecka för vecka, inte uträknat ur dina tider. Tiderna ändras där schemat görs, och ett nytt schema ersätter det här.",
  "ui.calendar.button": "Lägg passen i kalendern",
  "ui.calendar.help": "Laddar ner en kalenderfil med passen från i dag. Öppna den, så läggs passen in i telefonens kalender.",
  "ui.load.title": "Ditt träningsschema",
