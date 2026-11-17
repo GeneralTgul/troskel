@@ -12,6 +12,7 @@
   - [Ett nytt test ger ett nytt schema](#ett-nytt-test-ger-ett-nytt-schema)
   - [Ett schema utan coach](#ett-schema-utan-coach)
   - [Egna värden](#egna-värden)
+  - [Ändra ett pass](#ändra-ett-pass)
 - [Bocka av passen](#bocka-av-passen)
   - [Veckan i siffror](#veckan-i-siffror)
   - [Rutan för dagen](#rutan-för-dagen)
@@ -149,6 +150,24 @@ Regler:
 - *Ändra mina värden* lägger värdena på samma schema: samma veckor och pass, nya mål i hela schemat. Det gamla testet i idrotten går inte att få tillbaka i appen; coachen skickar det med nästa länk.
 
 Zonerna räknas i appen med en översättning av `resolve.targets`, `band_targets` och `swim_targets` och klockans fem zoner ur `zone_systems.convert` (`app/src/engine/zones.ts`), med Pythons avrundning. `app/scripts/make_fixtures.py` skriver `app/test/fixtures/zones.json.gz` (`zones_fixtures`: kapaciteter med målen Python ger, målen per idrott för flera begäran, ifyllda fält och ett schema med egna värden), och `app/test/values.test.ts` jämför. Farten ur pulsen i ett zontest utan laktat (`hr_zones.zone_speeds`) finns inte i appen: för ett sådant test behåller appen målen från Tröskel.
+
+### Ändra ett pass
+
+I dagens ruta under *Veckan* kan idrottaren ändra ett pass som inte har kommit än och inte är bockat: ***Ändra passet*** (`app/src/views/Adjust.tsx`, `app/src/model/adjust.ts`).
+
+- **Flytta till** en annan dag i samma vecka, från i dag. Passet får klockslaget för den nya dagens tid under *Mina tider*, eller ingen tid.
+- **Byt med** ett annat pass i veckan: de två passen byter dag.
+- **Korta till** en kortare längd, i hela femminuter ner till det kortaste passet tillåter (ett intervallpass förlorar hela intervaller, uppvärmningen och nedvarvningen minst 5 minuter).
+- **Ångra ändringen** ger passet som motorn gjorde det. Under passet står *Flyttat från …* eller *Kortat från …*.
+
+Lopp och omtest går inte att ändra, och inte heller exempelschemat eller ett schema som är skrivet utanför motorn.
+
+Regler (#776, #777):
+
+- **Ändringarna sparas som en lista ovanpå schemat** (`plan.edits`: passets nyckel, ny dag, nya minuter), och passet behåller sin nyckel, så det avbockade följer med. Både appens motor (`app/src/engine/edits.ts`) och Tröskels (`plan/edits.py`) lägger listan på veckorna igen efter *Spara* under *Mina tider* (`rebuild`), *Förnya* (`rollForward`, `roll_forward`) och ett nytt test, så ändringarna försvinner inte.
+- **Ett nytt schema från coachen med samma id** (ett nytt test) får idrottarens ändringar för de pass som det inte har egna ändringar för (`keptEdits`). Ett annat schema börjar utan ändringar.
+- **Till coachen:** listan följer med *Skicka schemat till din coach* (#781), och Tröskel behåller den när coachen lägger om schemat efter ett nytt test, förnyar det eller ändrar formuläret för samma schema (`services.with_saved_edits`).
+- `app/scripts/make_fixtures.py` skriver `app/test/fixtures/edits.json.gz` (`edits_fixtures`: alla mallar kortade till flera längder, scheman med flyttade, bytta och kortade pass, och samma scheman efter nya tider, *Förnya*, den korta länken och coachens nya schema), och `app/test/edits.test.tsx` jämför.
 
 ## Bocka av passen
 

@@ -11,6 +11,7 @@ import { keepFor, type TrainingLog } from "./model/log";
 import { fromEngine } from "./model/plan";
 import { emptyForm, formFromPlan, newPlanId, planFromForm, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
+import { keptEdits } from "./model/adjust";
 import { keptTimes } from "./model/times";
 import { keptOwnValues } from "./model/values";
 import type { PendingTimes, Store } from "./model/storage";
@@ -162,7 +163,9 @@ export function App(props: AppProps) {
   const readText = (text: string, keepTab = false) => {
     try {
       // The athlete's own values in a sport the coach's plan has no test in stay (#777); a test takes their place.
-      accept(keptOwnValues(demo ? null : stored, readPlanText(text)), false, keepTab);
+      // The athlete's moved, swapped and shortened workouts stay on the same plan (#777, model/adjust.keptEdits).
+      const old = demo ? null : stored;
+      accept(keptEdits(old, keptOwnValues(old, readPlanText(text))), false, keepTab);
     } catch (e) {
       setQr(false);
       setError(errorText(e));
@@ -286,7 +289,12 @@ export function App(props: AppProps) {
   else if (!stored || welcome)
     body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} onOwn={openRequest} />;
   else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={shown} onLog={onLog} health={health} />;
-  else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog} />;
+  else if (tab === "week")
+    body = (
+      <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog}
+        onPlan={demo || !fromEngine(stored) ? undefined
+          : (p) => { store.setPlan(p, false); setStored(p); setToast(t("ui.adjust.saved")); }} />
+    );
   else if (tab === "plan" && values)
     body = (
       <ValuesView stored={stored} onCancel={() => setValues(false)}

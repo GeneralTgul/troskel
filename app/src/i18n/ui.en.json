@@ -272,5 +272,20 @@
  "ui.values.err.pace": "{sport}: write the pace as min:sec per km, between {lo} and {hi}.",
  "ui.values.err.load_order": "{sport}: LT2 should be faster or heavier than LT1.",
  "ui.values.err.watt": "{sport}: the watt should lie between {lo} and {hi}.",
- "ui.values.err.css": "{sport}: write the CSS pace as min:sec per 100 m, between {lo} and {hi}."
+ "ui.values.err.css": "{sport}: write the CSS pace as min:sec per 100 m, between {lo} and {hi}.",
+ "ui.adjust.open": "Change the workout",
+ "ui.adjust.title": "Change the workout",
+ "ui.adjust.move": "Move to",
+ "ui.adjust.move_btn": "Move",
+ "ui.adjust.swap": "Swap with",
+ "ui.adjust.swap_btn": "Swap",
+ "ui.adjust.shorten": "Shorten to",
+ "ui.adjust.shorten_btn": "Shorten",
+ "ui.adjust.undo": "Undo the change",
+ "ui.adjust.close": "Close",
+ "ui.adjust.nothing": "The workout cannot be moved or shortened any more this week.",
+ "ui.adjust.help": "The workout moves within its week. The change stays when you save new times or get a new test, and goes with the plan when you send it to your coach.",
+ "ui.adjust.moved": "Moved from {day}.",
+ "ui.adjust.shortened": "Shortened from {from}.",
+ "ui.adjust.saved": "The workout is changed."
 }

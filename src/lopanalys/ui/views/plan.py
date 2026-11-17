@@ -1183,6 +1183,7 @@ class PlanView(QWidget):
             return False
         health = self._health_dict()
         sid = self._session_id()
+        plan = self.plan = services.with_saved_edits(self.stored.plan if self.stored else None, plan)
         try:
             row = services.save_plan(self.ctx.store, a, plan, sid, health, "saved" if self.stored is None else "changed")
         except Exception as e:

@@ -14,10 +14,12 @@
  *   sketches of the new plan, so that Tröskel's *Renew* later gives the same workouts.
  * - `request.availability` in the result is `availability.slots`; `targets`, `targets_log` and `athlete` are
  *   carried over unchanged (the targets depend on the tests, not on the times).
+ * - The athlete's changes of single workouts (`plan.edits`, #777) are laid on the new weeks again (edits.ts).
  * - It throws a `PlanError` (with the text key plan.error.*) when no plan can be made, e.g. without a core slot
  *   for running; the app then keeps the times until the coach sends a new plan.
  */
 import type { IsoDate, StoredPlan, StoredSlot, StoredWeek } from "../model/types";
+import { applyEdits } from "./edits";
 import { ENGINE_VERSION, buildPlan, sketchOf } from "./engine";
 import { PlanError, normPlan, normRequest } from "./models";
 import { addDays, sortedBy } from "./py";
@@ -25,6 +27,7 @@ import { addDays, sortedBy } from "./py";
 export { ENGINE_VERSION, PlanError };
 export { buildPlan } from "./engine";
 export { rollForward, due, renewSoon } from "./rolling";
+export { applyEdits, editable, mergedEdits, shorten, shortest } from "./edits";
 
 export interface NewAvailability {
   /** One or more slots per weekday (0 = Monday), as `request.availability`. A weekday without a slot is a rest day. */
@@ -75,7 +78,7 @@ export function rebuild(stored: StoredPlan, { slots, unavailable, from }: NewAva
   return {
     ...stored,
     request,
-    plan: { ...old, engine_version: ENGINE_VERSION, blocks: fresh.blocks, notes: fresh.notes, weeks },
+    plan: applyEdits({ ...old, engine_version: ENGINE_VERSION, blocks: fresh.blocks, notes: fresh.notes, weeks }, request),
   };
 }
 

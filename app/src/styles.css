@@ -395,3 +395,10 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 .form-reasons { margin: 4px 0; padding-left: 1.2em; }
 .auto-note { flex-basis: 100%; margin: 0; }
 .request-goal p { grid-column: 1 / -1; margin: 0; }
+
+/* *Ändra passet* in the day sheet (#777): move, swap and shorten a workout. */
+.adjust { margin-top: 8px; }
+.adjust-box { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.adjust-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+.adjust-row select { flex: 1 1 10em; min-width: 0; }
+.adjust-note { margin: 4px 0; }

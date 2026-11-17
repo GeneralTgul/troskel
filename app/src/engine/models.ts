@@ -4,7 +4,7 @@
  * the stored shapes of model/types.ts directly, so what it builds is the stored plan as Python writes it.
  */
 import type {
-  StoredCapacity, StoredGoal, StoredNote, StoredPart, StoredPlanBody, StoredRequest, StoredSketch,
+  StoredCapacity, StoredEdit, StoredGoal, StoredNote, StoredPart, StoredPlanBody, StoredRequest, StoredSketch,
   StoredRole, StoredSlot, StoredWeek, StoredWorkout,
 } from "../model/types";
 import { round, round2 } from "./py";
@@ -171,6 +171,11 @@ export function normWeek(w: StoredWeek): StoredWeek {
   return out;
 }
 
+/** codec.edit_to_dict(edit_from_dict(...)): a field only when set. */
+export function normEdit(e: StoredEdit): StoredEdit {
+  return { key: String(e.key), ...(e.date ? { date: e.date } : {}), ...(e.minutes != null ? { minutes: e.minutes } : {}) };
+}
+
 export function normPlan(p: StoredPlanBody): StoredPlanBody {
   return {
     format: CODEC_FORMAT, id: p.id, created: p.created, engine_version: p.engine_version ?? "",
@@ -181,6 +186,7 @@ export function normPlan(p: StoredPlanBody): StoredPlanBody {
     blocks: p.blocks.map((b) => ({ kind: b.kind, first_week: b.first_week, weeks: b.weeks, start: b.start,
       reason: normNote(b.reason) })),
     weeks: p.weeks.map(normWeek), horizon: p.horizon ?? null,
+    ...(p.edits?.length ? { edits: p.edits.map(normEdit) } : {}),
   };
 }
 

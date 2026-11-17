@@ -14,7 +14,8 @@ Format 2, the short payload (``short_plan``), holds the plan's request instead o
 plan with its own engine (app/src/engine), the same rules as engine.py, so a plan with several sports and two
 workouts a day fits in one QR code. It holds what the engine needs (the request, the plan's id, ``created`` and
 horizon), the engine version that built it, the fields of the plan that the engine would not give back as they
-are stored (``x``: notes, the log of earlier tests, a status), and the targets. Keys are short and a default is left
+are stored (``x``: notes, the log of earlier tests, a status, the athlete's changes of single workouts, which the
+engine lays on the plan it built: plan.edits), and the targets. Keys are short and a default is left
 out. ``short_plan`` checks itself: it builds the plan from the short payload and gives None when that is not the
 stored plan (a workout with a status, weeks rolled on by older rules), and the link then holds the whole plan.
 The app reads both formats; with format 2 and another engine version it asks for an update instead of building
@@ -31,6 +32,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from . import codec
+from .edits import apply_edits
 from .engine import ENGINE_VERSION, build_plan, sketch_of
 from .models import Capacity, Plan
 from .resolve import Target, band_targets, targets
@@ -94,7 +96,7 @@ def stored_plan(plan: Plan, athlete_name: str | None = None) -> dict[str, Any]:
 
 _ANCHORS = ("max_hr", "resting_hr", "lt1_hr", "lt2_hr", "lt1_speed_kmh", "lt2_speed_kmh")
 _FLAGS = ("estimated", "speed_low_approx", "speed_high_approx", "speed_from_hr")      # bit 1, 2, 4, 8
-_PLAN_FIELDS = ("engine_version", "zone_system", "status", "based_on", "notes", "capacity_log", "blocks")
+_PLAN_FIELDS = ("engine_version", "zone_system", "status", "based_on", "notes", "capacity_log", "blocks", "edits")
 
 
 def _trim(row: list[Any], defaults: tuple[Any, ...]) -> list[Any]:
@@ -227,7 +229,7 @@ def _pack(stored: dict[str, Any]) -> dict[str, Any]:
     if plan["created"] != _default_created(req["start"]):
         out["c"] = plan["created"]
     built = _build(out, codec.request_from_dict(req))
-    x = {k: plan[k] for k in _PLAN_FIELDS if plan[k] != built[k]}
+    x = {k: plan[k] for k in _PLAN_FIELDS if plan.get(k) != built.get(k)}
     if x:
         out["x"] = x
     out["t"] = {sport: pack_targets(ts) for sport, ts in stored["targets"].items()}
@@ -254,6 +256,8 @@ def expand(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("the plan was made with another engine version")
     req = unpack_request(payload["r"])
     plan = {**_build(payload, codec.request_from_dict(req)), **payload.get("x", {})}
+    if plan.get("edits"):           # the athlete's changes, laid on the workouts the engine built (plan.edits)
+        plan = codec.plan_to_dict(apply_edits(codec.plan_from_dict(plan, codec.request_from_dict(req))))
     return {"kind": KIND, "format": FORMAT, "athlete": payload.get("n", ""), "request": req, "plan": plan,
             "targets": {sport: unpack_targets(ts) for sport, ts in payload["t"].items()},
             "targets_log": [{"until": u, "sport": s, "targets": unpack_targets(ts)} for u, s, ts in payload.get("tl", [])]}

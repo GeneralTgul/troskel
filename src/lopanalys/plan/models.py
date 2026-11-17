@@ -446,6 +446,16 @@ class Block:
         return t(f"plan.block.{self.kind}")
 
 
+@dataclass(frozen=True)
+class Edit:
+    """The athlete's change of one workout (#777, step 3), kept as a list on the plan (``Plan.edits``) and laid on
+    the workouts again after every rebuild (plan.edits.apply_edits). ``key``: the workout's key, which never changes;
+    ``date``: the day it moves to, in the same week (a swap is two moves); ``minutes``: the length it is cut to."""
+    key: str
+    date: date | None = None
+    minutes: int | None = None
+
+
 @dataclass
 class Plan:
     id: str
@@ -467,6 +477,9 @@ class Plan:
     # Who wrote the plan: "" the engine. Anything else (e.g. "schedule") is a plan written outside the engine, week
     # by week; nothing rebuilds it with the engine (the app's own times are locked), a new plan replaces it.
     source: str = ""
+    # The athlete's changes of single workouts (moved, swapped, shortened), laid on the weeks again by every rebuild,
+    # a new test and *Förnya* (plan.edits). The weeks hold them already; the list keeps them through a rebuild.
+    edits: tuple[Edit, ...] = ()
 
     @property
     def from_engine(self) -> bool:

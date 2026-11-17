@@ -1,8 +1,10 @@
 /**
  * The rolling plan: the weeks ahead get their workouts as the time comes. A port of lopanalys/plan/rolling.py.
- * Pure functions of the stored plan and the day: no clock and no randomness.
+ * Pure functions of the stored plan and the day: no clock and no randomness. The athlete's changes of single
+ * workouts (`plan.edits`) are laid on the new weeks again (edits.ts).
  */
 import type { IsoDate, StoredPlanBody, StoredRequest } from "../model/types";
+import { applyEdits } from "./edits";
 import { ENGINE_VERSION, fillWeeks, horizonFor } from "./engine";
 import type { Skeleton, WeekSpec } from "./periodize";
 import { addDays, sortedBy } from "./py";
@@ -40,5 +42,5 @@ export function rollForward(plan: StoredPlanBody, request: StoredRequest, today:
   const next = horizonFor(plan.weeks[0].monday, plan.weeks.length, today);
   const filled = fillWeeks(request, skeletonOf(plan, request), plan.id);
   const weeks = plan.weeks.map((old, i) => (horizon < old.index && old.index <= next ? filled[i] : old));
-  return { ...plan, weeks, horizon: next, engine_version: ENGINE_VERSION };
+  return applyEdits({ ...plan, weeks, horizon: next, engine_version: ENGINE_VERSION }, request);
 }

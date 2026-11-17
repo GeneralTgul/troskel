@@ -22,6 +22,9 @@ The fixed hard days (``PlanRequest.hard_days``, engine version 9) are stored the
 A plan written outside the engine (``Plan.source``, the weeks as a schedule gives them) is stored with ``source`` and
 each workout with its own title under ``name``; both only when set, so every other plan is stored as before.
 
+The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
+``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any.
+
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
 """
@@ -33,7 +36,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, Anchors
 
-from .models import (Block, Capacity, Goal, HardDay, Note, Part, Plan, PlanRequest, Slot, SpeedLine, SportRole, Week, WeekSketch,
+from .models import (Block, Capacity, Edit, Goal, HardDay, Note, Part, Plan, PlanRequest, Slot, SpeedLine, SportRole, Week, WeekSketch,
                      Workout)
 
 FORMAT = 2                    # 2: the rolling plan (horizon and sketched weeks); 1 reads as fully detailed
@@ -161,7 +164,17 @@ def plan_to_dict(p: Plan) -> dict[str, Any]:
                     "reason": _note_to_dict(b.reason)} for b in p.blocks],
         "weeks": [_week_to_dict(w) for w in p.weeks],
         "horizon": p.horizon, **({"source": p.source} if p.source else {}),
+        **({"edits": [edit_to_dict(e) for e in p.edits]} if p.edits else {}),
     }
+
+
+def edit_to_dict(e: Edit) -> dict[str, Any]:
+    return {"key": e.key, **({"date": _d(e.date)} if e.date else {}),
+            **({"minutes": e.minutes} if e.minutes is not None else {})}
+
+
+def edit_from_dict(d: dict[str, Any]) -> Edit:
+    return Edit(str(d["key"]), _pd(d.get("date")), d.get("minutes"))
 
 
 def _week_to_dict(w: Week) -> dict[str, Any]:
@@ -193,8 +206,8 @@ def plan_from_dict(d: dict[str, Any], request: PlanRequest) -> Plan:
     return Plan(d["id"], request, datetime.fromisoformat(d["created"]), d.get("engine_version", ""), blocks, weeks,
                 [_note_from_dict(n) for n in d.get("notes", [])], d.get("zone_system", DEFAULT_SYSTEM),
                 {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log,
-                d.get("horizon"), d.get("source", ""))
+                d.get("horizon"), d.get("source", ""), tuple(edit_from_dict(e) for e in d.get("edits", [])))
 
 
-__all__ = ["FORMAT", "capacity_from_dict", "capacity_to_dict", "plan_from_dict", "plan_to_dict", "request_from_dict",
+__all__ = ["FORMAT", "capacity_from_dict", "capacity_to_dict", "edit_from_dict", "edit_to_dict", "plan_from_dict", "plan_to_dict", "request_from_dict",
            "request_to_dict"]

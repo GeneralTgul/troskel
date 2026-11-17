@@ -20,6 +20,10 @@ from the same answers (``form_request``), checked by app/test/request.test.tsx.
 capacities and the targets ``link.zone_targets`` gives them, the targets per sport of requests (``link._targets``), the
 capacity of typed-in values (``values_capacity``) and a plan laid on new own values (``with_values``), checked by
 app/test/values.test.ts.
+``edits.json.gz`` is the athlete's changes of single workouts (#777, step 3, lopanalys.plan.edits, app/src/engine/edits.ts):
+every template cut to several lengths (``shorten``, ``shortest``), plans with moves, swaps and shortenings laid on them
+(``apply_edits``), and the same plans after new times (``phone.rebuild``), *Förnya* (``roll_forward``), the short link and
+the coach's new plan with the same id (``services.with_saved_edits``), checked by app/test/edits.test.ts.
 """
 from __future__ import annotations
 
@@ -30,15 +34,15 @@ import math
 import re
 import sys
 from dataclasses import replace
-from datetime import date, time
+from datetime import date, time, timedelta
 from pathlib import Path
 from typing import Any
 
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
-from lopanalys.plan import codec, demo, ics, library, link, phone, text
+from lopanalys.plan import codec, demo, edits, ics, library, link, phone, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
-from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, SELF, Capacity, Goal, HardDay, PlanRequest,
+from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, SELF, Capacity, Edit, Goal, HardDay, PlanRequest,
                                    Slot, SportRole)
 from lopanalys.plan.rolling import roll_forward
 
@@ -720,6 +724,85 @@ def zones_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
                  "values": values_of(demo_stored["request"]["capacity"][0])}]}
 
 
+# ---- the athlete's changes of single workouts (#777, step 3): app/src/engine/edits.ts ------------------------------
+
+def _pick_edits(plan: Any) -> tuple[Edit, ...]:
+    """Edits of every kind on a plan, chosen by rule: in the detailed weeks 2-4 the first and the last workout swapped,
+    the second shortened by a quarter and moved to the week's first free day; in week 1 a move outside the week, and
+    an edit of a race and of a key that is not there (both dropped)."""
+    out: list[Edit] = []
+    detailed = [wk for wk in plan.weeks if wk.detailed]
+    for wk in detailed[1:4]:
+        ws = [w for w in wk.workouts if edits.editable(w)]
+        if len(ws) >= 2:
+            out += [Edit(ws[0].key, ws[-1].date), Edit(ws[-1].key, ws[0].date)]
+        if len(ws) >= 3:
+            used = {w.date for w in wk.workouts}
+            free = next((wk.monday + timedelta(days=i) for i in range(7) if wk.monday + timedelta(days=i) not in used), None)
+            out.append(Edit(ws[1].key, free, max(edits.shortest(ws[1]), ws[1].minutes * 3 // 4)))
+    first = [w for w in detailed[0].workouts if edits.editable(w)]
+    if first:
+        out.append(Edit(first[0].key, detailed[0].monday + timedelta(days=8)))
+    race = next((w for w in plan.workouts if w.goal is not None), None)
+    if race is not None:
+        out.append(Edit(race.key, None, 20))
+    out.append(Edit(f"{plan.id}-9901-mon", None, 30))
+    return tuple(out)
+
+
+def edits_fixtures() -> dict[str, Any]:
+    """The app's edits against plan.edits (test/edits.test.ts)."""
+    set_language("sv")
+    shorten = []
+    for tid, tpl in library.TEMPLATES.items():
+        for step in range(max(1, len(tpl.steps))):
+            parts = library.build(tid, minutes=None if tpl.steps else max(tpl.min_minutes, 60), step=step)
+            wk = {"key": "x", "date": "2026-11-16", "sport": "run", "template_id": tid, "family": tpl.family,
+                  "quality": tpl.quality, "start": None, "status": "planned", "goal": None,
+                  "parts": [codec._part_to_dict(p) for p in parts]}
+            w = codec._workout_from_dict(wk)
+            for m in (0, 5, 20, 30, 40, 45, 60, 200):
+                shorten.append({"template": tid, "step": step, "minutes": m, "parts": wk["parts"],
+                                "out": [codec._part_to_dict(p) for p in edits.shorten(parts, m)]})
+            shorten[-1]["shortest"] = edits.shortest(w)
+    requests = dict((n, r) for n, r, _ in _requests())
+    plans = {"demo": demo.demo_plan(12),
+             "rolling": build_plan(demo.demo_request(20), plan_id="demo", today=date(2026, 11, 18)),
+             "run-bike": build_plan(requests["run-bike"], plan_id="demo"),
+             "two-a-day": build_plan(requests["two-a-day"], plan_id="demo"),
+             "run-strength": build_plan(requests["run-strength"], plan_id="demo")}
+    apply, stored = [], {}
+    for name, plan in plans.items():
+        before = link.stored_plan(replace(plan, edits=_pick_edits(plan)))
+        after = edits.apply_edits(replace(plan, edits=_pick_edits(plan)))
+        stored[name] = link.stored_plan(after)
+        apply.append({"name": name, "before": before, "after": stored[name]})
+    rebuilds = []
+    for name, plan, slots, from_day in (
+            ("demo-more", "demo", _slots(*((d, m + 15, *r) for d, m, *r in DEMO_SLOTS)), "2026-11-24"),
+            ("demo-no-tuesday", "demo", _slots(DEMO_SLOTS[0], *DEMO_SLOTS[2:]), "2026-11-24"),
+            ("rolling-shorter", "rolling", _slots(*DEMO_SLOTS[:4], (6, 80, "09:00:00")), "2026-11-21"),
+            ("run-bike-wednesday", "run-bike", stored["run-bike"]["request"]["availability"] + [_slot(2, 45)], "2026-11-17")):
+        rebuilds.append({"name": name, "plan": plan, "slots": slots, "from": from_day,
+                         "result": rebuild(stored[plan], slots, [], from_day)})
+    rolls = []
+    for today in ("2026-11-25", "2026-12-20", "2027-02-01"):
+        p = codec.plan_from_dict(stored["rolling"]["plan"], codec.request_from_dict(stored["rolling"]["request"]))
+        rolls.append({"today": today, "plan": codec.plan_to_dict(roll_forward(p, date.fromisoformat(today)))})
+    links = {name: link.link_payload(s) for name, s in stored.items()}
+    from lopanalys.ui import services
+    coach = []
+    for name in ("demo", "run-bike"):
+        old = codec.plan_from_dict(stored[name]["plan"], codec.request_from_dict(stored[name]["request"]))
+        fresh = plans[name]
+        mine = replace(fresh, edits=(Edit(next(w for w in fresh.weeks[1].workouts if edits.editable(w)).key, None, 25),))
+        for label, new in (("plain", fresh), ("own-edit", edits.apply_edits(mine))):
+            coach.append({"name": f"{name}-{label}", "old": name, "incoming": link.stored_plan(new),
+                          "result": link.stored_plan(services.with_saved_edits(old, new))})
+    return {"shorten": shorten, "apply": apply, "rebuild": rebuilds, "roll": rolls, "links": links, "coach": coach,
+            "stored": stored}
+
+
 def _gz(data: Any) -> bytes:
     raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return gzip.compress(raw, compresslevel=9, mtime=0)
@@ -740,6 +823,7 @@ def outputs() -> dict[Path, bytes]:
                (link.plan_link(link.link_payload(athlete_back(athlete_fixture(stored)))) + "\n").encode("ascii")}
     out[APP / "test" / "fixtures" / "request.json.gz"] = _gz(request_fixtures(stored))
     out[APP / "test" / "fixtures" / "zones.json.gz"] = _gz(zones_fixtures(stored))
+    out[APP / "test" / "fixtures" / "edits.json.gz"] = _gz(edits_fixtures())
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
     out[APP / "test" / "fixtures" / "engine.json.gz"] = _gz(engine_fixtures())

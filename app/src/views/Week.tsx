@@ -5,6 +5,8 @@ import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSecond
 import type { IsoDate, StoredPlan, StoredWorkout } from "../model/types";
 import { dayState, extrasOn, markOf, type DayState } from "../model/log";
 import { Extras, SeasonStrip, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
+import { adjustable } from "../model/adjust";
+import { AdjustBox } from "./Adjust";
 import { clock, dayLabel, shownZone, SportIcon, workoutColor, WorkoutCard, zoneColor } from "./parts";
 
 /** The colour of a day's card: that of its first workout that has one (a zone, or a test), so that strength before
@@ -16,8 +18,8 @@ export function dayColor(ws: StoredWorkout[]): string {
 
 /** One day on top of the week: its workouts as big cards with the box for the day, the marks and the sessions
  * outside the plan. A tap on the background, Escape or *Close* closes it. */
-function DaySheet({ stored, day, today, log, onLog, onClose }: {
-  stored: StoredPlan; day: IsoDate; today: IsoDate; onClose: () => void;
+function DaySheet({ stored, day, today, log, onLog, onClose, onPlan }: {
+  stored: StoredPlan; day: IsoDate; today: IsoDate; onClose: () => void; onPlan?: (p: StoredPlan) => void;
 } & LogProps) {
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -37,6 +39,8 @@ function DaySheet({ stored, day, today, log, onLog, onClose }: {
         {ws.length ? ws.map((w) => (
           <WorkoutCard key={w.key} stored={stored} w={w} big>
             {day <= today ? <StatusPicker stored={stored} w={w} log={log} onLog={onLog} /> : null}
+            {onPlan && adjustable(stored, w, today) && !markOf(log, w)
+              ? <AdjustBox stored={stored} w={w} today={today} onPlan={onPlan} /> : null}
           </WorkoutCard>
         )) : <article class="workout rest"><h3>{t("ui.today.rest")}</h3></article>}
         {day <= today ? <Extras stored={stored} day={day} log={log} onLog={onLog} />
@@ -87,9 +91,10 @@ function DayStateMark({ state }: { state: DayState }) {
 
 /** The week as the hall screen shows it: a row per day with the workouts as pills in their zone's colour and the
  * sport's icon, the sessions outside the plan as "+ name", and the day's state at the right. Beside it on a wide
- * screen the week in numbers and the next races, under it the season. A tap on a day opens it. */
-export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore }: {
-  stored: StoredPlan; today: IsoDate; onCalendar?: () => void;
+ * screen the week in numbers and the next races, under it the season. A tap on a day opens it, and there the athlete
+ * can move, swap and shorten a workout (`onPlan`, #777: not in the example plan or a plan written outside the engine). */
+export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore, onPlan }: {
+  stored: StoredPlan; today: IsoDate; onCalendar?: () => void; onPlan?: (p: StoredPlan) => void;
 } & Partial<LogProps>) {
   const [monday, setMonday] = useState(mondayOf(today));
   const [open, setOpen] = useState<IsoDate | null>(null);
@@ -170,7 +175,7 @@ export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore }
           <p class="muted small">{t("ui.calendar.help")}</p>
         </div>
       ) : null}
-      {open ? <DaySheet stored={stored} day={open} today={today} log={log} onLog={onLog} onClose={() => setOpen(null)} /> : null}
+      {open ? <DaySheet stored={stored} day={open} today={today} log={log} onLog={onLog} onClose={() => setOpen(null)} onPlan={onPlan} /> : null}
     </section>
   );
 }

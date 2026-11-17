@@ -168,6 +168,16 @@ export interface StoredPlanBody {
   /** Who wrote the plan (plan.models.Plan.source): missing the engine; anything else (e.g. "schedule") a plan written
    * outside the engine, week by week, which the app never rebuilds (`fromEngine`). */
   source?: string;
+  /** The athlete's changes of single workouts (#777, plan.models.Edit), laid on the weeks again by every rebuild
+   * (engine/edits.ts); missing when there are none. */
+  edits?: StoredEdit[];
+}
+
+/** A workout moved within its week (`date`), shortened (`minutes`), or both; `key` is the workout's. A swap is two. */
+export interface StoredEdit {
+  key: string;
+  date?: IsoDate;
+  minutes?: number;
 }
 
 /** One zone's targets, resolved by Tröskel from the athlete's test (resolve.Target without the name). */

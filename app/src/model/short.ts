@@ -2,9 +2,11 @@
  * The short payload (format 2, `lopanalys.plan.link.short_plan`): the plan's request instead of its workouts.
  * The app builds the plan with its own engine, the same rules as Tröskel's, so the plan is the one Tröskel saved
  * (test/link.test.ts checks every fixture). Keys are short and a default is left out; `x` holds the fields of the
- * plan the engine does not give back as they were saved (notes, the log of earlier tests, a status).
+ * plan the engine does not give back as they were saved (notes, the log of earlier tests, a status, the athlete's
+ * changes of single workouts).
  * A short payload from another engine version is not built: the app asks for an update instead.
  */
+import { applyEdits } from "../engine/edits";
 import { ENGINE_VERSION, buildPlan, sketchOf } from "../engine/engine";
 import { CODEC_FORMAT, normRequest } from "../engine/models";
 import { FORMAT, KIND, type StoredCapacity, type StoredGoal, type StoredPlan, type StoredPlanBody, type StoredRequest,
@@ -116,9 +118,11 @@ export function expandShort(p: ShortPayload): StoredPlan {
   const built = buildPlan(normRequest(request), { planId: p.id, created: p.c });
   const h = p.h ?? null;
   const weeks = h == null ? built.weeks : built.weeks.map((w) => (w.index <= h ? w : sketchOf(w)));
+  const plan = { ...built, weeks, horizon: h, ...(p.x ?? {}) };
   return {
     kind: KIND, format: FORMAT, athlete: p.n ?? "", request,
-    plan: { ...built, weeks, horizon: h, ...(p.x ?? {}) },
+    // The athlete's changes of single workouts (`x.edits`), laid on the workouts the engine built (link.expand).
+    plan: plan.edits?.length ? applyEdits(plan, normRequest(request)) : plan,
     targets: Object.fromEntries(Object.entries(p.t).map(([s, ts]) => [s, unpackTargets(ts)])),
     targets_log: (p.tl ?? []).map(([until, sport, ts]) => ({ until, sport, targets: unpackTargets(ts) })),
   };

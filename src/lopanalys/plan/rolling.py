@@ -14,12 +14,15 @@ The rules (docs/TRANINGSPLAN.md, "Det rullande schemat"):
     and the same day give the same workouts, and a week gets the same workouts whether it was
     detailed when the plan was built or later.
   - A new test moves only the targets (resolve.retest); the workouts follow the same path.
+  - The athlete's changes of single workouts (``Plan.edits``, #777) are laid on the weeks again (plan.edits), so a
+    workout moved or shortened in a new week keeps the change.
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date, timedelta
 
+from .edits import apply_edits
 from .engine import ENGINE_VERSION, fill_weeks, horizon_for
 from .models import Plan, Week
 from .periodize import Skeleton, WeekSpec
@@ -61,7 +64,7 @@ def roll_forward(plan: Plan, today: date) -> Plan:
     weeks: list[Week] = []
     for old, fresh in zip(plan.weeks, filled):
         weeks.append(fresh if plan.horizon < old.index <= new else old)
-    return replace(plan, weeks=weeks, horizon=new, engine_version=ENGINE_VERSION)
+    return apply_edits(replace(plan, weeks=weeks, horizon=new, engine_version=ENGINE_VERSION))
 
 
 __all__ = ["due", "renew_soon", "roll_forward", "skeleton_of"]

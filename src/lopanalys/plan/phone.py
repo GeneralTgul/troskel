@@ -26,6 +26,7 @@ from datetime import date
 from typing import Any
 
 from . import codec, link
+from .edits import apply_edits
 from .engine import ENGINE_VERSION, build_plan, sketch_of
 from .models import Plan
 
@@ -134,7 +135,8 @@ def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: li
     so the blocks stay and the weekly time follows what the new slots hold. A week that ends before
     ``from_day`` is kept as it was saved; in the week of ``from_day`` the workouts before it are kept (with
     their status) and the rest are new. The horizon of a rolling plan stays: the weeks after it are sketches
-    of the new plan. On the dates in ``unavailable`` the workouts are dropped (races stay). Raises ValueError
+    of the new plan. On the dates in ``unavailable`` the workouts are dropped (races stay). The athlete's changes of
+    single workouts (``plan.edits``, #777) are laid on the new weeks again (edits.apply_edits). Raises ValueError
     when the engine cannot make a plan."""
     day = date.fromisoformat(from_day)
     off = {date.fromisoformat(d) for d in unavailable}
@@ -153,8 +155,8 @@ def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: li
             kept = [w for w in was.workouts if w.date < day]
             made = [w for w in new.workouts if w.date >= day and (w.goal is not None or w.date not in off)]
             weeks.append(replace(new, workouts=sorted(kept + made, key=lambda w: (w.date, w.key))))
-    plan = replace(old, request=request, blocks=fresh.blocks, notes=fresh.notes, weeks=weeks,
-                   engine_version=ENGINE_VERSION)
+    plan = apply_edits(replace(old, request=request, blocks=fresh.blocks, notes=fresh.notes, weeks=weeks,
+                               engine_version=ENGINE_VERSION))
     return {**stored, "request": codec.request_to_dict(request), "plan": codec.plan_to_dict(plan)}
 
 

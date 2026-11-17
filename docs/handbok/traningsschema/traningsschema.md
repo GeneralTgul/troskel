@@ -256,6 +256,7 @@ Vad inläsningen gör:
 
 - **Samma schema** (samma schema-id som det sparade) läses in direkt. Schemat från telefonen, med idrottarens tider, ersätter det sparade. Testet under *Bygger på testet* och hälsodeklarationen ligger kvar.
 - **Tider som väntar** under *Mina tider* i appen läggs på schemat från och med i morgon, med samma regel som appens *Spara*. Ett schema som är skrivet utanför motorn behåller sina pass.
+- **Flyttade, bytta och kortade pass** ([appen](../../app/app.md#ändra-ett-pass)) följer med och ligger kvar när du lägger om schemat efter ett nytt test, förnyar det eller ändrar formuläret för samma schema.
 - **Det avbockade** blir passens status: *gjort* och *missat*. Ett delvis gjort pass står kvar som planerat, med minuterna i loggen.
 - **Loggen:** allt från telefonen (märkena, passen utanför schemat, väntande tider och exportdagen) sparas i schemats logg, och raden *Från appen …* under översikten säger när det senast lästes in.
 - **Ett annat schema**, eller ett schema som står på någon annans namn, frågar programmet om först. Ett annat schema kommer då i det sparades ställe, utan test under *Bygger på testet*.

@@ -1621,6 +1621,15 @@ def save_plan(store: Store, athlete: Athlete, plan: Any, session_id: int | None,
                               detail=detail)
 
 
+def with_saved_edits(saved: Any, plan: Any) -> Any:
+    """The coach's plan from the form with the athlete's changes of single workouts (#777) from the saved plan of the
+    same id: the moved and shortened workouts stay when the coach changes the form, as in the app (``keptEdits``)."""
+    from lopanalys.plan import edits
+    if saved is None or saved.id != plan.id or not saved.edits or plan.source:
+        return plan
+    return edits.apply_edits(dataclass_replace(plan, edits=edits.merged(plan.edits, saved.edits)))
+
+
 def delete_plan(store: Store, athlete_id: int) -> bool:
     return store.db.delete_plan(athlete_id)
 
@@ -1713,7 +1722,7 @@ def apply_retest(store: Store, athlete: Athlete, session: Session, today: date |
     sport gets the targets of ``session``; earlier workouts keep theirs, the other sports keep their tests, and no
     workout changes its day. A test in running becomes the plan's test (``session_id``); a test in another sport
     (the bike, the SkiErg, a CSS test) moves only that sport's targets, and the running test stays."""
-    from lopanalys.plan import resolve, rolling
+    from lopanalys.plan import edits, resolve, rolling
     from lopanalys.plan.models import RUNNING
     stored = load_plan(store, athlete)
     if stored is None:
@@ -1723,6 +1732,7 @@ def apply_retest(store: Store, athlete: Athlete, session: Session, today: date |
     old = stored.plan.request.capacity_for(cap.sport)
     plan = resolve.retest(stored.plan, cap, from_date=today)
     plan = rolling.roll_forward(plan, today)             # the same path as Förnya: the next weeks get their workouts
+    plan = edits.apply_edits(plan)                       # the athlete's moved and shortened workouts stay (#777)
     session_id = session.id if cap.sport == RUNNING else stored.session_id
     save_plan(store, athlete, plan, session_id, None, "retest",
               {"from_session": stored.session_id, "to_session": session.id, "from_date": today.isoformat(),

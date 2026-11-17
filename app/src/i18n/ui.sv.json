@@ -272,5 +272,20 @@
  "ui.values.err.pace": "{sport}: skriv tempot som min:sek per km, mellan {lo} och {hi}.",
  "ui.values.err.load_order": "{sport}: LT2 ska vara snabbare eller tyngre än LT1.",
  "ui.values.err.watt": "{sport}: watten ska ligga mellan {lo} och {hi}.",
- "ui.values.err.css": "{sport}: skriv CSS-tempot som min:sek per 100 m, mellan {lo} och {hi}."
+ "ui.values.err.css": "{sport}: skriv CSS-tempot som min:sek per 100 m, mellan {lo} och {hi}.",
+ "ui.adjust.open": "Ändra passet",
+ "ui.adjust.title": "Ändra passet",
+ "ui.adjust.move": "Flytta till",
+ "ui.adjust.move_btn": "Flytta",
+ "ui.adjust.swap": "Byt med",
+ "ui.adjust.swap_btn": "Byt",
+ "ui.adjust.shorten": "Korta till",
+ "ui.adjust.shorten_btn": "Korta",
+ "ui.adjust.undo": "Ångra ändringen",
+ "ui.adjust.close": "Stäng",
+ "ui.adjust.nothing": "Passet går inte att flytta eller korta mer den här veckan.",
+ "ui.adjust.help": "Passet flyttas inom veckan. Ändringen ligger kvar när du sparar nya tider eller får ett nytt test, och följer med när du skickar schemat till din coach.",
+ "ui.adjust.moved": "Flyttat från {day}.",
+ "ui.adjust.shortened": "Kortat från {from}.",
+ "ui.adjust.saved": "Passet är ändrat."
 }
