@@ -171,6 +171,9 @@ export interface StoredPlanBody {
   /** The athlete's changes of single workouts (#777, plan.models.Edit), laid on the weeks again by every rebuild
    * (engine/edits.ts); missing when there are none. */
   edits?: StoredEdit[];
+  /** The day of the athlete's next test, chosen by the coach in Tröskel (#778, plan.models.Plan.next_test); missing:
+   * the default, 8-12 weeks after the test (model/nexttest.ts). */
+  next_test?: IsoDate;
 }
 
 /** A workout moved within its week (`date`), shortened (`minutes`), or both; `key` is the workout's. A swap is two. */

@@ -51,6 +51,7 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig, och ett långt delmål (ett halvmaraton eller längre i löpning) lugna dagar efter sig. Ett *Träningslopp* ersätter ett av veckans hårda pass. Ett delmål strax före startdatumet, till exempel förra schemats mål, ger schemat lugna dagar i början, se [Återhämtning efter ett lopp](../../TRANINGSPLAN.md#återhämtning-efter-ett-lopp) |
 | | *Inget mål: ange längd* | Antal veckor, minst 4. Schemat slutar med ett nytt test |
 | | *Startdatum* | Schemat börjar första måndagen från och med datumet. Tomt betyder i dag |
+| | *Nästa test* | Dagen för idrottarens nästa test. Tomt ger testdagen 8–12 veckor efter testet (efter schemats start när testet är äldre), som står i fältet. Efter dagen säger appen att passens mål stämmer allt sämre och att nya mål kräver ett nytt test. Dagen ändrar inga pass |
 
 Datum skrivs som `2027-05-22` eller väljs i kalendern bredvid fältet.
 
@@ -134,6 +135,7 @@ Maxpulsen är den högsta pulsen som medel över 5 sekunder. Har idrottaren en s
 Tryck *Förhandsvisa*. Översikten till höger visar:
 
 - målet eller längden, perioden och testet schemat bygger på,
+- nästa test och vad passens mål bygger på, till exempel *Nästa test 2027-01-21. Passens mål bygger på testet från 2026-11-13.*,
 - hur långt passen går: *Detaljerat till och med vecka 4 (2026-12-13). Veckorna efter är en skiss.* Ett sparat schema har knappen *Förnya* på samma rad, se [Förnya schemat](#förnya-schemat),
 - var tiden i veckan börjar och vart den växer, till exempel *Börjar på 3 h 20 min i veckan, det du tränar nu. Tiden växer till 6 h 15 min i vecka 24.* Med *Tränar nu* tomt står det att schemat utgår från nivåns förval,
 - fyra rutor: *Längd*, *Pass i veckan*, *Tid i veckan* (i belastningsveckorna, från den första till den största) och *Lugn träning* (andelen av tiden i zon 1–2),
@@ -241,6 +243,7 @@ Ett test i en annan idrott än löpning flyttar bara den idrottens mål. Löpnin
 - **Passen före i dag** har kvar målen från testet de lämnades ut med.
 - **Inget pass byter dag,** varken bakåt eller framåt. Veckorna, blocken och passens innehåll är desamma.
 - **Schemat förnyas,** så att passen går till och med tre veckor efter den vecka du står i (som [*Förnya*](#förnya-schemat)).
+- **Nästa test flyttas** lika långt efter det nya testet som det låg efter det gamla, när du valt en dag under *Nästa test*. Utan vald dag gäller förvalet räknat från det nya testet.
 
 Skriv ut schemat igen, spara en ny kalenderfil eller använd *Till appen* efteråt, så får idrottaren de nya målen. Vill du i stället ha ett helt nytt schema från i dag: välj det nya testet under *Bygger på testet*, ändra startdatumet och spara.
 

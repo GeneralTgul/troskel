@@ -1722,7 +1722,7 @@ def apply_retest(store: Store, athlete: Athlete, session: Session, today: date |
     sport gets the targets of ``session``; earlier workouts keep theirs, the other sports keep their tests, and no
     workout changes its day. A test in running becomes the plan's test (``session_id``); a test in another sport
     (the bike, the SkiErg, a CSS test) moves only that sport's targets, and the running test stays."""
-    from lopanalys.plan import edits, resolve, rolling
+    from lopanalys.plan import edits, next_test, resolve, rolling
     from lopanalys.plan.models import RUNNING
     stored = load_plan(store, athlete)
     if stored is None:
@@ -1733,6 +1733,7 @@ def apply_retest(store: Store, athlete: Athlete, session: Session, today: date |
     plan = resolve.retest(stored.plan, cap, from_date=today)
     plan = rolling.roll_forward(plan, today)             # the same path as Förnya: the next weeks get their workouts
     plan = edits.apply_edits(plan)                       # the athlete's moved and shortened workouts stay (#777)
+    plan = next_test.after_retest(stored.plan, plan)     # the coach's next test as far after the new test (#778)
     session_id = session.id if cap.sport == RUNNING else stored.session_id
     save_plan(store, athlete, plan, session_id, None, "retest",
               {"from_session": stored.session_id, "to_session": session.id, "from_date": today.isoformat(),
@@ -1788,6 +1789,8 @@ def import_phone_plan(store: Store, athlete: Athlete, phone_plan: Any, today: da
     old = load_plan(store, athlete)
     plan = phone.to_plan(phone_plan, athlete.name, today)
     same = old is not None and old.plan.id == plan.id
+    if same:                                  # the next test is the coach's: the day chosen here wins (#778)
+        plan = dataclass_replace(plan, next_test=old.plan.next_test)
     session_id = old.session_id if same else None
     detail = {**phone_plan.log(), "plan_id": plan.id, "replaced": None if old is None or same else old.plan.id}
     row = save_plan(store, athlete, plan, session_id, None, "phone", detail)

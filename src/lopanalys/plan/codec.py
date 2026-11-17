@@ -23,7 +23,8 @@ A plan written outside the engine (``Plan.source``, the weeks as a schedule give
 each workout with its own title under ``name``; both only when set, so every other plan is stored as before.
 
 The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
-``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any.
+``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any. The day of the next
+test the coach chose (``Plan.next_test``, #778) is stored under ``next_test``, only when set.
 
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
@@ -165,6 +166,7 @@ def plan_to_dict(p: Plan) -> dict[str, Any]:
         "weeks": [_week_to_dict(w) for w in p.weeks],
         "horizon": p.horizon, **({"source": p.source} if p.source else {}),
         **({"edits": [edit_to_dict(e) for e in p.edits]} if p.edits else {}),
+        **({"next_test": _d(p.next_test)} if p.next_test else {}),
     }
 
 
@@ -206,7 +208,8 @@ def plan_from_dict(d: dict[str, Any], request: PlanRequest) -> Plan:
     return Plan(d["id"], request, datetime.fromisoformat(d["created"]), d.get("engine_version", ""), blocks, weeks,
                 [_note_from_dict(n) for n in d.get("notes", [])], d.get("zone_system", DEFAULT_SYSTEM),
                 {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log,
-                d.get("horizon"), d.get("source", ""), tuple(edit_from_dict(e) for e in d.get("edits", [])))
+                d.get("horizon"), d.get("source", ""), tuple(edit_from_dict(e) for e in d.get("edits", [])),
+                _pd(d.get("next_test")))
 
 
 __all__ = ["FORMAT", "capacity_from_dict", "capacity_to_dict", "edit_from_dict", "edit_to_dict", "plan_from_dict", "plan_to_dict", "request_from_dict",

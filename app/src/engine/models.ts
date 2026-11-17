@@ -187,6 +187,7 @@ export function normPlan(p: StoredPlanBody): StoredPlanBody {
       reason: normNote(b.reason) })),
     weeks: p.weeks.map(normWeek), horizon: p.horizon ?? null,
     ...(p.edits?.length ? { edits: p.edits.map(normEdit) } : {}),
+    ...(p.next_test ? { next_test: p.next_test } : {}),
   };
 }
 

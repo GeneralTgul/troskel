@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import replace as dataclass_replace
 from datetime import date, time, timedelta
 from pathlib import Path
 from typing import Any
@@ -541,6 +542,10 @@ class PlanView(QWidget):
         v.addWidget(self.weeks_box)
         self.start = DateField(plan=True)
         v.addWidget(field(t("ui.plan.start"), self.start, t("ui.plan.start_hint")))
+        # The day of the athlete's next test (#778, plan.next_test): empty is the default, 8-12 weeks after the test.
+        self.next_test = DateField(plan=True, placeholder=t("ui.plan.next_test_auto"))
+        v.addWidget(field(t("ui.plan.next_test"), self.next_test, t("ui.plan.next_test_hint")))
+        self.next_test.edit.textChanged.connect(self._next_test_changed)
 
         v.addSpacing(6)
         v.addWidget(label(t("ui.plan.sec.health"), "SectionTitle"))
@@ -584,9 +589,12 @@ class PlanView(QWidget):
         self.subline = label("", "Hint", wrap=True)
         # Where the weekly time starts and where it grows to (plan.text.start_line).
         self.startline = label("", "Hint", wrap=True)
+        # The next test and what the targets build on (#778, plan.next_test).
+        self.nextline = label("", "Hint", wrap=True)
         col.addWidget(self.headline)
         col.addWidget(self.subline)
         col.addWidget(self.startline)
+        col.addWidget(self.nextline)
         hrow = QHBoxLayout()               # how far the workouts run, and *Förnya*
         hrow.setSpacing(8)
         self.horizon = label("", "Hint", wrap=True)
@@ -646,8 +654,41 @@ class PlanView(QWidget):
     def _health(self) -> tuple:
         return tuple(cb.isChecked() for cb in self.health.values())
 
+    def _state(self) -> tuple:
+        """What *Spara* saves: the plan's inputs, the health declaration and the day of the next test (which never
+        rebuilds the plan)."""
+        return self._inputs(), self._health(), self.next_test.text().strip()
+
     def dirty(self) -> bool:
-        return self.athlete is not None and (self._inputs(), self._health()) != self._loaded
+        return self.athlete is not None and self._state() != self._loaded
+
+    def _chosen_next_test(self) -> date | None:
+        """The day typed under *Nästa test*; None when empty (the default) or not a date."""
+        try:
+            return self.next_test.date()
+        except ValueError:
+            return None
+
+    def _next_test_changed(self, *_: Any) -> None:
+        if self._filling:
+            return
+        self._show_next_test()
+        self._changed()
+
+    def _show_next_test(self) -> None:
+        """The default day as the field's placeholder, and the day in the overview's subline (``_show``)."""
+        from lopanalys.plan import next_test
+        plan = self.plan
+        if plan is None:
+            self.next_test.edit.setPlaceholderText(t("ui.plan.next_test_auto"))
+            self.nextline.setText("")
+            return
+        auto = next_test.default_next_test(plan)
+        self.next_test.edit.setPlaceholderText(t("ui.plan.next_test_default", date=auto.isoformat()))
+        day = self._chosen_next_test() or auto
+        kind, tested = next_test.basis(plan)
+        self.nextline.setText(t(f"ui.plan.next_test_line.{kind}", date=day.isoformat(),
+                                tested=tested.isoformat() if tested else ""))
 
     def _changed(self, *_: Any) -> None:
         if self._filling:
@@ -836,7 +877,7 @@ class PlanView(QWidget):
         for r in list(self.milestones):
             self._remove_milestone(r)
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
-                  self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
+                  self.start.edit, self.next_test.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
             w.clear()
         for b in self.second_btns:
             b.setChecked(False)
@@ -888,13 +929,14 @@ class PlanView(QWidget):
                     self.add_milestone(g)
             self.weeks.setValue(req.duration_weeks or 0)
             self.start.set_date(req.start)
+            self.next_test.set_date(st.plan.next_test if st else None)
         ok = bool(st and services.health_valid(st.health))
         for cb in self.health.values():
             cb.setChecked(ok)
         self._filling = False
         self._sports_changed()
         self._mode_changed()
-        self._loaded = (self._inputs(), self._health())
+        self._loaded = self._state()
         self.plan = st.plan if st else None
         self._plan_snap = self._inputs() if st else ()
         self.del_btn.setVisible(st is not None)
@@ -979,6 +1021,7 @@ class PlanView(QWidget):
         self.subline.setText(f"{_day(plan.start)} – {_day(plan.end)} {plan.end.year}   ·   "
                              + t("ui.plan.based_on", basis=basis))
         self.startline.setText(start_line(plan))
+        self._show_next_test()
         self._show_horizon()
         load = [wk.minutes for wk in plan.weeks if wk.kind == "load"] or [wk.minutes for wk in plan.weeks]
         sessions = [wk.sessions for wk in plan.weeks if wk.kind == "load"]
@@ -1183,7 +1226,13 @@ class PlanView(QWidget):
             return False
         health = self._health_dict()
         sid = self._session_id()
-        plan = self.plan = services.with_saved_edits(self.stored.plan if self.stored else None, plan)
+        try:
+            self.next_test.date()
+        except ValueError:
+            self._fail(t("ui.plan.next_test_bad"))
+            return False
+        plan = services.with_saved_edits(self.stored.plan if self.stored else None, plan)
+        plan = self.plan = dataclass_replace(plan, next_test=self._chosen_next_test())
         try:
             row = services.save_plan(self.ctx.store, a, plan, sid, health, "saved" if self.stored is None else "changed")
         except Exception as e:
@@ -1191,7 +1240,7 @@ class PlanView(QWidget):
             QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
             return False
         self.stored = services.StoredPlan(plan, sid, health, row)
-        self._loaded = (self._inputs(), self._health())
+        self._loaded = self._state()
         self.del_btn.show()
         self._show_horizon()
         self._fill_banner()

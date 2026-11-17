@@ -24,6 +24,10 @@ app/test/values.test.ts.
 every template cut to several lengths (``shorten``, ``shortest``), plans with moves, swaps and shortenings laid on them
 (``apply_edits``), and the same plans after new times (``phone.rebuild``), *Förnya* (``roll_forward``), the short link and
 the coach's new plan with the same id (``services.with_saved_edits``), checked by app/test/edits.test.ts.
+``nexttest.json.gz`` is the plan's next test (#778, lopanalys.plan.next_test, app/src/model/nexttest.ts): the default
+day and what the targets build on for every build request and for own values, and a plan with the coach's day through
+new times (``phone.rebuild``), *Förnya*, the athlete's edits, the short link and the athlete's file to the coach,
+checked by app/test/nexttest.test.tsx.
 """
 from __future__ import annotations
 
@@ -40,7 +44,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
-from lopanalys.plan import codec, demo, edits, ics, library, link, phone, text
+from lopanalys.plan import codec, demo, edits, ics, library, link, next_test, phone, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
 from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, SELF, Capacity, Edit, Goal, HardDay, PlanRequest,
                                    Slot, SportRole)
@@ -803,6 +807,47 @@ def edits_fixtures() -> dict[str, Any]:
             "stored": stored}
 
 
+# ---- the plan's next test (#778): app/src/model/nexttest.ts ---------------------------------------------------------
+
+NEXT_TEST = date(2027, 2, 10)          # the coach's day in the fixtures
+
+
+def _next_case(name: str, plan: Any) -> dict[str, Any]:
+    kind, tested = next_test.basis(plan)
+    return {"name": name, "default": next_test.default_next_test(plan).isoformat(),
+            "anchor": next_test.anchor(plan).isoformat(), "basis": kind, "tested": tested.isoformat() if tested else None}
+
+
+def nexttest_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
+    """The app's next test against plan.next_test (test/nexttest.test.tsx)."""
+    set_language("sv")
+    build = []
+    for name, request, today in _requests():
+        plan = build_plan(request, plan_id="demo", today=today)
+        build.append({**_next_case(name, plan), "request": codec.request_to_dict(request),
+                      "today": today.isoformat() if today else None})
+    own = plan_with_values(demo_stored, {"run": _v(max_hr="190", lt1_hr="150", lt2_hr="172", lt1="5:40", lt2="4:40")})
+    own_plan = codec.plan_from_dict(own["plan"], codec.request_from_dict(own["request"]))
+    stored_cases = [{**_next_case("own-values", own_plan), "stored": own}]
+    chosen = {}
+    for name, plan in (("demo", demo.demo_plan(12)),
+                       ("rolling", build_plan(demo.demo_request(20), plan_id="demo", today=date(2026, 11, 18)))):
+        chosen[name] = link.stored_plan(replace(plan, next_test=NEXT_TEST))
+    # The coach's day stays through new times, Förnya, the athlete's edits, the short link and the athlete's file.
+    slots = _slots(*((d, m + 15, *r) for d, m, *r in DEMO_SLOTS))
+    rebuilt = {"slots": slots, "from": "2026-11-24", "result": rebuild(chosen["demo"], slots, [], "2026-11-24")}
+    rp = codec.plan_from_dict(chosen["rolling"]["plan"], codec.request_from_dict(chosen["rolling"]["request"]))
+    rolled = codec.plan_to_dict(roll_forward(rp, date(2026, 12, 20)))
+    dp = codec.plan_from_dict(chosen["demo"]["plan"], codec.request_from_dict(chosen["demo"]["request"]))
+    edited = link.stored_plan(edits.apply_edits(replace(dp, edits=_pick_edits(dp))))
+    links = {name: link.link_payload(st) for name, st in (*chosen.items(), ("edited", edited))}
+    athlete = athlete_fixture(chosen["demo"])
+    return {"build": build, "stored": stored_cases, "chosen": chosen, "next_test": NEXT_TEST.isoformat(),
+            "rebuilt": rebuilt, "rolled": rolled, "edited": edited, "links": links,
+            "athlete_link": phone.athlete_link(athlete),
+            "athlete_read": phone.read(phone.athlete_link(athlete)).stored}
+
+
 def _gz(data: Any) -> bytes:
     raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return gzip.compress(raw, compresslevel=9, mtime=0)
@@ -824,6 +869,7 @@ def outputs() -> dict[Path, bytes]:
     out[APP / "test" / "fixtures" / "request.json.gz"] = _gz(request_fixtures(stored))
     out[APP / "test" / "fixtures" / "zones.json.gz"] = _gz(zones_fixtures(stored))
     out[APP / "test" / "fixtures" / "edits.json.gz"] = _gz(edits_fixtures())
+    out[APP / "test" / "fixtures" / "nexttest.json.gz"] = _gz(nexttest_fixtures(stored))
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
     out[APP / "test" / "fixtures" / "engine.json.gz"] = _gz(engine_fixtures())

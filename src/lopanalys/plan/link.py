@@ -15,7 +15,7 @@ plan with its own engine (app/src/engine), the same rules as engine.py, so a pla
 workouts a day fits in one QR code. It holds what the engine needs (the request, the plan's id, ``created`` and
 horizon), the engine version that built it, the fields of the plan that the engine would not give back as they
 are stored (``x``: notes, the log of earlier tests, a status, the athlete's changes of single workouts, which the
-engine lays on the plan it built: plan.edits), and the targets. Keys are short and a default is left
+engine lays on the plan it built: plan.edits, the day of the next test: plan.next_test), and the targets. Keys are short and a default is left
 out. ``short_plan`` checks itself: it builds the plan from the short payload and gives None when that is not the
 stored plan (a workout with a status, weeks rolled on by older rules), and the link then holds the whole plan.
 The app reads both formats; with format 2 and another engine version it asks for an update instead of building
@@ -96,7 +96,7 @@ def stored_plan(plan: Plan, athlete_name: str | None = None) -> dict[str, Any]:
 
 _ANCHORS = ("max_hr", "resting_hr", "lt1_hr", "lt2_hr", "lt1_speed_kmh", "lt2_speed_kmh")
 _FLAGS = ("estimated", "speed_low_approx", "speed_high_approx", "speed_from_hr")      # bit 1, 2, 4, 8
-_PLAN_FIELDS = ("engine_version", "zone_system", "status", "based_on", "notes", "capacity_log", "blocks", "edits")
+_PLAN_FIELDS = ("engine_version", "zone_system", "status", "based_on", "notes", "capacity_log", "blocks", "edits", "next_test")
 
 
 def _trim(row: list[Any], defaults: tuple[Any, ...]) -> list[Any]:

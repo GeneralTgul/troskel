@@ -480,6 +480,9 @@ class Plan:
     # The athlete's changes of single workouts (moved, swapped, shortened), laid on the weeks again by every rebuild,
     # a new test and *Förnya* (plan.edits). The weeks hold them already; the list keeps them through a rebuild.
     edits: tuple[Edit, ...] = ()
+    # The day of the athlete's next test, chosen by the coach in Tröskel (#778); None: the default, 8 to 12 weeks after
+    # the test (plan.next_test). After it the targets fit worse and worse, and new targets need a new test.
+    next_test: date | None = None
 
     @property
     def from_engine(self) -> bool:

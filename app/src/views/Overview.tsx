@@ -1,6 +1,7 @@
 import { mainSport, planSports } from "../engine/models";
 import { t } from "../i18n";
 import { addDays, daysBetween, dayMonth, mondayOf } from "../model/dates";
+import { nextTest } from "../model/nexttest";
 import { hours, noteText, planEnd, planStart, targetText, weekMinutes, weekZoneMinutes, zoneName } from "../model/plan";
 import { ZONES, type IsoDate, type StoredPlan, type StoredWorkout } from "../model/types";
 import { ownValues } from "../model/values";
@@ -44,6 +45,8 @@ export function Overview({ stored, today, onCalendar, onValues }: {
   // the others, so that the bike's watt and the pool's time per 100 m stand beside the running paces.
   const sports = [main, ...planSports(stored.request).filter((s) => s !== main && hasTargets(stored, s))];
   const step = labelStep(weeks.length);
+  // The next test (#778): the day, and that the targets build on the last test and fit worse and worse after it.
+  const next = weeks.length ? nextTest(stored, today) : null;
   return (
     <section class="view overview two-col">
       <div class="col">
@@ -70,6 +73,22 @@ export function Overview({ stored, today, onCalendar, onValues }: {
             ))}
           </ul>
         ) : <p class="muted">{t("ui.plan.no_goals")}</p>}
+
+        {next ? (
+          <div class={`next-test ${next.passed ? "passed" : ""}`}>
+            <h3>{t("ui.plan.next_test")}</h3>
+            <ul class="list">
+              <li>
+                <span class="grow">{dayLabel(next.day)}</span>
+                <span class="small">{relative(next.day, today)}</span>
+              </li>
+            </ul>
+            <p class={next.passed ? "notice small" : "muted small"}>
+              {t(`ui.plan.next_test.${next.passed ? "after" : "before"}.${next.basis}`,
+                { date: next.tested ? dayMonth(next.tested) : "" })}
+            </p>
+          </div>
+        ) : null}
 
         {tests.length ? (
           <>
