@@ -106,6 +106,16 @@ describe("the week in numbers", () => {
     expect(sum.done).toBe(0);
   });
 
+  it("counts a session outside the plan in its sport's row when the week plans that sport", () => {
+    const p = demoPlan();
+    let log = addExtra(emptyLog(), { date: "2026-11-25", sport: "run", minutes: 61, name: "Löpning" });
+    log = addExtra(log, { date: "2026-11-25", sport: "other", minutes: 40, name: "Yoga" });
+    const sum = weekTotals(p, log, MONDAY);
+    expect(sum.rows[0]).toMatchObject({ sport: "run", done: 61 });
+    expect(sum.done).toBe(61);
+    expect(sum.extras.map((x) => x.name)).toEqual(["Yoga"]);
+  });
+
   it("puts the main sport first and strength last, and leaves a race out", async () => {
     const { readFileSync } = await import("node:fs");
     const { gunzipSync } = await import("node:zlib");

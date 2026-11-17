@@ -39,7 +39,8 @@ function DaySheet({ stored, day, today, log, onLog, onClose }: {
             {day <= today ? <StatusPicker stored={stored} w={w} log={log} onLog={onLog} /> : null}
           </WorkoutCard>
         )) : <article class="workout rest"><h3>{t("ui.today.rest")}</h3></article>}
-        {day <= today ? <Extras stored={stored} day={day} log={log} onLog={onLog} /> : null}
+        {day <= today ? <Extras stored={stored} day={day} log={log} onLog={onLog} />
+          : <p class="muted small extra-later">{t("ui.extra.later")}</p>}
       </div>
     </div>
   );

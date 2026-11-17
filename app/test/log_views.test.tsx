@@ -78,15 +78,18 @@ describe("ticking off today's workout", () => {
     expect(Object.values(store.log().marks)).toEqual([{ status: "partial", minutes: 25 }]);
   });
 
-  it("adds a session outside the plan as \"+ name\", counted as extra", async () => {
+  it("adds a session outside the plan as \"+ name\", counted in its sport's row (#774)", async () => {
     const store = await mount();
     await click(byText("button", "+ Lägg till ett pass"));
     await type(root.querySelector(".extra-form input[type=text]"), "Yoga");
+    // Any whole minute: step 5 from min 1 refused 60 ("the nearest valid values are 56 and 61", #774).
+    expect(root.querySelector(".extra-form input[type=number]")!.getAttribute("step")).toBe("1");
     await type(root.querySelector(".extra-form input[type=number]"), "40");
     await click(root.querySelector(".extra-form button[type=submit]"));
     expect(store.log().extras).toMatchObject([{ date: "2026-11-26", name: "Yoga", minutes: 40, sport: "run" }]);
     expect(byText(".extra-list li", "+ Yoga")).not.toBeNull();
-    expect(byText(".numbers .sum-row.extra", "+ Yoga")!.textContent).toBe("+ Yoga0:40 extra");
+    expect(root.querySelector(".numbers .sum-row.extra")).toBeNull();
+    expect(root.querySelector(".numbers .sum-row[data-sport=run] .sum-val")!.textContent).toMatch(/^0:40 av /);
     await click(root.querySelector(".extra-list button"));
     expect(store.log().extras).toEqual([]);
   });

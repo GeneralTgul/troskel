@@ -41,7 +41,7 @@ export function StatusPicker({ stored, w, log, onLog }: { stored: StoredPlan; w:
       {mark?.status === "partial" ? (
         <label class="status-minutes">
           <span class="small">{t("ui.log.minutes")}</span>
-          <input type="number" inputMode="numeric" min={0} max={workoutMinutes(w)} step={5}
+          <input type="number" inputMode="numeric" min={0} max={workoutMinutes(w)} step={1}
             value={mark.minutes ?? halfOf(w)}
             onChange={(e) => {
               const v = Math.round(Number((e.target as HTMLInputElement).value));
@@ -97,7 +97,7 @@ export function Extras({ stored, day, log, onLog }: { stored: StoredPlan; day: I
               {sports.map((s) => <option key={s} value={s}>{sportName(s)}</option>)}
             </select></label>
           <label><span class="small">{t("ui.extra.minutes")}</span>
-            <input type="number" inputMode="numeric" min={1} max={600} step={5} value={minutes}
+            <input type="number" inputMode="numeric" min={1} max={600} step={1} value={minutes}
               onInput={(e) => setMinutes(Number((e.target as HTMLInputElement).value) || 0)} /></label>
           <div class="extra-actions">
             <button type="submit" class="primary" disabled={minutes <= 0}>{t("ui.extra.save")}</button>

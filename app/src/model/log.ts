@@ -128,8 +128,9 @@ export interface WeekTotals {
 }
 
 /** The week from `monday` in numbers: done against planned per sport, in the plan's order (the main sport first,
- * strength last), and the sessions outside the plan, which count on their own as "extra". A race has no planned
- * minutes and makes no row of its own. */
+ * strength last). A session outside the plan counts in its sport's row when the week plans that sport, and on its
+ * own as "extra" otherwise (yoga, a sport the plan does not have). A race has no planned minutes and makes no row
+ * of its own. */
 export function weekTotals(stored: StoredPlan, log: TrainingLog, monday: IsoDate): WeekTotals {
   const by = new Map<string, SportRow>();
   const order = [...planSports(stored.request), STRENGTH];
@@ -143,12 +144,17 @@ export function weekTotals(stored: StoredPlan, log: TrainingLog, monday: IsoDate
       by.set(w.sport, row);
     }
   }
+  const sunday = addDays(monday, 6);
+  const extras = log.extras.filter((x) => x.date >= monday && x.date <= sunday)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+    .filter((x) => {
+      const row = by.get(x.sport);
+      if (row) row.done += x.minutes;
+      return !row;
+    });
   const rank = (s: string) => (order.includes(s) ? order.indexOf(s) : order.length);
   const rows = [...by.values()].sort((a, b) => rank(a.sport) - rank(b.sport));
   for (const r of rows) r.reached = r.done >= r.planned;
-  const sunday = addDays(monday, 6);
-  const extras = log.extras.filter((x) => x.date >= monday && x.date <= sunday)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   return {
     rows, extras,
     planned: rows.reduce((s, r) => s + r.planned, 0),

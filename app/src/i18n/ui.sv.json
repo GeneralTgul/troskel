@@ -118,6 +118,7 @@
  "ui.log.minutes": "Minuter som blev gjorda",
  "ui.log.mark": "{title}: {status}",
  "ui.extra.add": "+ Lägg till ett pass",
+ "ui.extra.later": "Ett pass utanför planen läggs till samma dag eller efteråt.",
  "ui.extra.title": "Pass utanför planen",
  "ui.extra.name": "Namn",
  "ui.extra.name_hint": "Till exempel yoga",

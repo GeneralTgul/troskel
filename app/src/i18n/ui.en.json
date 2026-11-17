@@ -118,6 +118,7 @@
  "ui.log.minutes": "Minutes done",
  "ui.log.mark": "{title}: {status}",
  "ui.extra.add": "+ Add a session",
+ "ui.extra.later": "A session outside the plan is added on the day or afterwards.",
  "ui.extra.title": "Sessions outside the plan",
  "ui.extra.name": "Name",
  "ui.extra.name_hint": "For example yoga",
