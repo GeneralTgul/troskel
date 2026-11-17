@@ -118,6 +118,8 @@ def _basis_text(cap: Capacity | None, sport: str) -> str:
     """What a sport's zones come from, under its row in the form."""
     if cap is None:
         return t("ui.plan.sport_basis.effort")
+    if cap.own_values and cap.known:                       # typed in by the athlete in the app (#777)
+        return t("plan.capacity.self")
     if cap.anchors is None and cap.css_s100:                # swimming's CSS test: a pace, no heart rate
         from lopanalys.assessments.css import pace_str
         return t("ui.plan.sport_basis.css", pace=pace_str(cap.css_s100),
@@ -969,6 +971,8 @@ class PlanView(QWidget):
         self.headline.setText(goal.name if goal else t("plan.pdf.headline_weeks", weeks=len(plan.weeks)))
         if cap.anchors is None:
             basis = t("plan.pdf.fact.no_test")
+        elif cap.own_values:
+            basis = t("plan.capacity.self")
         else:
             basis = " · ".join(x for x in (cap.source, cap.tested.isoformat() if cap.tested else "") if x) \
                 or t("ui.plan.basis_max_hr")

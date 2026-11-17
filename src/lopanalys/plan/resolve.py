@@ -31,7 +31,7 @@ from lopanalys.assessments.zone_systems import DEFAULT_SYSTEM, convert
 from lopanalys.core.i18n import t
 from lopanalys.core.sport import Sport, profile
 
-from .models import RUNNING, SWIM, Capacity, Plan, SpeedLine
+from .models import BORROWS, RUNNING, SWIM, Capacity, Plan, SpeedLine
 
 APPROX = "≈"     # before a pace outside the measured steps of a zones test (report.builder.EXTRAPOLATED_MARK)
 POWER_SPORTS = (Sport.BIKE.value, Sport.SKIERG.value)   # the test's load is watt: the targets are watt
@@ -243,9 +243,13 @@ def retest(plan: Plan, capacity: Capacity, from_date: date | None = None) -> Pla
 
     ``from_date``: the new targets apply from that day on. Workouts before it keep the targets of
     the test they were handed out with (``Plan.capacity_on``). None: the whole plan follows the new test.
+
+    The athlete's own values (``Capacity.own_values``, #777) give way to the test: those in its sport, and those of a
+    sport that borrows its zones (skis typed in by the athlete give way to a SkiErg test).
     """
     old = plan.request.capacity_for(capacity.sport)
-    others = tuple(c for c in plan.request.capacity if c.sport != capacity.sport)
+    others = tuple(c for c in plan.request.capacity if c.sport != capacity.sport
+                   and not (c.own_values and BORROWS.get(c.sport) == capacity.sport))
     log = plan.capacity_log
     covered = max((until for until, c in log if c.sport == capacity.sport), default=plan.start)
     if from_date is not None and from_date > covered:

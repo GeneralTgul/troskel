@@ -34,6 +34,12 @@ read in from the phone, plan.phone.to_plan) and from the logs the athlete sent f
 plan.phone.PhonePlan.log): the last log that marks a workout wins. A partly done workout counts its logged minutes
 (half the planned ones when the log has none). A workout after the last log and without a status is *not logged*, not
 missed: the report counts the share only over what is known.
+
+**Own values are not a test** (#777): the athlete may type thresholds into the app without a test
+(``Capacity.own_values``). The follow-up never reads the plan's capacity: the caller passes the days of two tests in
+Tröskel (services.plan_followup takes the previous test from the database), so a new test is compared with the last
+measured one only. A plan built on own values counts its weeks from the previous test like any other, and with no
+previous test there is no follow-up.
 """
 from __future__ import annotations
 

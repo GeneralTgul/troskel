@@ -2,8 +2,9 @@
 
 The payload is the stored plan (``codec.request_to_dict`` and ``codec.plan_to_dict``) with what the app
 cannot work out by itself: the athlete's name and every zone's targets (heart rate, speed), resolved here
-from the tests the plan is built on. The app has no zone systems, so it shows the targets as they were
-when the coach sent the plan; a retest sends a new link.
+from the tests the plan is built on. The app shows a test's targets as they were when the coach sent the plan; a
+retest sends a new link. Only for the athlete's own values (#777, ``source`` "self") does the app work the targets out
+itself, with a port of resolve.py (app/src/engine/zones.ts).
 
 The link is ``APP_URL#p=<data>``: the JSON compressed with deflate (zlib) and coded as base64url without
 padding. A browser never sends the fragment (``#...``) to a server, so the plan stays on the phone.

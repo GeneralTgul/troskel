@@ -192,3 +192,32 @@ def test_times_waiting_on_the_phone_are_laid_on_from_tomorrow(demo_window, erik,
     assert [s.max_minutes for s in stored.plan.request.availability if s.weekday == 1] == [90]
     assert f"från och med {tomorrow.isoformat()}" in boxes["told"][-1]
     assert store.db.plan_events(stored.row_id)[-1]["detail"]["times"]["slots"] == slots
+
+
+def test_own_values_from_the_phone_stay_until_a_new_test(demo_window, erik, boxes):
+    """#777: the athlete typed own values into the app (``source`` "self"), here in running over the coach's test and
+    on the bike. Tröskel keeps them when the plan is read in (the athlete chose them), shows them as own values, offers
+    the newest test in their place, and the test then replaces them in its sport only."""
+    win, store = demo_window, demo_window.ctx.store
+    before = _plan(win, erik)
+    sent = _from_phone(before, name=erik.name)
+    own_run = {"sport": "run", "anchors": {"max_hr": 191, "resting_hr": 48, "lt1_hr": 158, "lt2_hr": 176,
+                                           "lt1_speed_kmh": 12.0, "lt2_speed_kmh": 14.0, "sport": "run"},
+               "tested": None, "source": "self"}
+    own_bike = {"sport": "bike", "anchors": {"max_hr": 182, "resting_hr": None, "lt1_hr": None, "lt2_hr": None,
+                                             "lt1_speed_kmh": None, "lt2_speed_kmh": 250.0, "sport": "bike"},
+                "tested": None, "source": "self"}
+    sent["plan"]["request"]["capacity"] = [own_run, own_bike]
+    assert win.plan.read_from_phone(phone.athlete_link(sent))
+    stored = services.load_plan(store, erik)
+    run = stored.plan.request.own_capacity("run")
+    assert run.own_values and run.anchors.lt2_hr == 176                  # not laid back on the coach's test
+    assert stored.plan.request.own_capacity("bike").own_values
+    assert "Egna värden" in win.plan.subline.text()
+    # the newest test is offered in place of the own values, though the plan was built on it
+    (offer,) = services.retest_candidates(store, erik, stored)
+    assert offer.id == stored.session_id
+    after = services.apply_retest(store, erik, offer).plan
+    assert not after.request.own_capacity("run").own_values and after.request.own_capacity("run").tested is not None
+    assert after.request.own_capacity("bike").own_values                 # the bike keeps its own values
+    assert after.capacity_on("run", date.today() - timedelta(days=1)).own_values

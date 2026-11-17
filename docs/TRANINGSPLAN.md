@@ -147,6 +147,8 @@ Note                             en text som nyckel och värden, så att planen 
 
 `Plan.capacity_log` håller de tidigare testerna efter ett omtest: en dag och kapaciteten som gällde före den. `Plan.capacity_on(sport, dag)` ger kapaciteten ett pass visas med.
 
+En `Capacity` med `source` `"self"` (`models.SELF`, `Capacity.own_values`) är idrottarens egna värden ur appen, utan test och utan testdag ([appen](app/app.md#egna-värden)). Den ger mål som ett test, men ett test i idrotten ersätter den (`resolve.retest`, också i en idrott som lånar testets zoner), och `plan/expected.py` jämför aldrig ett test med den.
+
 `PlanRequest.plan_roles()` ger idrotterna i ordning med huvudidrotten först, en gång var och med exakt en huvudidrott: den första som angetts som huvudidrott, annars A-målets idrott, annars den första. `Workout.load` och `Week.load` är belastningen: minuter × zonfaktor (Z1 0,5, Z2 1, Z3 1,5, Z4 2,5, Z5 3,5; ett test räknas som Z4) × idrottsfaktor (löpning, SkiErg och skidor 1,0, cykel och simning 0,7, styrka 0,8).
 
 **Inte i modellen än:** utrustning per plats och gruppträningar med fast innehåll. En fast hård dag (`HardDay`) säger bara att dagen är hård och i vilken idrott, inte vad gruppen gör: passet kommer ur motorns mallar.

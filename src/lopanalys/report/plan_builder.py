@@ -209,7 +209,10 @@ def _sport_name(sport: str) -> str:
 
 
 def _basis(cap: Capacity) -> str:
-    """'Laktattrappa · 13 november 2026', with the marks for estimated zones; 'Inget test' without one."""
+    """'Laktattrappa · 13 november 2026', with the marks for estimated zones; 'Inget test' without one; 'Egna värden'
+    for the athlete's own values (#777)."""
+    if cap.own_values and cap.known:
+        return t("plan.capacity.self")
     if cap.anchors is None and cap.css_s100:          # swimming's CSS test: a pace, no heart rate
         return " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x)
     if cap.anchors is None:
@@ -358,6 +361,8 @@ def _context(plan: Plan, branding: Branding) -> dict[str, Any]:
     multi = req.multi_sport
     if cap.anchors is None:
         basis = t("plan.pdf.fact.no_test")
+    elif cap.own_values:
+        basis = t("plan.capacity.self")
     else:
         basis = " · ".join(x for x in (cap.source, date_long(cap.tested) if cap.tested else "") if x) or "–"
         if cap.estimated:

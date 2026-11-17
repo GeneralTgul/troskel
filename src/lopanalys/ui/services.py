@@ -1589,7 +1589,8 @@ def _sport_capacity(store: Store, athlete: Athlete, session: Session) -> Any:
 
 def load_plan(store: Store, athlete: Athlete) -> StoredPlan | None:
     """The athlete's saved plan, or None. The targets follow the test it is built on as that test is
-    now (a corrected lactate value moves them); if the test is gone, the anchors saved with the plan."""
+    now (a corrected lactate value moves them); if the test is gone, the anchors saved with the plan. When the athlete
+    chose own values in that sport in the app (#777, read in from the phone), the own values stay until a new test."""
     from lopanalys.plan import codec
     if athlete.id is None:
         return None
@@ -1602,8 +1603,10 @@ def load_plan(store: Store, athlete: Athlete) -> StoredPlan | None:
     if s is not None:
         try:
             cap = plan_capacity(store, athlete, s)
-            others = tuple(c for c in req.capacity if c.sport != cap.sport)
-            plan = dataclass_replace(plan, request=dataclass_replace(req, capacity=others + (cap,)))
+            own = req.own_capacity(cap.sport)
+            if own is None or not own.own_values:
+                others = tuple(c for c in req.capacity if c.sport != cap.sport)
+                plan = dataclass_replace(plan, request=dataclass_replace(req, capacity=others + (cap,)))
         except Exception:
             log.exception("reading the plan's test failed, using the saved anchors")
     return StoredPlan(plan, row["session_id"] if s is not None else None, row["health"], row["id"], row["updated"])
@@ -1643,8 +1646,9 @@ def test_sport(session: Session) -> str | None:
 def retest_candidates(store: Store, athlete: Athlete, stored: StoredPlan | None = None) -> list[Session]:
     """The tests the saved plan can be laid on, one per sport of the plan, running first (#666): the newest
     lactate, max HR or zones test in running, the bike or the SkiErg, or the newest CSS test, when it is newer than
-    the test the plan's targets in that sport come from. Skis take the SkiErg's (plan.models.BORROWS). Empty when
-    there is no plan or nothing newer."""
+    the test the plan's targets in that sport come from. Skis take the SkiErg's (plan.models.BORROWS). The athlete's own
+    values (#777) are no test: the newest test in their sport is offered whatever its day. Empty when there is no plan
+    or nothing newer."""
     from lopanalys.plan.models import BORROWS, RUNNING
     stored = stored or load_plan(store, athlete)
     if stored is None or athlete.id is None:
@@ -1652,7 +1656,10 @@ def retest_candidates(store: Store, athlete: Athlete, stored: StoredPlan | None 
     out: list[Session] = []
     tests = plan_tests(store, athlete.id)
     sports = stored.plan.request.plan_sports
-    if RUNNING in sports and tests and tests[0].id != stored.session_id:
+    own_run = stored.plan.request.own_capacity(RUNNING)
+    if RUNNING in sports and tests and own_run is not None and own_run.own_values:
+        out.append(tests[0])
+    elif RUNNING in sports and tests and tests[0].id != stored.session_id:
         basis = store.session(stored.session_id) if stored.session_id else None
         if basis is None or tests[0].started > basis.started:
             out.append(tests[0])
@@ -1663,7 +1670,7 @@ def retest_candidates(store: Store, athlete: Athlete, stored: StoredPlan | None 
             continue
         own = stored.plan.request.own_capacity(sport)
         day = newest[0].started.astimezone().date()
-        if own is None or own.tested is None or day > own.tested:
+        if own is None or own.own_values or own.tested is None or day > own.tested:
             out.append(newest[0])
     return out
 

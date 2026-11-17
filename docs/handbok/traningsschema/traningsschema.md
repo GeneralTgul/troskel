@@ -260,6 +260,7 @@ Vad inläsningen gör:
 - **Loggen:** allt från telefonen (märkena, passen utanför schemat, väntande tider och exportdagen) sparas i schemats logg, och raden *Från appen …* under översikten säger när det senast lästes in.
 - **Ett annat schema**, eller ett schema som står på någon annans namn, frågar programmet om först. Ett annat schema kommer då i det sparades ställe, utan test under *Bygger på testet*.
 - Ett schema från Tröskel (länken eller filen till appen) är inte idrottarens schema, och programmet säger det.
+- **Egna värden:** har idrottaren fyllt i maxpuls, trösklar, FTP eller CSS-tempo i appen ([appen](../../app/app.md#egna-värden)), står det *Egna värden* där testet annars står, i formuläret, i översikten och i utskriften. Målen räknas ur dem som ur ett test. Har idrottaren valt egna värden i stället för ditt test, gäller de egna värdena tills ett nytt test kommer: *Lägg om schemat* erbjuder då det senaste testet i idrotten, och testet ersätter de egna värdena i den idrotten (och i skidorna, om de lånar SkiErg-testet). De andra idrotterna behåller sina. *Mot schemat* i rapporten jämför bara två tester i Tröskel, aldrig ett test med idrottarens egna värden.
 
 ## Det som inte är provat
 

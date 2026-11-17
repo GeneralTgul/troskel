@@ -596,7 +596,17 @@ export function buildPlan(request: StoredRequest, o: BuildOptions = {}): StoredP
     horizon = h;
     weeks = weeks.map((wk) => (wk.index <= h ? wk : sketchOf(wk)));
   }
-  const notes = [...skeleton.notes];
+  const notes = [...skeleton.notes, ...capacityNotes(request)];
+  return {
+    format: CODEC_FORMAT, id: planId, created: o.created ?? `${request.start}T00:00:00+00:00`,
+    engine_version: ENGINE_VERSION, zone_system: DEFAULT_SYSTEM, status: "draft", based_on: basedOn(request), notes,
+    capacity_log: [], blocks: skeleton.blocks, weeks, horizon,
+  };
+}
+
+/** The notes build_plan adds for what the plan's capacity is (no test, estimated zones, borrowed or missing tests). */
+export function capacityNotes(request: StoredRequest): StoredNote[] {
+  const notes: StoredNote[] = [];
   const cap = capacityFor(request, mainSport(request));
   if (cap.anchors == null && cap.css_s100 != null) { /* swimming as the main sport on a CSS test */ }
   else if (cap.anchors == null) notes.push(note("plan.note.no_test"));
@@ -607,13 +617,18 @@ export function buildPlan(request: StoredRequest, o: BuildOptions = {}): StoredP
     if (r.sport in BORROWS && ownCapacity(request, BORROWS[r.sport]) !== undefined) notes.push(note(`plan.note.borrowed.${r.sport}`));
     else if (i > 0) notes.push(note(`plan.note.no_test_sport.${r.sport}`));
   });
-  const basedOn: Record<string, IsoDate | null> = {};
-  for (const c of request.capacity) basedOn[c.sport] = c.tested || null;
-  return {
-    format: CODEC_FORMAT, id: planId, created: o.created ?? `${request.start}T00:00:00+00:00`,
-    engine_version: ENGINE_VERSION, zone_system: DEFAULT_SYSTEM, status: "draft", based_on: basedOn, notes,
-    capacity_log: [], blocks: skeleton.blocks, weeks, horizon,
-  };
+  return notes;
+}
+
+/** The keys of the notes `capacityNotes` gives. */
+export const isCapacityNote = (key: string) =>
+  /^plan\.note\.(no_test|speed_from_hr|estimated|borrowed\.[a-z]+|no_test_sport\.[a-z]+)$/.test(key);
+
+/** Plan.based_on: sport -> the day of its test (null for one without, as the athlete's own values). */
+export function basedOn(request: StoredRequest): Record<string, IsoDate | null> {
+  const out: Record<string, IsoDate | null> = {};
+  for (const c of request.capacity) out[c.sport] = c.tested || null;
+  return out;
 }
 
 export { sketchOf };

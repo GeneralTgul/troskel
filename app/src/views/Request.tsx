@@ -8,7 +8,9 @@ import {
   type FormDay, type FormGoal, type RequestForm,
 } from "../model/request";
 import type { IsoDate } from "../model/types";
+import { ValuesError } from "../model/values";
 import { sportName } from "./log";
+import { Values, valuesErrorText } from "./Values";
 
 interface Props {
   form: RequestForm;
@@ -19,6 +21,7 @@ interface Props {
 }
 
 function errorText(e: unknown): string {
+  if (e instanceof ValuesError) return valuesErrorText(e);
   if (e instanceof FormError || e instanceof PlanError) {
     const args: Record<string, unknown> = { ...e.args };
     if (typeof args.day === "number") args.day = weekdayLong(args.day);
@@ -108,6 +111,9 @@ export function Request({ form, today, onMake, onCancel }: Props) {
           </label>
         </div>
         <p class="muted small">{t("ui.request.recent_help")}</p>
+
+        <h3>{t("ui.values.title")}</h3>
+        <Values sports={chosen} capacity={f.capacity} values={f.values ?? {}} onChange={(values) => set({ values })} />
 
         <h3>{t("ui.request.days")}</h3>
         <p class="muted small">{t("ui.request.days_help")}</p>

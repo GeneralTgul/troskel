@@ -17,6 +17,7 @@
  "plan.block_short.build": "Build",
  "plan.block_short.peak": "Peak",
  "plan.block_short.taper": "Taper",
+ "plan.capacity.self": "Own values",
  "plan.demo.done": "Wrote {path}",
  "plan.demo.goal": "City Half Marathon",
  "plan.demo.goal_target": "under 1:35",

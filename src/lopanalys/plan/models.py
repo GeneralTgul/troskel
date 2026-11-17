@@ -27,6 +27,8 @@ PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", SWIM)
 # (PlanRequest.strength_sessions) on top of the endurance time, and never made up for when missed.
 STRENGTH = "strength"
 MAX_STRENGTH = 3
+# Capacity.source of the athlete's own values, typed in the app without a test (#777).
+SELF = "self"
 # A sport without its own test borrows the zones of another: skis and roller skis take the SkiErg's.
 BORROWS = {"ski": Sport.SKIERG.value}
 # The roles of a sport in a plan, and the share of the weekly time each one gets when none is given.
@@ -83,6 +85,11 @@ class Capacity:
     thresholds the zones come from max HR and are marked as estimated. ``speed_line``: a zones test
     gave the relation heart rate -> speed, so the estimated zones get a pace too (speed from heart
     rate, not from lactate).
+
+    ``source`` ``SELF``: the athlete's own values, typed in the app without a test (#777): the same anchors, no
+    ``tested`` day. They give targets as a test does, but a test in Tröskel replaces them in their sport
+    (resolve.retest), they are never compared with a test (plan.expected compares tests only), and they never
+    replace a measured test without the athlete's choice in the app.
     """
     sport: str = RUNNING
     anchors: Anchors | None = None
@@ -90,6 +97,11 @@ class Capacity:
     source: str = ""                 # test name for the printout, e.g. "Laktattrappa"
     speed_line: SpeedLine | None = None
     css_s100: float | None = None    # swimming: the critical swim speed of a CSS test, seconds per 100 m
+
+    @property
+    def own_values(self) -> bool:
+        """True for the athlete's own values (``SELF``), not a measured test."""
+        return self.source == SELF
 
     @property
     def known(self) -> bool:

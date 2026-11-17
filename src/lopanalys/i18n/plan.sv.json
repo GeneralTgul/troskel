@@ -111,6 +111,7 @@
  "plan.pdf.fact.no_goal": "Inget lopp: schemat slutar med ett nytt test som visar framsteget",
  "plan.pdf.fact.based_on": "Bygger på",
  "plan.pdf.fact.no_test": "Inget test",
+ "plan.capacity.self": "Egna värden",
  "plan.pdf.fact.level": "Utgångsläge",
  "plan.pdf.fact.level_value": "{level} · {hours} h i veckan i dag",
  "plan.pdf.fact.days": "Tillgänglig tid",

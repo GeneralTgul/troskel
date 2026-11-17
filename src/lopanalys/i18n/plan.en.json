@@ -111,6 +111,7 @@
  "plan.pdf.fact.no_goal": "No race: the plan ends with a new test that shows the progress",
  "plan.pdf.fact.based_on": "Built on",
  "plan.pdf.fact.no_test": "No test",
+ "plan.capacity.self": "Own values",
  "plan.pdf.fact.level": "Starting point",
  "plan.pdf.fact.level_value": "{level} · {hours} h a week today",
  "plan.pdf.fact.days": "Available time",

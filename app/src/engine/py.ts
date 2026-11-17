@@ -12,18 +12,21 @@ export function round(x: number): number {
   return Math.abs(x % 1) === 0.5 && r % 2 !== 0 ? r - 1 : r;
 }
 
-/** Python's round(x, 2): the exact binary value rounded to two decimals, a true tie to the even digit. */
-export function round2(x: number): number {
+/** Python's round(x, nd): the exact binary value rounded to `nd` decimals, a true tie to the even digit. */
+export function roundTo(x: number, nd: number): number {
   const exact = Math.abs(x).toFixed(100);
   const dot = exact.indexOf(".");
-  const rest = exact.slice(dot + 3);
+  const rest = exact.slice(dot + 1 + nd);
   if (/^50*$/.test(rest)) {
-    const hundredths = Number(exact.slice(0, dot) + exact.slice(dot + 1, dot + 3));
-    const n = hundredths % 2 === 0 ? hundredths : hundredths + 1;
-    return (Math.sign(x) || 1) * n / 100;
+    const units = Number(exact.slice(0, dot) + exact.slice(dot + 1, dot + 1 + nd));
+    const n = units % 2 === 0 ? units : units + 1;
+    return (Math.sign(x) || 1) * n / 10 ** nd;
   }
-  return Number(x.toFixed(2));
+  return Number(x.toFixed(nd));
 }
+
+/** Python's round(x, 2). */
+export const round2 = (x: number) => roundTo(x, 2);
 
 /** Python's a // b for floats and ints (float_divmod in CPython). */
 export function floordiv(a: number, b: number): number {

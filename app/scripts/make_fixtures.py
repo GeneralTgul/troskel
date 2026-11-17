@@ -16,12 +16,18 @@ of them with its engine and gets the stored plan back. ``demo.link.txt`` is the 
 it (the short one) and ``demo.full.link.txt`` the link with the whole plan (format 1).
 ``request.json.gz`` is the athlete's own plan (#777): forms of the app's *Gör ett schema själv* and the plans Tröskel builds
 from the same answers (``form_request``), checked by app/test/request.test.tsx.
+``zones.json.gz`` is the zones' targets the app works out itself for the athlete's own values (#777, app/src/engine/zones.ts):
+capacities and the targets ``link.zone_targets`` gives them, the targets per sport of requests (``link._targets``), the
+capacity of typed-in values (``values_capacity``) and a plan laid on new own values (``with_values``), checked by
+app/test/values.test.ts.
 """
 from __future__ import annotations
 
 import argparse
 import gzip
 import json
+import math
+import re
 import sys
 from dataclasses import replace
 from datetime import date, time
@@ -32,8 +38,8 @@ from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
 from lopanalys.plan import codec, demo, ics, library, link, phone, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
-from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, Capacity, Goal, HardDay, PlanRequest, Slot,
-                                   SportRole)
+from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, SELF, Capacity, Goal, HardDay, PlanRequest,
+                                   Slot, SportRole)
 from lopanalys.plan.rolling import roll_forward
 
 APP = Path(__file__).resolve().parents[1]
@@ -419,9 +425,9 @@ def form_request(f: dict[str, Any]) -> PlanRequest:
                        distance_km=g["distance_km"] or None, priority="A" if i == 0 else g["priority"],
                        target=g["target"].strip() if i == 0 else "")
                   for i, g in enumerate(f["goals"])) if f["mode"] == "goal" else ()
-    caps = tuple(codec.capacity_from_dict(c) for c in f["capacity"]
-                 if c["sport"] in sports or any(src == c["sport"] and to in sports and src not in sports
-                                                for to, src in BORROWS.items()))
+    tests = [c for c in f["capacity"] if c.get("source") != SELF and (
+        c["sport"] in sports or any(src == c["sport"] and to in sports and src not in sports for to, src in BORROWS.items()))]
+    caps = tuple(codec.capacity_from_dict(c) for c in with_values(tests, f.get("values") or {}, sports))
     roles = tuple(SportRole(x["sport"], x["role"], x["share"]) for x in f["sports"])
     return PlanRequest(f["athlete"].strip(), date.fromisoformat(f["start"]), slots, caps, tuple(sports), goals=goals,
                        duration_weeks=None if goals else f["weeks"], level=f["level"],
@@ -454,7 +460,9 @@ def form_from_plan(stored: dict[str, Any], today: str) -> dict[str, Any]:
             "sports": [{"sport": x.sport, "role": x.role, "share": x.share} for x in roles],
             "level": r.level if r.level in LEVELS else "", "recent_weekly_minutes": r.recent_weekly_minutes, "days": days,
             "mode": "goal" if goals else "weeks", "goals": goals or [empty], "weeks": r.duration_weeks or 8,
-            "strength_sessions": r.strength_sessions, "capacity": [codec.capacity_to_dict(c) for c in r.capacity]}
+            "strength_sessions": r.strength_sessions,
+            "capacity": [codec.capacity_to_dict(c) for c in r.capacity if not c.own_values],
+            "values": {c.sport: values_of(codec.capacity_to_dict(c)) for c in r.capacity if c.own_values}}
 
 
 def _day(on: bool = False, minutes: int = 45, start: str = "", sports: tuple[str, ...] = ()) -> dict[str, Any]:
@@ -470,7 +478,7 @@ def _form(**kw: Any) -> dict[str, Any]:
     """A form as the app keeps it (request.ts, ``RequestForm``); the defaults are an empty form's."""
     out = {"athlete": "", "start": "2026-11-18", "sports": [{"sport": "run", "role": "main", "share": 0}], "level": "",
            "recent_weekly_minutes": None, "days": [_day() for _ in range(7)], "mode": "weeks", "goals": [_goal("", "")],
-           "weeks": 8, "strength_sessions": 0, "capacity": []}
+           "weeks": 8, "strength_sessions": 0, "capacity": [], "values": {}}
     return {**out, **kw}
 
 
@@ -498,6 +506,13 @@ def request_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
                            mode="goal", sports=[{"sport": "ski", "role": "main", "share": 0},
                                                 {"sport": "run", "role": "support", "share": 0}],
                            goals=[_goal("Långloppet", "2027-03-07", 90, sport="ski")], strength_sessions=2)),
+        ("own-values", _form(level="recreational", days=multi, weeks=10,
+                             sports=[{"sport": "run", "role": "main", "share": 0}, {"sport": "bike", "role": "support", "share": 0},
+                                     {"sport": "swim", "role": "maintenance", "share": 0}],
+                             values={"run": _v(max_hr="191", resting_hr="48", lt1_hr="158", lt2_hr="176", lt1="5:20",
+                                               lt2="4:25"),
+                                     "bike": _v(max_hr="182", lt2="245"), "swim": _v(css="1:58"),
+                                     "skierg": _v(max_hr="185")})),
     ]
     cases = []
     for name, f in forms:
@@ -508,6 +523,201 @@ def request_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
     cases.append({"name": "from-demo", "from": "demo", "today": "2026-11-25", "form": f, "plan_id": "app-fromdemo",
                   "stored": link.stored_plan(build_plan(form_request(f), plan_id="app-fromdemo"))})
     return {"cases": cases}
+
+
+# ---- the athlete's own values (#777): app/src/model/values.ts and app/src/engine/zones.ts ----------------------------
+
+VALUE_SPORTS = ("run", "bike", "skierg", "ski", "swim")
+LIMITS = {"max_hr": (100, 240), "resting_hr": (25, 110), "hr": (80, 235), "pace_s": (120, 720), "watt": (30, 900),
+          "css_s": (50, 240)}
+
+
+def _load_of(sport: str) -> str:
+    return {"run": "pace", "bike": "watt", "skierg": "watt", "swim": "css"}.get(sport, "none")
+
+
+def _int(v: str, field: str, limits: tuple[int, int]) -> int | None:
+    s = v.strip()
+    if not s:
+        return None
+    if not re.fullmatch(r"[0-9]+", s) or not limits[0] <= int(s) <= limits[1]:
+        raise ValueError(f"ui.values.err.{field}")
+    return int(s)
+
+
+def _seconds(v: str, field: str, limits: tuple[int, int]) -> int | None:
+    s = v.strip()
+    if not s:
+        return None
+    m = re.fullmatch(r"([0-9]{1,2})[:.]([0-9]{2})", s)
+    n = int(m[1]) * 60 + int(m[2]) if m and int(m[2]) < 60 else None
+    if n is None or not limits[0] <= n <= limits[1]:
+        raise ValueError(f"ui.values.err.{field}")
+    return n
+
+
+def values_capacity(sport: str, v: dict[str, str]) -> dict[str, Any] | None:
+    """The capacity of one sport's typed-in values (values.ts, ``valuesCapacity``): own values, ``source`` SELF and no
+    test day; None when every field is empty. ValueError with the text key for a field that cannot be read."""
+    if _load_of(sport) == "css":
+        css = _seconds(v["css"], "css", LIMITS["css_s"])
+        return None if css is None else codec.capacity_to_dict(Capacity(sport, None, None, SELF, css_s100=css))
+    mx, rest = _int(v["max_hr"], "max_hr", LIMITS["max_hr"]), _int(v["resting_hr"], "resting_hr", LIMITS["resting_hr"])
+    lt1, lt2 = _int(v["lt1_hr"], "hr", LIMITS["hr"]), _int(v["lt2_hr"], "hr", LIMITS["hr"])
+    if rest is not None and mx is not None and rest >= mx:
+        raise ValueError("ui.values.err.order")
+    if ((lt1 is not None and lt2 is not None and lt1 >= lt2) or (lt2 is not None and mx is not None and lt2 > mx)
+            or (lt1 is not None and mx is not None and lt1 >= mx)):
+        raise ValueError("ui.values.err.order")
+    s1 = s2 = None
+    if _load_of(sport) == "pace":
+        p1, p2 = _seconds(v["lt1"], "pace", LIMITS["pace_s"]), _seconds(v["lt2"], "pace", LIMITS["pace_s"])
+        if p1 is not None and p2 is not None and p1 <= p2:
+            raise ValueError("ui.values.err.load_order")
+        s1, s2 = (None if p1 is None else 3600 / p1), (None if p2 is None else 3600 / p2)
+    elif _load_of(sport) == "watt":
+        s1, s2 = _int(v["lt1"], "watt", LIMITS["watt"]), _int(v["lt2"], "watt", LIMITS["watt"])
+        if s1 is not None and s2 is not None and s1 >= s2:
+            raise ValueError("ui.values.err.load_order")
+    if all(x is None for x in (mx, rest, lt1, lt2, s1, s2)):
+        return None
+    return codec.capacity_to_dict(Capacity(sport, Anchors(mx, rest, lt1, lt2, s1, s2, sport=sport), None, SELF))
+
+
+def _js_round(x: float) -> int:
+    """JavaScript's Math.round, which the app's fields use: halves up."""
+    return int(math.floor(x + 0.5))
+
+
+def values_of(c: dict[str, Any]) -> dict[str, str]:
+    """The fields of a capacity (values.ts, ``valuesOf``)."""
+    a = c.get("anchors") or {}
+    load = _load_of(c["sport"])
+
+    def num(v: Any) -> str:
+        return "" if v is None else str(_js_round(v))
+
+    def pace(kmh: Any) -> str:
+        if not kmh:
+            return ""
+        s = _js_round(3600 / kmh)
+        return f"{s // 60}:{s % 60:02d}"
+
+    def load_text(v: Any) -> str:
+        return pace(v) if load == "pace" else num(v) if load == "watt" else ""
+
+    css = c.get("css_s100")
+    return {"max_hr": num(a.get("max_hr")), "resting_hr": num(a.get("resting_hr")), "lt1_hr": num(a.get("lt1_hr")),
+            "lt2_hr": num(a.get("lt2_hr")), "lt1": load_text(a.get("lt1_speed_kmh")), "lt2": load_text(a.get("lt2_speed_kmh")),
+            "css": f"{_js_round(css) // 60}:{_js_round(css) % 60:02d}" if css else ""}
+
+
+def with_values(capacity: list[dict[str, Any]], values: dict[str, Any], sports: Any) -> list[dict[str, Any]]:
+    """The capacity with own values laid on it (values.ts, ``withValues``): a sport with a row takes its own values in
+    place of what it had, or nothing when the row is empty; the others keep theirs."""
+    own = [c for sp in VALUE_SPORTS if sp in values and sp in sports for c in [values_capacity(sp, values[sp])] if c]
+    return [c for c in capacity if not (c["sport"] in values and c["sport"] in sports)] + own
+
+
+def plan_with_values(stored: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
+    """The stored plan on new own values (values.ts, ``planWithValues``): the same weeks, the capacity with the values,
+    the targets from it, and the notes and based_on build_plan gives."""
+    req0 = codec.request_from_dict(stored["request"], stored.get("athlete") or "")
+    caps = with_values(stored["request"]["capacity"], values, req0.plan_sports)
+    req = codec.request_from_dict({**stored["request"], "capacity": caps}, stored.get("athlete") or "")
+    old = codec.plan_from_dict(stored["plan"], req)
+    fresh = build_plan(req, plan_id=old.id, created=old.created)
+    return link.stored_plan(replace(old, notes=fresh.notes, based_on=fresh.based_on), stored.get("athlete") or "")
+
+
+def _cap(sport: str, mx=None, rest=None, lt1=None, lt2=None, s1=None, s2=None, source: str = SELF, tested=None,
+         css=None, asport: str | None = None) -> Capacity:
+    anchors = None if css is not None and mx is None else Anchors(mx, rest, lt1, lt2, s1, s2, sport=asport or sport)
+    return Capacity(sport, anchors, tested, source, css_s100=css)
+
+
+def _v(**kw: str) -> dict[str, str]:
+    return {**{k: "" for k in ("max_hr", "resting_hr", "lt1_hr", "lt2_hr", "lt1", "lt2", "css")}, **kw}
+
+
+def zones_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
+    """The app's own zones against resolve.py (test/values.test.ts)."""
+    caps = [
+        ("run-full", _cap("run", 190, 50, 160, 175, 11.5, 13.5), None),
+        ("run-ties", _cap("run", 185, None, 151, 170, 3600 / 330, 3600 / 265), None),
+        ("run-odd-speeds", _cap("run", 197, 44, 163, 181, 3600 / 287, 3600 / 251), None),
+        ("run-max-only", _cap("run", 185), None),
+        ("run-max-rest", _cap("run", 193, 47), None),
+        ("run-lt2-only", _cap("run", 188, None, None, 172, None, 3600 / 260), None),
+        ("run-no-max", _cap("run", None, None, 160, 175, 11.5, 13.5), None),
+        ("run-max-too-high", _cap("run", 250, None, 160, 175), None),
+        ("run-crossed", _cap("run", 190, None, 176, 168), None),
+        ("run-low-lt1", _cap("run", 190, None, 105, 170, 9.0, 13.0), None),
+        ("run-lt2-at-max", _cap("run", 180, None, 150, 180), None),
+        ("run-for-ski", _cap("run", 190, 50, 160, 175, 11.5, 13.5), "ski"),
+        ("bike-ftp-max", _cap("bike", 180, None, None, None, None, 250.0), None),
+        ("bike-ftp-only", _cap("bike", None, None, None, None, None, 250.0), None),
+        ("bike-full", _cap("bike", 185, 48, 140, 160, 181.0, 243.0), None),
+        ("bike-odd-ftp", _cap("bike", 179, None, 131, 158, 167.0, 263.0), None),
+        ("skierg-full", _cap("skierg", 188, 48, 150, 168, 160.0, 210.0), None),
+        ("skierg-for-ski", _cap("skierg", 188, 48, 150, 168, 160.0, 210.0), "ski"),
+        ("ski-own", _cap("ski", 186, None, 148, 171), None),
+        ("swim-css", _cap("swim", css=110.0), None),
+        ("swim-css-odd", _cap("swim", css=97.3), None),
+        ("swim-for-run", _cap("swim", css=110.0), "run"),
+        ("nothing", Capacity("run"), None),
+        ("measured", _cap("run", 192, 46, 165, 174, 13.2, 14.4, "Laktattrappa", date(2026, 11, 13)), None),
+    ]
+    targets = [{"name": n, "capacity": codec.capacity_to_dict(c), "sport": sp,
+                "targets": link.zone_targets(c, "garmin", sp)} for n, c, sp in caps]
+    by = {n: c for n, c, _ in caps}
+    reqs = [
+        ("run-bike-swim", (by["run-full"], by["bike-ftp-max"], by["swim-css"]),
+         (SportRole("run", "main"), SportRole("bike", "support"), SportRole("swim", "maintenance"))),
+        ("ski-borrows-skierg", (by["skierg-full"],), (SportRole("ski", "main"), SportRole("run", "support"))),
+        ("ski-own-and-skierg", (by["ski-own"], by["skierg-full"]),
+         (SportRole("ski", "main"), SportRole("skierg", "support"))),
+        ("nothing-known", (Capacity("bike"),), (SportRole("run", "main"), SportRole("bike", "support"))),
+    ]
+    plans = []
+    for n, cs, roles in reqs:
+        r = PlanRequest("", date(2026, 11, 23), (Slot(1, 60),), cs, tuple(x.sport for x in roles), roles=roles)
+        plans.append({"name": n, "request": codec.request_to_dict(r),
+                      "targets": link._targets(type("P", (), {"request": r, "zone_system": "garmin"})())})
+    plans.append({"name": "demo", "request": demo_stored["request"], "targets": demo_stored["targets"]})
+    typed = [
+        ("run", _v(max_hr="191", resting_hr="48", lt1_hr="158", lt2_hr="176", lt1="5:20", lt2="4:25")),
+        ("run", _v(max_hr=" 185 ")),
+        ("run", _v(lt2="4.30")),
+        ("bike", _v(max_hr="180", lt2="250")),
+        ("skierg", _v(lt1_hr="150", lt2_hr="168", lt1="160", lt2="210")),
+        ("ski", _v(max_hr="186", lt1_hr="148", lt2_hr="171", lt1="ignored")),
+        ("swim", _v(css="1:52")),
+        ("swim", _v(max_hr="180")),
+        ("run", _v()),
+        ("run", _v(max_hr="90")), ("run", _v(max_hr="19O")), ("run", _v(resting_hr="190", max_hr="185")),
+        ("run", _v(lt1_hr="170", lt2_hr="165")), ("run", _v(lt2_hr="190", max_hr="185")),
+        ("run", _v(lt1="4:20", lt2="4:40")), ("run", _v(lt1="4:75")), ("run", _v(lt1="1:30")),
+        ("bike", _v(lt1="260", lt2="250")), ("bike", _v(lt2="5000")), ("swim", _v(css="0:40")), ("swim", _v(css="abc")),
+    ]
+    values = []
+    for sp, v in typed:
+        try:
+            values.append({"sport": sp, "values": v, "capacity": values_capacity(sp, v)})
+        except ValueError as e:
+            values.append({"sport": sp, "values": v, "error": str(e)})
+    own = {"run": _v(max_hr="191", resting_hr="48", lt1_hr="158", lt2_hr="176", lt1="5:20", lt2="4:25")}
+    laid = [
+        {"name": "demo-run-own", "values": own, "stored": plan_with_values(demo_stored, own)},
+    ]
+    back = plan_with_values(demo_stored, own)
+    laid.append({"name": "own-run-cleared", "from": "demo-run-own", "values": {"run": _v()},
+                 "stored": plan_with_values(back, {"run": _v()})})
+    return {"targets": targets, "plans": plans, "values": values, "laid": laid,
+            "values_of": [{"capacity": x["capacity"], "values": values_of(x["capacity"])}
+                          for x in values if x.get("capacity")] + [
+                {"capacity": demo_stored["request"]["capacity"][0],
+                 "values": values_of(demo_stored["request"]["capacity"][0])}]}
 
 
 def _gz(data: Any) -> bytes:
@@ -529,6 +739,7 @@ def outputs() -> dict[Path, bytes]:
            APP / "test" / "fixtures" / "athlete.back.link.txt":
                (link.plan_link(link.link_payload(athlete_back(athlete_fixture(stored)))) + "\n").encode("ascii")}
     out[APP / "test" / "fixtures" / "request.json.gz"] = _gz(request_fixtures(stored))
+    out[APP / "test" / "fixtures" / "zones.json.gz"] = _gz(zones_fixtures(stored))
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
     out[APP / "test" / "fixtures" / "engine.json.gz"] = _gz(engine_fixtures())

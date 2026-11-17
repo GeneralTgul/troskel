@@ -17,6 +17,7 @@
  "plan.block_short.build": "Uppb.",
  "plan.block_short.peak": "Topp",
  "plan.block_short.taper": "Nedtr.",
+ "plan.capacity.self": "Egna värden",
  "plan.demo.done": "Skrev {path}",
  "plan.demo.goal": "Stadsvarvet",
  "plan.demo.goal_target": "under 1:35",

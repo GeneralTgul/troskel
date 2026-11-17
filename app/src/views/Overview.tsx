@@ -3,6 +3,7 @@ import { t } from "../i18n";
 import { addDays, daysBetween, dayMonth, mondayOf } from "../model/dates";
 import { hours, noteText, planEnd, planStart, targetText, weekMinutes, weekZoneMinutes, zoneName } from "../model/plan";
 import { ZONES, type IsoDate, type StoredPlan, type StoredWorkout } from "../model/types";
+import { ownValues } from "../model/values";
 import { dayLabel, distanceText, zoneColor } from "./parts";
 
 function relative(day: IsoDate, today: IsoDate): string {
@@ -24,7 +25,11 @@ export function labelStep(weeks: number): number {
 }
 
 /** The whole plan: goals, test days, the blocks and a bar per week with the time in each zone. */
-export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; today: IsoDate; onCalendar?: () => void }) {
+export function Overview({ stored, today, onCalendar, onValues }: {
+  stored: StoredPlan; today: IsoDate; onCalendar?: () => void;
+  /** *Ändra mina värden* (#777): the athlete's own max HR, thresholds, FTP and CSS; missing for the example plan. */
+  onValues?: () => void;
+}) {
   const weeks = stored.plan.weeks;
   const max = Math.max(1, ...weeks.map(weekMinutes));
   const goals = [...stored.request.goals].sort((a, b) => a.date.localeCompare(b.date));
@@ -132,7 +137,8 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
                   </li>
                 ))}
               </ul>
-              {cap?.tested ? (
+              {ownValues(cap) ? <p class="muted small">{t("ui.plan.own_values")}</p>
+                : cap?.tested ? (
                 <p class="muted small">
                   {cap.source ? t("ui.plan.tested_source", { date: dayMonth(cap.tested), source: cap.source })
                     : t("ui.plan.tested", { date: dayMonth(cap.tested) })}
@@ -141,6 +147,7 @@ export function Overview({ stored, today, onCalendar }: { stored: StoredPlan; to
             </div>
           );
         })}
+        {onValues ? <button class="secondary" onClick={onValues}>{t("ui.plan.edit_values")}</button> : null}
         {stored.plan.notes.map((n, i) => <p key={i} class="small">{noteText(n)}</p>)}
         {onCalendar ? (
           <div class="calendar">

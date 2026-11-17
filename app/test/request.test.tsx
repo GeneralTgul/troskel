@@ -49,7 +49,7 @@ function thrown(f: () => unknown): FormError | PlanError {
 describe("the form against Tröskel", () => {
   it("has every kind of case", () => {
     expect(fx.cases.map((c) => c.name)).toEqual(
-      ["run-weeks", "run-goal-milestones", "beginner-weeks", "multi-sport", "high-ski", "from-demo"]);
+      ["run-weeks", "run-goal-milestones", "beginner-weeks", "multi-sport", "high-ski", "own-values", "from-demo"]);
   });
 
   it.each(fx.cases.map((c) => [c.name, c] as const))("%s: the same request and the same plan", (_, c) => {
@@ -188,5 +188,64 @@ describe("Gör ett schema själv", () => {
     await click(byText(".request button", "Avbryt"));
     expect(root.querySelector(".request")).toBeNull();
     expect(root.querySelector(".about")).not.toBeNull();
+  });
+});
+
+describe("Dina värden (#777)", () => {
+  const field = (sport: string, k: string) => root.querySelector(`.own-values input[name=${sport}-${k}]`);
+
+  it("gives a plan without a test the athlete's own heart rates and paces", async () => {
+    const store = await mount();
+    await click(byText(".welcome button", "Gör ett schema själv"));
+    await change(root.querySelector(".request select[name=level]"), "recreational");
+    await change(field("run", "max_hr"), "191", "input");
+    await change(field("run", "lt1_hr"), "176", "input");
+    await change(field("run", "lt2_hr"), "158", "input");
+    await click(byText(".request button", "Gör schemat"));
+    expect(root.querySelector(".request [role=alert]")!.textContent)
+      .toBe("Löpning: pulserna ska stiga från vilopuls till LT1, LT2 och maxpuls.");
+    await change(field("run", "lt1_hr"), "158", "input");
+    await change(field("run", "lt2_hr"), "176", "input");
+    await change(field("run", "lt2"), "4:25", "input");
+    await click(byText(".request button", "Gör schemat"));
+    const p = store.plan()!;
+    expect(p.request.capacity).toEqual([{ sport: "run", tested: null, source: "self", anchors: {
+      max_hr: 191, resting_hr: null, lt1_hr: 158, lt2_hr: 176, lt1_speed_kmh: null, lt2_speed_kmh: 3600 / 265, sport: "run" } }]);
+    expect(p.targets.run.Z4).toMatchObject({ hr_low: 167, hr_high: 176, estimated: false });
+    expect(p.plan.notes.map((n) => n.key)).not.toContain("plan.note.no_test");
+    await click(byText(".tabs button", "Schema"));
+    expect(root.querySelector(".zone-sport")!.textContent).toContain("167–176");
+    expect(root.querySelector(".zone-sport")!.textContent).toContain("Egna värden");
+  });
+
+  it("shows the coach's test and replaces it only when the athlete asks", async () => {
+    const plan = demoPlan();
+    const store = await mount(plan);
+    await click(byText(".tabs button", "Schema"));
+    expect(root.querySelector(".zone-sport")!.textContent).toContain("Uppmätt i test");
+    await click(byText(".overview button, button", "Ändra mina värden"));
+    expect(root.querySelector(".values")).not.toBeNull();
+    expect(field("run", "max_hr")).toBeNull();
+    expect(byText(".values-sport", "Uppmätt i test")).toBeTruthy();
+    vi.stubGlobal("confirm", () => false);
+    await click(byText(".values button", "Skriv in egna värden i stället"));
+    expect(field("run", "max_hr")).toBeNull();
+    vi.stubGlobal("confirm", () => true);
+    await click(byText(".values button", "Skriv in egna värden i stället"));
+    await change(field("run", "max_hr"), "195", "input");
+    await click(byText(".values button", "Spara värdena"));
+    expect(root.querySelector(".toast")!.textContent).toBe("Värdena är sparade.");
+    const p = store.plan()!;
+    expect(p.plan.id).toBe(plan.plan.id);
+    expect(p.plan.weeks).toEqual(plan.plan.weeks);
+    expect(p.request.capacity.map((c) => c.source)).toEqual(["self"]);
+    expect(p.targets.run.Z5).toMatchObject({ hr_low: 176, hr_high: 195, estimated: true });
+    expect(root.querySelector(".zone-sport")!.textContent).toContain("Egna värden");
+  });
+
+  it("is not offered for the example plan", async () => {
+    await mount(demoPlan(), true);
+    await click(byText(".tabs button", "Schema"));
+    expect(byText("button", "Ändra mina värden")).toBeUndefined();
   });
 });

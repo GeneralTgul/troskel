@@ -9,7 +9,9 @@
  *
  * Without a test the capacity is empty: the workouts get zones and effort, no heart rate or pace (as in Tröskel
  * without a test). A form filled in from a plan the phone already has (`formFromPlan`) keeps that plan's tests and
- * their targets, since the targets depend on the tests and not on the answers.
+ * their targets, since the targets depend on the tests and not on the answers. The athlete's own values (#777,
+ * model/values.ts: max HR, thresholds, FTP, CSS) are `values`, one row per sport, and give the targets of their sport;
+ * a row in a sport with a test is the athlete's choice to use own values in its place.
  *
  * Not in the form (yet): a second time on a day, extra slots, fixed hard days and the shares of the sports; a form
  * filled in from a plan with them leaves them out.
@@ -19,6 +21,7 @@ import { BORROWS, LEVELS, RUNNING, normRequest, planRoles } from "../engine/mode
 import { daysFromSlots } from "./times";
 import { FORMAT, KIND, type IsoDate, type Sport, type StoredCapacity, type StoredPlan, type StoredRequest,
   type StoredSlot, type ZoneTargets } from "./types";
+import { ownValues, ownValuesOf, targetsFor, withValues, type OwnValues } from "./values";
 
 /** plan.models.PLAN_SPORTS, in the order the form shows them. */
 export const PLAN_SPORTS: Sport[] = ["run", "bike", "skierg", "ski", "swim"];
@@ -68,6 +71,8 @@ export interface RequestForm {
   strength_sessions: number;
   /** The tests of the plan the form was filled in from (`formFromPlan`); [] for a plan without a test. */
   capacity: StoredCapacity[];
+  /** The athlete's own values per sport (model/values.ts); missing or {}: none. */
+  values?: OwnValues;
 }
 
 /** A form that cannot give a request: the text key (ui.request.err.* or plan.error.*) and its values (`day`: the
@@ -88,6 +93,7 @@ export function emptyForm(today: IsoDate): RequestForm {
   return {
     athlete: "", start: today, sports: [{ sport: RUNNING, role: "main", share: 0 }], level: "",
     recent_weekly_minutes: null, days, mode: "weeks", goals: [newGoal()], weeks: 8, strength_sessions: 0, capacity: [],
+    values: {},
   };
 }
 
@@ -114,7 +120,7 @@ export function formFromPlan(stored: StoredPlan, today: IsoDate): RequestForm {
     athlete: stored.athlete ?? "", start: today, sports, level: (LEVELS as readonly string[]).includes(r.level) ? r.level : "",
     recent_weekly_minutes: r.recent_weekly_minutes, days, mode: goals.length ? "goal" : "weeks",
     goals: goals.length ? goals : [newGoal()], weeks: r.duration_weeks ?? 8, strength_sessions: r.strength_sessions ?? 0,
-    capacity: r.capacity ?? [],
+    capacity: (r.capacity ?? []).filter((c) => !ownValues(c)), values: ownValuesOf(r),
   };
 }
 
@@ -161,8 +167,10 @@ export function requestFromForm(f: RequestForm): StoredRequest {
     .map((s) => ({ sport: s.sport, role: (FORM_ROLES as readonly string[]).includes(s.role) ? s.role : "support",
       share: Math.max(0, Math.round(s.share || 0)) }));
   // The coach's form: a test for each sport of the plan, and skis on the SkiErg's when the SkiErg is not in it.
-  const capacity = f.capacity.filter((c) => sports.includes(c.sport)
-    || Object.entries(BORROWS).some(([to, from]) => from === c.sport && sports.includes(to) && !sports.includes(from)));
+  const tests = f.capacity.filter((c) => !ownValues(c) && (sports.includes(c.sport)
+    || Object.entries(BORROWS).some(([to, from]) => from === c.sport && sports.includes(to) && !sports.includes(from))));
+  // Own values (#777) in place of what a sport had: throws a ValuesError for a field that cannot be read.
+  const capacity = withValues(tests, f.values ?? {}, sports);
   const recent = f.recent_weekly_minutes && f.recent_weekly_minutes > 0 ? Math.round(f.recent_weekly_minutes) : null;
   const strength = Math.max(0, Math.min(MAX_STRENGTH, Math.round(f.strength_sessions || 0)));
   return normRequest({
@@ -177,21 +185,9 @@ export function newPlanId(random: () => number = Math.random): string {
   return APP_ID_PREFIX + Array.from({ length: 8 }, () => Math.floor(random() * 36).toString(36)).join("");
 }
 
-/** The targets the plan keeps from `from` (link._targets): each test's, and a sport that borrows a known test. */
-function keptTargets(r: StoredRequest, from: Record<Sport, ZoneTargets>): Record<Sport, ZoneTargets> {
-  const out: Record<Sport, ZoneTargets> = {};
-  for (const c of r.capacity) if (from[c.sport]) out[c.sport] = from[c.sport];
-  for (const { sport } of planRoles(r)) {
-    if (sport in out || !from[sport]) continue;
-    const src = r.capacity.find((c) => c.sport === BORROWS[sport]);
-    if (src && (src.anchors != null || src.css_s100 != null)) out[sport] = from[sport];
-  }
-  return out;
-}
-
 export interface OwnPlanOptions {
   id: string;
-  /** The targets of the plan the form was filled in from (its tests'); none without a test. */
+  /** The targets of the plan the form was filled in from (its tests', as Tröskel sent them); none without a test. */
   targets?: Record<Sport, ZoneTargets>;
 }
 
@@ -202,7 +198,7 @@ export function planFromForm(f: RequestForm, o: OwnPlanOptions): StoredPlan {
   const plan = buildPlan(request, { planId: o.id });
   return {
     kind: KIND, format: FORMAT, athlete: f.athlete.trim(), request, plan,
-    targets: keptTargets(request, o.targets ?? {}), targets_log: [],
+    targets: targetsFor(request, o.targets ?? {}), targets_log: [],
   };
 }
 

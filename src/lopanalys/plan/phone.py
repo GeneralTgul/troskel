@@ -7,6 +7,11 @@ The app's *Send the plan to your coach* (app/src/model/share.ts) gives a ``.tros
 ticked it off), the sessions outside the plan, the times still waiting under *Mina tider* and the day of the export.
 The nights and the watch's workouts never leave the phone.
 
+The athlete's own values (#777: thresholds, max HR, FTP, CSS typed into the app without a test) come in the
+request's capacity with ``source`` ``"self"`` (``models.SELF``) and are read as they are: Tröskel works their targets
+out like a test's, a new test replaces them in its sport (resolve.retest), and the report never compares a test with
+them (plan.expected).
+
 ``rebuild`` is the rule the app's ``rebuild`` follows (app/src/engine/index.ts), with the Python engine: Tröskel uses it
 to lay times that wait on the phone on the plan, and app/scripts/make_fixtures.py checks the app's engine against it.
 """

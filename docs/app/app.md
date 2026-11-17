@@ -11,6 +11,7 @@
   - [Från idrottare till coach](#från-idrottare-till-coach)
   - [Ett nytt test ger ett nytt schema](#ett-nytt-test-ger-ett-nytt-schema)
   - [Ett schema utan coach](#ett-schema-utan-coach)
+  - [Egna värden](#egna-värden)
 - [Bocka av passen](#bocka-av-passen)
   - [Veckan i siffror](#veckan-i-siffror)
   - [Rutan för dagen](#rutan-för-dagen)
@@ -38,7 +39,7 @@ Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
 - *I dag*: dagens pass stort, med tid, zon, puls och tempo (på cykeln watt, på SkiErgen watt och tid per 500 m, i simning tid per 100 m), varje del av passet och rutan för dagen: varför passet görs, hur det ska kännas och tips (se [Rutan för dagen](#rutan-för-dagen)). Under passet bockar idrottaren av det: *Gjort*, *Delvis* eller *Missat*. Ett styrkepass har ingen zon. En testdag har inte heller någon zon eller något eget mål, och kortet har en egen färg, violett, som inte är någon zons. Har dagen flera pass står de i tidsordning, och pass utan klocktid sist, som i utskriftens veckoblad. Under det kommer *+ Lägg till ett pass* och, i högra kolumnen på en surfplatta, morgondagens pass, veckan i siffror och säsongsremsan.
 - *Veckan*: en rad per dag från måndag till söndag, byggd som hallskärmens vecka. Passen står som piller i zonens färg med idrottens ikon, längd, zon och klocktid, och ett pass utanför planen står som *+ namn* bredvid. Till höger på raden står dagens läge: *Gjort* när alla pass är gjorda, *Delvis* när något är gjort, *Missat* när bara missade pass är avbockade, *I dag* och *Vila*. Ett gjort pass har en bock i stället för ikonen, ett delvis gjort en streckad kant och ett missat är överstruket. Dagens rad är markerad. Rubriken mellan pilarna säger vilken vecka, vilket block, veckans tid och veckotyp, och pilarna bläddrar vecka för vecka. Ett tryck på en dag visar dagens pass med rutan för dagen, och fram till i dag går de att bocka av där. Bredvid veckan (under den på en telefon) står nästa lopp med dagar kvar och de följande loppen, och veckan i siffror. Säsongsremsan går i full bredd under.
-- *Schemat*: målen och testdagarna (i ett schema med flera idrotter med idrotten som testas), blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
+- *Schemat*: målen och testdagarna (i ett schema med flera idrotter med idrotten som testas), blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. Under zonerna står vad de bygger på: *Uppmätt i test <dag>* eller *Egna värden*, och knappen *Ändra mina värden* ([Egna värden](#egna-värden)). I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
 - *Om appen*: språket, *Gör ett schema själv* ([Ett schema utan coach](#ett-schema-utan-coach)), [väggläget](#väggläget), integriteten, licensen och knappen som tar bort all data på enheten.
 
@@ -75,7 +76,7 @@ Samma data går också
 - som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Även ett långt schema med flera idrotter ryms i en QR-kod.
 - som fil, `<namn>.troskel`, som alltid har hela schemat i läsbar form (format 1, *Öppna en fil*).
 
-Hela schemat är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`). Appen har inga zonsystem själv: efter ett nytt test skickar coachen en ny länk. Typerna står i `app/src/model/types.ts` och `app/src/model/short.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `short_plan`, `expand`, `plan_link`, `plan_file`, `read_link`). Vitest bygger schemat ur den korta länken för varje fixtur och jämför med Pythons sparade schema (`app/test/link.test.ts`).
+Hela schemat är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`). Målen för ett test räknas i Tröskel, och efter ett nytt test skickar coachen en ny länk. Bara för idrottarens [egna värden](#egna-värden) räknar appen fram målen själv. Typerna står i `app/src/model/types.ts` och `app/src/model/short.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `short_plan`, `expand`, `plan_link`, `plan_file`, `read_link`). Vitest bygger schemat ur den korta länken för varje fixtur och jämför med Pythons sparade schema (`app/test/link.test.ts`).
 
 ### Från coach till idrottare
 
@@ -126,6 +127,28 @@ Appens planmotor bygger schemat i telefonen, med ett eget id (`app-` och åtta t
 Begäran följer reglerna i coachens formulär (`collect` i `src/lopanalys/ui/views/plan.py`), så att schemat blir det Tröskel hade gjort av samma svar och går att läsa in i Tröskel med *Läs in från appen* ([Från idrottare till coach](#från-idrottare-till-coach)). Samma formulär byggs i Python i `app/scripts/make_fixtures.py` (`form_request`, `form_from_plan`), och `app/test/request.test.tsx` jämför appens begäran och schema med Pythons (`app/test/fixtures/request.json.gz`).
 
 Formuläret har inte en andra tid samma dag, fasta hårda pass eller andelar per idrott. Ett schema från Tröskel som har dem tappar dem när idrottaren gör ett nytt schema av det.
+
+### Egna värden
+
+Utan test kan idrottaren fylla i det den vet om sig själv, så att passen får puls, tempo eller watt: under *Dina värden* i *Gör ett schema själv*, och med *Ändra mina värden* under *Schemat* för det schema telefonen har (`app/src/views/Values.tsx`, `app/src/model/values.ts`). Allt är frivilligt, idrott för idrott:
+
+- **Löpning:** maxpuls, vilopuls, puls vid LT1 och LT2, och tempot vid LT1 och LT2 i min/km.
+- **Cykel:** samma pulser, watt vid LT1 och FTP (watten vid LT2). Med bara FTP och maxpuls får sweet spot-passen sin watt (88–94 % av FTP).
+- **SkiErg:** samma pulser och watt vid LT1 och LT2.
+- **Skidor:** pulserna. Skidorna har ingen egen belastning och får puls och ansträngning, som när de lånar SkiErg-testet.
+- **Simning:** CSS-tempot per 100 m.
+
+Med båda tröskelpulserna får zonerna idrottarens egna gränser, och tempot eller watten vid trösklarna följer med. Med bara maxpulsen räknas zonerna ur den (uppskattade, som i Tröskel efter ett maxpulstest). Fälten kontrolleras: pulserna ska stiga från vilopuls till LT1, LT2 och maxpuls, LT2 ska vara snabbare än LT1, och tempot skrivs som `5:20`.
+
+Regler:
+
+- **Egna värden märks** `source: "self"` i schemats `capacity`, utan testdag, och visas som *Egna värden*. Ett test från Tröskel visas som *Uppmätt i test <dag>*. Formatet är detsamma som för ett test, så schemat går att läsa in i Tröskel med *Läs in från appen*, och Tröskel räknar samma mål ur dem.
+- **Egna värden ersätter aldrig ett test utan att idrottaren väljer det.** En idrott med ett test från Tröskel visar testet, och fälten kommer först efter *Skriv in egna värden i stället* och en fråga. *Behåll testet* tar bort raden igen.
+- **Ett test i Tröskel ersätter egna värden i sin idrott.** Kommer ett nytt schema från coachen med samma id och ett test i idrotten, gäller testet. Egna värden i en idrott som schemat från coachen saknar test i ligger kvar (`keptOwnValues`). I Tröskel gör *Lägg om schemat* samma sak (`resolve.retest`), och ett SkiErg-test ersätter också skidornas egna värden.
+- **Ett test jämförs aldrig med egna värden.** *Mot schemat* i Tröskels rapport (#778) tar dagen för det förra testet ur Tröskels egen databas, inte ur schemats `capacity`, så egna värden kommer aldrig in i jämförelsen. Finns inget tidigare test i Tröskel blir det ingen jämförelse.
+- *Ändra mina värden* lägger värdena på samma schema: samma veckor och pass, nya mål i hela schemat. Det gamla testet i idrotten går inte att få tillbaka i appen; coachen skickar det med nästa länk.
+
+Zonerna räknas i appen med en översättning av `resolve.targets`, `band_targets` och `swim_targets` och klockans fem zoner ur `zone_systems.convert` (`app/src/engine/zones.ts`), med Pythons avrundning. `app/scripts/make_fixtures.py` skriver `app/test/fixtures/zones.json.gz` (`zones_fixtures`: kapaciteter med målen Python ger, målen per idrott för flera begäran, ifyllda fält och ett schema med egna värden), och `app/test/values.test.ts` jämför. Farten ur pulsen i ett zontest utan laktat (`hr_zones.zone_speeds`) finns inte i appen: för ett sådant test behåller appen målen från Tröskel.
 
 ## Bocka av passen
 

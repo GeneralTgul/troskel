@@ -12,6 +12,7 @@ import { fromEngine } from "./model/plan";
 import { emptyForm, formFromPlan, newPlanId, planFromForm, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
 import { keptTimes } from "./model/times";
+import { keptOwnValues } from "./model/values";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
 import { canKeepAwake, idleTimer, keepAwake, WALL_IDLE_MS } from "./model/wall";
@@ -20,6 +21,7 @@ import { Overview } from "./views/Overview";
 import { Qr } from "./views/Qr";
 import { Request } from "./views/Request";
 import { Times } from "./views/Times";
+import { ValuesView } from "./views/Values";
 import { Today } from "./views/Today";
 import { Week } from "./views/Week";
 import { Welcome } from "./views/Welcome";
@@ -80,6 +82,8 @@ export function App(props: AppProps) {
   const [welcome, setWelcome] = useState(false);
   // *Gör ett schema själv* (#777): the form while it is open.
   const [request, setRequest] = useState<RequestForm | null>(null);
+  // *Ändra mina värden* (#777): open on the plan page.
+  const [values, setValues] = useState(false);
   const [log, setLogState] = useState<TrainingLog>(() => store.log());
   const [health, setHealth] = useState<HealthData | null>(() => store.health());
   const [wall, setWall] = useState(() => store.settings().wall === true);
@@ -150,13 +154,15 @@ export function App(props: AppProps) {
     setWelcome(false);
     setQr(false);
     setRequest(null);
+    setValues(false);
     if (!keepTab) setTab("today");
     if (!isDemo) setToast(t("ui.load.loaded"));
   };
 
   const readText = (text: string, keepTab = false) => {
     try {
-      accept(readPlanText(text), false, keepTab);
+      // The athlete's own values in a sport the coach's plan has no test in stay (#777); a test takes their place.
+      accept(keptOwnValues(demo ? null : stored, readPlanText(text)), false, keepTab);
     } catch (e) {
       setQr(false);
       setError(errorText(e));
@@ -281,7 +287,13 @@ export function App(props: AppProps) {
     body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} onOwn={openRequest} />;
   else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={shown} onLog={onLog} health={health} />;
   else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog} />;
-  else if (tab === "plan") body = <Overview stored={stored} today={today} onCalendar={calendar} />;
+  else if (tab === "plan" && values)
+    body = (
+      <ValuesView stored={stored} onCancel={() => setValues(false)}
+        onSave={(p) => { store.setPlan(p, false); setStored(p); setValues(false); setToast(t("ui.values.saved")); }} />
+    );
+  else if (tab === "plan")
+    body = <Overview stored={stored} today={today} onCalendar={calendar} onValues={demo ? undefined : () => setValues(true)} />;
   else if (tab === "times")
     body = (
       <Times stored={stored} today={today} engine={engine} pending={pending}
@@ -298,7 +310,7 @@ export function App(props: AppProps) {
           <span class="brand">{t("ui.app.name")}</span>
           {TABS.map((k) => (
             <button key={k} class={k === tab ? "on" : ""} aria-current={k === tab ? "page" : undefined}
-              onClick={() => setTab(k)}>
+              onClick={() => { setTab(k); setValues(false); }}>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONS[k]} /></svg>
               <span>{t(`ui.tab.${k}`)}</span>
             </button>
