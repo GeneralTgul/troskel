@@ -240,7 +240,7 @@ Appen för idrottaren ([Appen i App Store och Google Play](app/butikerna/butiker
 | Del | Prov | Godkänt när | Läge |
 |---|---|---|---|
 | Webbappen på hemskärmen | Öppna `generaltgul.github.io/troskel/app/` i Safari på en iPhone och i Chrome på en Android-telefon, lägg den på hemskärmen och öppna en länk från Tröskel | Schemat syns, appen startar från hemskärmen utan adressfält och fungerar i flygplansläge | |
-| APK:n på Android | Installera APK:n från körningen *App* i GitHub Actions | Appen startar med ikonen och startbilden, och länken, filen och QR-koden ger schemat | |
+| APK:n på Android | Installera APK:n från den fasta länken ([Appen utan butiken](app/app.md#appen-utan-butiken)) på hallplattan, och sedan en nyare ovanpå | Appen startar med ikonen och startbilden, och länken, filen och QR-koden ger schemat; den nyare versionen behåller schemat | |
 | Till appen | *Till appen* på sidan *Träningsschema* med ett schema på fyra och på tolv veckor. Skanna koden från datorns skärm med kameran i en iPhone och i en Android-telefon, öppna länken i mejlet från *Skicka till idrottaren* i telefonen, och öppna filen `.troskel` | Telefonen läser koden från skärmen på en armlängds avstånd, appen öppnas med schemat, och länken och filen ger samma schema. Efter *Förnya* ersätter den nya koden schemat i appen. Koden är provad med OpenCV:s läsare i testsviten (`tests/ui/test_plan_app.py`), inte med en telefon | |
 | QR-koden | *Läs en QR-kod* i APK:n och på iPhone, med koden från Tröskel | Appen frågar om kameran första gången, läser koden och sparar schemat; nekad kamera ger ett begripligt besked | |
 | Kalenderfilen | *Lägg passen i kalendern* i APK:n och på iPhone | Telefonens kalender öppnar filen och passen hamnar på rätt dagar och tider | |

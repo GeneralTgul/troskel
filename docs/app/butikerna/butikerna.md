@@ -43,7 +43,7 @@ Arbetsflödet `.github/workflows/app.yml` körs för hand (*Actions → App → 
 |---|---|---|
 | *Webb (prov och bygge)* | Vitest, bygget för GitHub Pages och bygget för butikerna | inget |
 | *Publicera på GitHub Pages* | lägger ut appen på `generaltgul.github.io/troskel/app/`, bara från `main` | att Pages är påslaget med GitHub Actions som källa |
-| *Android (APK och AAB)* | en APK för att prova och en AAB för Play | nyckeln för signerad AAB |
+| *Android (APK och AAB)* | en APK för att prova och en AAB för Play; från `main` läggs APK:n också på den fasta länken i releasen `android-test` ([Appen utan butiken](../app.md#appen-utan-butiken)) | nyckeln för signerad AAB |
 | *iOS (simulatorn, utan signering)* | bygger appen för simulatorn som kontroll | inget |
 | *iOS till TestFlight* | arkiv signerat med App Store Connect-nyckeln, uppladdat till TestFlight | App Store Connect-nyckeln; jobbet hoppar över sig självt utan den |
 | *Skärmbilder till butikerna* | skärmbilderna nedan, när rutan *Ta skärmbilderna* är ikryssad | inget |
