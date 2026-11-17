@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App";
 import { stub } from "../src/engine";
 import {
-  fromHealthConnect, localIso, READ_TYPES, readHealthConnect, type HcRead, type HcSample, type HealthPluginLike,
+  fromHealthConnect, healthConnectPlugin, localIso, READ_TYPES, readHealthConnect, type HcRead, type HcSample, type HealthPluginLike,
 } from "../src/model/healthconnect";
 import { memoryStore } from "../src/model/storage";
 import { demoPlan } from "./helpers";
@@ -160,5 +160,28 @@ describe("Health Connect in the app", () => {
     expect(calls[0]).toBe("check");
     expect(calls).not.toContain("ask");
     render(null, root);
+  });
+});
+
+describe("the plugin at start", () => {
+  // Like Capacitor's plugin proxy: every property is a method, `then` too, and an unknown one rejects.
+  const proxy = new Proxy({}, {
+    get: (_, prop) => prop === "isAvailable"
+      ? async () => ({ available: true })
+      : () => Promise.reject(new Error(`"Health.${String(prop)}()" is not implemented on android`)),
+  });
+
+  it("settles on Android although the plugin answers then (#757: a white page)", async () => {
+    const p = await Promise.race([
+      healthConnectPlugin("android", async () => ({ Health: proxy })),
+      new Promise<"hung">((r) => setTimeout(() => r("hung"), 500)),
+    ]);
+    expect(p).not.toBe("hung");
+    expect(await (p as HealthPluginLike).isAvailable()).toEqual({ available: true });
+  });
+
+  it("is null in the browser and on iOS", async () => {
+    expect(await healthConnectPlugin("web", async () => ({ Health: proxy }))).toBeNull();
+    expect(await healthConnectPlugin("ios", async () => ({ Health: proxy }))).toBeNull();
   });
 });

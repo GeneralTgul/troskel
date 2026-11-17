@@ -164,10 +164,29 @@ export async function readHealthConnect(plugin: HealthPluginLike, ask: boolean, 
   }
 }
 
+/**
+ * A plain object around a Capacitor plugin. The plugin itself is a Proxy that answers every property, `then` too
+ * ("Health.then() is not implemented"), so a promise resolved with it never settles and the app never starts (#757).
+ */
+export function wrapPlugin(p: HealthPluginLike): HealthPluginLike {
+  return {
+    isAvailable: () => p.isAvailable(),
+    requestAuthorization: (o) => p.requestAuthorization(o),
+    checkAuthorization: (o) => p.checkAuthorization(o),
+    readSamples: (o) => p.readSamples(o),
+    queryWorkouts: (o) => p.queryWorkouts(o),
+    openHealthConnectSettings: () => p.openHealthConnectSettings(),
+  };
+}
+
 /** The plugin in the Android build; null in the browser and on iOS (HealthKit waits for the developer account). */
-export async function healthConnectPlugin(): Promise<HealthPluginLike | null> {
-  const { Capacitor } = await import("@capacitor/core");
-  if (Capacitor.getPlatform() !== "android") return null;
-  const { Health } = await import("@capgo/capacitor-health");
-  return Health as unknown as HealthPluginLike;
+export async function healthConnectPlugin(
+  platform?: string,
+  // The module, never the plugin: an async function or an await must not hand the plugin itself on.
+  load: () => Promise<{ Health: unknown }> = () => import("@capgo/capacitor-health"),
+): Promise<HealthPluginLike | null> {
+  const p = platform ?? (await import("@capacitor/core")).Capacitor.getPlatform();
+  if (p !== "android") return null;
+  const mod = await load();
+  return wrapPlugin(mod.Health as HealthPluginLike);
 }
