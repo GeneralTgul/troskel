@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
+import { healthConnectPlugin } from "./model/healthconnect";
 import { openStore } from "./model/storage";
 import "./styles.css";
 
@@ -19,7 +20,8 @@ function download(name: string, text: string, type: string) {
 const view = new URLSearchParams(location.search).get("view") as Tab | null;
 
 // The app store builds read Capacitor Preferences first (asynchronous); the browser has localStorage at once.
-openStore().then((store) => render(
+// Health Connect only in the Android build; null elsewhere (and if the plugin cannot load).
+Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store, healthConnect]) => render(
   <App
     tab={view && TABS.includes(view) ? view : undefined}
     store={store}
@@ -30,6 +32,7 @@ openStore().then((store) => render(
     onIncomingRead={() => history.replaceState(null, "", location.pathname + location.search)}
     download={download}
     hasCamera={!!navigator.mediaDevices?.getUserMedia}
+    healthConnect={healthConnect}
   />,
   document.getElementById("app")!,
 ));

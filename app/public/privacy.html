@@ -25,7 +25,7 @@
 
 <section id="sv" lang="sv">
 <h1>Integritetspolicy för Tröskels app</h1>
-<p class="muted">Gäller appen Tröskel i App Store och Google Play och webbversionen på generaltgul.github.io/troskel/app. Senast ändrad 15 november 2026.</p>
+<p class="muted">Gäller appen Tröskel i App Store och Google Play och webbversionen på generaltgul.github.io/troskel/app. Senast ändrad 17 november 2026.</p>
 
 <h2>Kort sagt</h2>
 <p>Appen samlar inte in några uppgifter om dig. Den har inget konto, ingen server, ingen reklam, ingen analys och inga tjänster från andra företag. Det du lägger in stannar i din telefon.</p>
@@ -34,6 +34,7 @@
 <ul>
   <li><strong>Träningsschemat</strong> som din coach skickar: passen, datumen, ditt förnamn om coachen tagit med det, dina tröskelvärden och zoner (puls och tempo) och målet.</li>
   <li><strong>Dina träningstider</strong> och inställningar, som språket.</li>
+  <li><strong>Hälsodatan</strong>, om du väljer att läsa in den: passen, sömnen, vilopulsen och HRV (<a href="#halsodata">Hälsodatan</a>).</li>
 </ul>
 <p>Allt sparas bara i appens egen lagring på din enhet. Utvecklaren av Tröskel får aldrig se det, och appen skickar det inte till någon. Pulszoner och tröskelvärden räknas som hälsouppgifter, och därför lämnar de aldrig enheten genom appen.</p>
 
@@ -42,6 +43,17 @@
 
 <h2>Kameran</h2>
 <p>Kameran används bara när du själv väljer att läsa en QR-kod. Bilden tolkas i enheten och sparas inte.</p>
+
+<h2 id="halsodata">Hälsodatan: Health Connect och Apple Hälsa</h2>
+<p>Vill du kan appen läsa dina träningspass och nattens värden ur telefonens hälsodata, så att passen bockas av av sig själva och dagsformen står under <em>I dag</em>. Det är frivilligt, och appen fungerar likadant utan.</p>
+<ul>
+  <li><strong>Vad appen läser:</strong> träningspassen (idrott, start och längd), pulsen under passen, sömnen, vilopulsen och pulsvariabiliteten (HRV), de senaste 35 dygnen.</li>
+  <li><strong>Android:</strong> appen läser Health Connect först när du trycker på <em>Läs från Health Connect</em> under <em>Om appen</em> och godkänner i Health Connect. Sedan läser den varje gång den öppnas. Appen begär bara läsning och skriver aldrig något till Health Connect. Behörigheten tar du tillbaka i Health Connect.</li>
+  <li><strong>iPhone:</strong> webbversionen kan inte läsa Apple Hälsa. En genväg som du själv bygger i <em>Genvägar</em> kan läsa Hälsa och öppna appen med datan i länken, efter <code>#</code>, och den delen når ingen server.</li>
+  <li><strong>Var den sparas:</strong> bara i appens lagring på din enhet, de senaste 42 dagarna. Den skickas inte till utvecklaren, inte till din coach och inte till någon annan, och den används inte till reklam eller analys.</li>
+  <li><strong>Ta bort den:</strong> <em>Ta bort all data på enheten</em> tar bort hälsodatan med allt annat.</li>
+</ul>
+<p>Hälsodata är känsliga uppgifter. Därför lämnar de aldrig enheten genom appen.</p>
 
 <h2>Kalendern</h2>
 <p>Väljer du att lägga passen i kalendern gör appen en kalenderfil som du själv öppnar. Vad som sedan händer med passen styrs av din kalender.</p>
@@ -67,7 +79,7 @@
 
 <section id="en" lang="en">
 <h1>Privacy policy for the Tröskel app</h1>
-<p class="muted">Applies to the Tröskel app in the App Store and Google Play and to the web version at generaltgul.github.io/troskel/app. Last changed 15 November 2026.</p>
+<p class="muted">Applies to the Tröskel app in the App Store and Google Play and to the web version at generaltgul.github.io/troskel/app. Last changed 17 November 2026.</p>
 
 <h2>In short</h2>
 <p>The app collects no data about you. It has no account, no server, no ads, no analytics and no services from other companies. What you put in stays on your phone.</p>
@@ -76,6 +88,7 @@
 <ul>
   <li><strong>The training plan</strong> your coach sends: the sessions, the dates, your first name if the coach included it, your threshold values and zones (heart rate and pace) and the goal.</li>
   <li><strong>Your training times</strong> and settings, such as the language.</li>
+  <li><strong>The health data</strong>, if you choose to read it: the workouts, the sleep, the resting heart rate and HRV (<a href="#health-data">Health data</a>).</li>
 </ul>
 <p>Everything is stored only in the app's own storage on your device. The developer of Tröskel never sees it, and the app sends it to no one. Heart rate zones and thresholds count as health data, so they never leave the device through the app.</p>
 
@@ -84,6 +97,17 @@
 
 <h2>The camera</h2>
 <p>The camera is used only when you choose to scan a QR code. The image is read on the device and is not saved.</p>
+
+<h2 id="health-data">Health data: Health Connect and Apple Health</h2>
+<p>If you want, the app can read your workouts and the night's values from the phone's health data, so that the workouts are ticked off by themselves and today's form shows under <em>Today</em>. It is optional, and the app works the same without it.</p>
+<ul>
+  <li><strong>What the app reads:</strong> the workouts (sport, start and length), the heart rate during them, the sleep, the resting heart rate and the heart rate variability (HRV), the last 35 days.</li>
+  <li><strong>Android:</strong> the app reads Health Connect only after you tap <em>Read from Health Connect</em> under <em>About</em> and allow it in Health Connect. After that it reads each time it opens. The app asks only to read and never writes anything to Health Connect. You take the permission back in Health Connect.</li>
+  <li><strong>iPhone:</strong> the web version cannot read Apple Health. A Shortcut you build yourself in <em>Shortcuts</em> can read Health and open the app with the data in the link, after <code>#</code>, and that part reaches no server.</li>
+  <li><strong>Where it is kept:</strong> only in the app's storage on your device, the last 42 days. It is not sent to the developer, to your coach or to anyone else, and it is not used for ads or analytics.</li>
+  <li><strong>Deleting it:</strong> <em>Delete all data on this device</em> removes the health data with everything else.</li>
+</ul>
+<p>Health data is sensitive personal data. That is why it never leaves the device through the app.</p>
 
 <h2>The calendar</h2>
 <p>If you choose to add the sessions to your calendar, the app makes a calendar file that you open yourself. What happens to the sessions after that is up to your calendar.</p>

@@ -160,5 +160,15 @@
  "ui.health.name.rhr": "vilopuls",
  "ui.health.name.sleep": "sömn",
  "ui.health.auto": "Från Hälsa",
- "ui.health.auto_on": "Från Hälsa, gjort {date}"
+ "ui.health.auto_on": "Från Hälsa, gjort {date}",
+ "ui.hc.title": "Health Connect",
+ "ui.hc.why": "Appen kan läsa passen, pulsen under passen, sömnen, vilopulsen och HRV ur Health Connect, så att passen bockas av av sig själva och dagsformen står under I dag. Appen läser bara, skriver inget och skickar inget vidare. Datan sparas på enheten i 42 dagar och tas bort med Ta bort all data på enheten. Garmin Connect skriver inte HRV till Health Connect.",
+ "ui.hc.read": "Läs från Health Connect",
+ "ui.hc.again": "Läs Health Connect nu",
+ "ui.hc.on": "Appen läser Health Connect varje gång den öppnas. Behörigheterna ändrar du i Health Connect.",
+ "ui.hc.settings": "Öppna Health Connect",
+ "ui.hc.privacy": "Vad appen gör med hälsodatan",
+ "ui.hc.unavailable": "Health Connect finns inte på den här enheten. På Android 13 och äldre installeras det från Play Butik.",
+ "ui.hc.denied": "Appen fick inte läsa Health Connect. Du kan ge behörigheten i Health Connect.",
+ "ui.hc.failed": "Health Connect gick inte att läsa just nu."
 }

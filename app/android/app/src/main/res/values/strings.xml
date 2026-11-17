@@ -4,4 +4,7 @@
     <string name="title_activity_main">Tröskel</string>
     <string name="package_name">io.github.generaltgul.troskel</string>
     <string name="custom_url_scheme">io.github.generaltgul.troskel</string>
+    <!-- Health Connect shows it as the app's privacy policy (the plugin's PermissionsRationaleActivity). The page is in
+         the app itself (public/privacy.html), so it opens without a network. -->
+    <string name="health_connect_privacy_policy_url">file:///android_asset/public/privacy.html</string>
 </resources>

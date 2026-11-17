@@ -126,6 +126,8 @@ export interface Settings {
   lang?: Lang;
   /** The wall mode (wall.ts): the screen kept on, back to today after three minutes. */
   wall?: boolean;
+  /** The athlete let the Android app read Health Connect (healthconnect.ts): read again at each start. */
+  healthConnect?: boolean;
 }
 
 export interface PendingTimes extends Omit<NewAvailability, "from"> {

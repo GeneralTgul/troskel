@@ -17,6 +17,7 @@
   - [Passen bockas av av sig själva](#passen-bockas-av-av-sig-själva)
   - [Dagsformen](#dagsformen)
   - [Var hälsodatan kommer ifrån](#var-hälsodatan-kommer-ifrån)
+  - [Health Connect i Android-appen](#health-connect-i-android-appen)
 - [Väggläget](#väggläget)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
@@ -117,7 +118,7 @@ Under *I dag* står blocken fram till målet, en ruta per vecka med bredd efter 
 
 ## Hälsodatan
 
-Appen kan få passen som klockan spelade in och nattens värden (sömn, vilopuls, HRV) från telefonens hälsodata. Med dem bockar den av passen själv och säger hur dagsformen är. Allt stannar på enheten, som schemat.
+Appen kan få passen som klockan spelade in och nattens värden (sömn, vilopuls, HRV) från telefonens hälsodata: ur en länk, eller i Android-appen direkt ur [Health Connect](#health-connect-i-android-appen). Med dem bockar den av passen själv och säger hur dagsformen är. Allt stannar på enheten, som schemat.
 
 ### Länken med hälsodata
 
@@ -166,7 +167,7 @@ Saknas en signal säger kortet det (*Räknas inte i dag: HRV.*) och räknar på 
 ### Var hälsodatan kommer ifrån
 
 - **iPhone, webbappen:** en webbsida kan inte läsa Apple Hälsa. En genväg i appen *Genvägar* kan det, och öppnar sedan appen med länken. Genvägen nedan är inte provad i en telefon ([PROV.md](../PROV.md#appen-i-telefonen)).
-- **Android, APK:n:** att appen läser Health Connect själv (med `@capgo/capacitor-health`) är nästa steg, och är inte byggt.
+- **Android, APK:n:** appen läser Health Connect själv ([nedan](#health-connect-i-android-appen)). Ingen länk behövs.
 - **iPhone, den byggda appen:** att läsa Apple Hälsa direkt kräver HealthKit i den byggda iOS-appen, och den når en iPhone bara genom TestFlight med ett utvecklarkonto hos Apple. Det väntar på kontot.
 
 **Genvägen på iPhone** (*Genvägar* → *+*), med åtgärderna i ordning:
@@ -179,6 +180,29 @@ Saknas en signal säger kortet det (*Räknas inte i dag: HRV.*) och räknar på 
 6. *Koda med Base64* (radbrytningar: *Inga*), och *Öppna URL:er* med `https://generaltgul.github.io/troskel/app/#h=` och resultatet.
 
 Genvägen kan läggas på hemskärmen eller köras av en automation varje morgon. Hälsodatan passerar bara genvägen och appen i telefonen.
+
+### Health Connect i Android-appen
+
+APK:n och appen från Google Play läser Health Connect med pluginen [`@capgo/capacitor-health`](https://github.com/Cap-go/capacitor-health) (8.x, MPL-2.0). Den läser bara och skriver aldrig något. Det appen läser blir samma hälsodata som [länken](#länken-med-hälsodata) ger, så passen bockas av och dagsformen räknas på samma sätt.
+
+- **Första gången:** *Läs från Health Connect* under *Om appen* visar Health Connects ruta för behörigheterna. Avsnittet säger först vad appen läser och varför, och länkar till [integritetspolicyn](https://generaltgul.github.io/troskel/app/privacy.html#halsodata). Saknas Health Connect (Android 13 och äldre utan appen från Play Butik), eller nekas behörigheten, säger appen det.
+- **Sedan:** appen läser Health Connect varje gång den startar och när den kommer tillbaka till skärmen, utan att fråga (`checkAuthorization`). *Läs Health Connect nu* läser direkt, och *Öppna Health Connect* öppnar behörigheterna. *Ta bort all data på enheten* tar bort hälsodatan och slår av läsningen.
+- **Vad den läser,** de senaste 35 dygnen (Health Connect ger högst 30 dygn före första godkännandet):
+
+| Health Connect | Behörighet | Blir |
+|---|---|---|
+| Träningspass (`ExerciseSessionRecord`) | `READ_EXERCISE` | ett pass: idrotten med `sportOf`, starten i lokal tid och minuterna |
+| Puls (`HeartRateRecord`) | `READ_HEART_RATE` | passets snitt- och maxpuls, bara för passens tid (en klocka skriver puls hela dygnet) |
+| Sömn (`SleepSessionRecord`) | `READ_SLEEP` | sömnen för dagen sömnen slutade; stadierna sover, lätt, djup och REM räknas, och utan stadier hela sessionen |
+| Vilopuls (`RestingHeartRateRecord`) | `READ_RESTING_HEART_RATE` | dagens vilopuls (snittet om det finns flera) |
+| HRV (`HeartRateVariabilityRmssdRecord`) | `READ_HEART_RATE_VARIABILITY` | dagens HRV |
+
+- **Garmin:** Garmin Connect skriver pass, puls och sömn till Health Connect, men inte HRV, så med en Garmin-klocka räknar dagsformen utan HRV (*Räknas inte i dag: HRV.*). Vilopulsen från Garmin är inte bekräftad.
+- **Behörigheterna i `AndroidManifest.xml`:** pluginen tar med läs- och skrivbehörigheter för alla sina datatyper. Manifestet behåller de fem ovan och tar bort resten med `tools:node="remove"`, så att appen inte kan be om mer. Pluginens `PermissionsRationaleActivity` är sidan Health Connect visar när någon trycker på *Integritetspolicy* i behörighetsrutan; den visar `public/privacy.html` ur appen själv (`health_connect_privacy_policy_url` i `strings.xml`), så att den går att läsa utan nät.
+- **Android 8 eller senare:** pluginen kräver API 26, så `minSdkVersion` är 26 (var 24).
+- **iPhone:** pluginen kan också läsa HealthKit, men det kräver den byggda iOS-appen och ett utvecklarkonto, och är inte påslaget. Webbappen och iOS-appen läser alltså inte Health Connect eller HealthKit; `healthConnectPlugin` ger pluginen bara på Android.
+
+Koden står i `app/src/model/healthconnect.ts` (`fromHealthConnect` gör om datan, `readHealthConnect` frågar pluginen) och proven i `app/test/healthconnect.test.tsx`, med en låtsasplugin. I en riktig Health Connect är det inte provat ([PROV.md](../PROV.md#appen-i-telefonen)). Google Play kräver dessutom en deklaration av hälsobehörigheterna i Play Console innan en version med dem får publiceras ([Butikerna](butikerna/butikerna.md)).
 
 ## Väggläget
 

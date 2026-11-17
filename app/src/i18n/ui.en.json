@@ -160,5 +160,15 @@
  "ui.health.name.rhr": "resting heart rate",
  "ui.health.name.sleep": "sleep",
  "ui.health.auto": "From Health",
- "ui.health.auto_on": "From Health, done {date}"
+ "ui.health.auto_on": "From Health, done {date}",
+ "ui.hc.title": "Health Connect",
+ "ui.hc.why": "The app can read the workouts, the heart rate during them, the sleep, the resting heart rate and HRV from Health Connect, so that the workouts are ticked off by themselves and today's form shows under Today. The app only reads, writes nothing and sends nothing on. The data is kept on the device for 42 days and removed with Delete all data on this device. Garmin Connect does not write HRV to Health Connect.",
+ "ui.hc.read": "Read from Health Connect",
+ "ui.hc.again": "Read Health Connect now",
+ "ui.hc.on": "The app reads Health Connect each time it opens. You change the permissions in Health Connect.",
+ "ui.hc.settings": "Open Health Connect",
+ "ui.hc.privacy": "What the app does with the health data",
+ "ui.hc.unavailable": "Health Connect is not on this device. On Android 13 and older it is installed from the Play Store.",
+ "ui.hc.denied": "The app was not allowed to read Health Connect. You can give the permission in Health Connect.",
+ "ui.hc.failed": "Health Connect could not be read just now."
 }
