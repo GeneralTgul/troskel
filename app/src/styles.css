@@ -383,3 +383,10 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 @media (prefers-reduced-motion: no-preference) {
   .tabs button, .primary, .secondary { transition: background-color .15s, color .15s; }
 }
+
+/* Today's form from the health data (views/health.tsx) */
+.form { margin: 0 0 12px; border-left: 6px solid var(--done); }
+.form.tired { border-left-color: var(--partial); }
+.form h3 { margin: 2px 0 4px; }
+.form-reasons { margin: 4px 0; padding-left: 1.2em; }
+.auto-note { flex-basis: 100%; margin: 0; }

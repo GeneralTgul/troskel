@@ -5,6 +5,7 @@ import { today as todayIn } from "./model/dates";
 import { liveDemo } from "./model/demo";
 import { toIcs } from "./model/ics";
 import { linkData, PlanError, readPlanText } from "./model/link";
+import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
 import { keepFor, type TrainingLog } from "./model/log";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
@@ -68,13 +69,30 @@ export function App(props: AppProps) {
   const [qr, setQr] = useState(false);
   const [welcome, setWelcome] = useState(false);
   const [log, setLogState] = useState<TrainingLog>(() => store.log());
+  const [health, setHealth] = useState<HealthData | null>(() => store.health());
   const [wall, setWall] = useState(() => store.settings().wall === true);
   // Bumped when the wall mode goes back home: the views start again, the week view on this week.
   const [home, setHome] = useState(0);
 
+  // The views get the athlete's marks over the ones the health data gave; only the athlete's are kept.
+  const auto = stored ? autoMarks(stored, health, today) : { marks: {}, unplanned: [] };
+  const shown = withAuto(log, auto);
   const onLog = (l: TrainingLog) => {
-    store.setLog(l);
-    setLogState(l);
+    const own = withoutAuto(l);
+    store.setLog(own);
+    setLogState(own);
+  };
+
+  const readHealth = (data: string) => {
+    try {
+      const h = mergeHealth(store.health(), decodeHealth(data), today);
+      store.setHealth(h);
+      setHealth(h);
+      setError(null);
+      setToast(t("ui.health.loaded"));
+    } catch {
+      setError(t("ui.health.error"));
+    }
   };
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
@@ -103,6 +121,9 @@ export function App(props: AppProps) {
     const take = (href: string | undefined) => {
       if (href && linkData(href)) {
         readText(href, true);
+        props.onIncomingRead?.();
+      } else if (href && healthData(href)) {
+        readHealth(healthData(href)!);
         props.onIncomingRead?.();
       }
     };
@@ -162,6 +183,7 @@ export function App(props: AppProps) {
   const deleteAll = () => {
     store.clear();
     setLogState(store.log());
+    setHealth(null);
     setWall(false);
     setStored(null);
     setDemo(false);
@@ -179,8 +201,8 @@ export function App(props: AppProps) {
   if (qr) body = <Qr onText={readText} onClose={() => setQr(false)} />;
   else if (!stored || welcome)
     body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} />;
-  else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={log} onLog={onLog} />;
-  else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={log} onLog={onLog} />;
+  else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={shown} onLog={onLog} health={health} />;
+  else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog} />;
   else if (tab === "plan") body = <Overview stored={stored} today={today} onCalendar={calendar} />;
   else if (tab === "times")
     body = (

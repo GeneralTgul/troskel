@@ -12,6 +12,11 @@
   - [Veckan i siffror](#veckan-i-siffror)
   - [Rutan för dagen](#rutan-för-dagen)
   - [Säsongsremsan](#säsongsremsan)
+- [Hälsodatan](#hälsodatan)
+  - [Länken med hälsodata](#länken-med-hälsodata)
+  - [Passen bockas av av sig själva](#passen-bockas-av-av-sig-själva)
+  - [Dagsformen](#dagsformen)
+  - [Var hälsodatan kommer ifrån](#var-hälsodatan-kommer-ifrån)
 - [Väggläget](#väggläget)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
 - [Integritet](#integritet)
@@ -110,6 +115,71 @@ Tabellerna `TIPS` och `DRILLS` och funktionen `feel` står både i `src/lopanaly
 
 Under *I dag* står blocken fram till målet, en ruta per vecka med bredd efter veckor, och blockens korta namn ovanför (*Grund*, *Uppb.*, *Topp*, *Nedtr.*). De lätta veckorna är gröna, också testveckan, som är en lätt vecka med ett test. Loppveckan har appens orange färg, och ett streck visar i dag. Remsan går fram till nästa A-lopp, annars nästa lopp, annars det sista loppet, och utan lopp visar den hela schemat (`app/src/model/season.ts`).
 
+## Hälsodatan
+
+Appen kan få passen som klockan spelade in och nattens värden (sömn, vilopuls, HRV) från telefonens hälsodata. Med dem bockar den av passen själv och säger hur dagsformen är. Allt stannar på enheten, som schemat.
+
+### Länken med hälsodata
+
+Hälsodatan kommer i en länk, på samma sätt som schemat:
+
+```
+https://generaltgul.github.io/troskel/app/#h=<data>
+```
+
+`<data>` är JSON, kodat som base64url, som vanlig base64 eller URL-kodat. Den är inte komprimerad, så att en genväg i iPhone kan göra den. När appen har läst länken sparas datan och tas bort ur adressfältet.
+
+```json
+{"kind": "troskel-health", "format": 1, "read": "2026-11-25T07:10:00+01:00",
+ "workouts": [{"sport": "running", "start": "2026-11-24T18:02:00+01:00", "minutes": 48, "hr": 142, "hr_max": 171}],
+ "days": [{"date": "2026-11-25", "sleep_h": 6.4, "rhr": 48, "hrv": 62}]}
+```
+
+- **Passen:** idrotten med Apple Hälsas, Health Connects eller Stravas namn (`running`, `HKWorkoutActivityTypeCycling`, `EXERCISE_TYPE_SWIMMING_POOL`, `VirtualRide`), starten i lokal tid och minuterna. Snitt- och maxpuls får saknas. Idrotterna översätts till schemats (`sportOf`), och det appen inte känner blir *Annat*.
+- **Dagarna:** datumet är dagen idrottaren vaknade, och nattens sömn hör till den. Flera rader samma dag läggs ihop: sömnen adderas (nattens delar) och HRV och vilopuls blir snittet. En genväg kan alltså skriva en rad per mätning.
+- En ny länk läggs över den sparade: en dags värden ersätts, och två pass som överlappar med mer än halva det kortare (klockan och Zwift samma pass) blir ett, det längre. Appen sparar de senaste 42 dagarna.
+
+Logiken står i `app/src/model/health.ts`, vyerna i `app/src/views/health.tsx` och proven i `app/test/health.test.tsx`.
+
+### Passen bockas av av sig själva
+
+Ett pass i schemat är gjort när hälsodatan har ett pass i samma idrott (`autoMarks`, samma regler som Tröskels hallskärm):
+
+1. Samma dag: det längsta passet räknas, så att uppvärmningen inte gör det.
+2. Annars samma idrott en annan dag samma vecka, om passet var minst 20 minuter och inte redan räknats. Den närmaste dagen vinner, och vid lika den senare (lördagens långpass på söndagen). Bara dagar som har varit, och aldrig ett lopp.
+3. SkiErg och skidor räknas som samma idrott. Ett lopp räknas med sin idrott.
+
+Under passet står *Från Hälsa*, eller *Från Hälsa, gjort 24/11* när passet gjordes en annan dag. Hälsodatan sätter aldrig *Missat*. En bock som idrottaren satt själv vinner, och appen sparar bara idrottarens egna: de automatiska räknas om varje gång. *Veckan i siffror* räknar dem som gjorda.
+
+### Dagsformen
+
+Överst under *I dag* står dagsformen när hälsodatan har något för i dag: *Ta det lugnt i dag* eller *Kör som planerat*, med skälen (`dayForm`). Dagen är trött vid en stark signal eller minst två svaga:
+
+| Signal | Svag | Stark |
+|---|---|---|
+| HRV mot eget snitt de 28 nätterna före (minst 14 nätter) | under 90 % | under 80 % |
+| Vilopulsen mot eget snitt de 28 dygnen före (minst 14) | 5 slag över | 8 slag över |
+| Sömnen i natt | under 6 h | under 4,5 h |
+
+Saknas en signal säger kortet det (*Räknas inte i dag: HRV.*) och räknar på resten. En Garmin-klocka skriver troligen inte HRV till Apple Hälsa eller Health Connect, och Garmins Training Readiness och Body Battery finns bara i Garmin Connect.
+
+### Var hälsodatan kommer ifrån
+
+- **iPhone, webbappen:** en webbsida kan inte läsa Apple Hälsa. En genväg i appen *Genvägar* kan det, och öppnar sedan appen med länken. Genvägen nedan är inte provad i en telefon ([PROV.md](../PROV.md#appen-i-telefonen)).
+- **Android, APK:n:** att appen läser Health Connect själv (med `@capgo/capacitor-health`) är nästa steg, och är inte byggt.
+- **iPhone, den byggda appen:** att läsa Apple Hälsa direkt kräver HealthKit i den byggda iOS-appen, och den når en iPhone bara genom TestFlight med ett utvecklarkonto hos Apple. Det väntar på kontot.
+
+**Genvägen på iPhone** (*Genvägar* → *+*), med åtgärderna i ordning:
+
+1. *Hitta hälsoexempel* där *Typ* är *Vilopuls* och *Startdatum* är *de senaste 30 dagarna*.
+2. *Upprepa med varje* objekt i resultatet: *Text* med `{"date":"` *Startdatum* (formaterat *ISO 8601*) `","rhr":` *Värde* `}`, och *Lägg till i variabel* `dagar`.
+3. Samma två steg för *Pulsvariabilitet* med `"hrv":` och för *Sömnanalys* med *Slutdatum*, `"sleep_h":` och *Varaktighet* i timmar. Välj bara sömnens stadier, inte *I sängen* eller *Vaken*.
+4. Gärna *Hitta hälsoexempel* för *Träningspass* de senaste 14 dagarna, med `{"sport":"` *Typ* `","start":"` *Startdatum* `","minutes":` *Varaktighet* i minuter `}` i variabeln `pass`. Om *Träningspass* finns i listan beror på iOS-versionen.
+5. *Text* med `{"kind":"troskel-health","format":1,"workouts":[` `pass` sammanfogat med `,` `],"days":[` `dagar` sammanfogat med `,` `]}`.
+6. *Koda med Base64* (radbrytningar: *Inga*), och *Öppna URL:er* med `https://generaltgul.github.io/troskel/app/#h=` och resultatet.
+
+Genvägen kan läggas på hemskärmen eller köras av en automation varje morgon. Hälsodatan passerar bara genvägen och appen i telefonen.
+
 ## Väggläget
 
 För en surfplatta på väggen, som en tavla i hallen. Under *Om appen* slår *Använd väggläget* på det, och valet sparas på enheten:
@@ -137,7 +207,7 @@ Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriv
 
 ## Integritet
 
-Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
+Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen, [hälsodatan](#hälsodatan) och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
 
 Var de sparas står i `app/src/model/storage.ts`:
 
