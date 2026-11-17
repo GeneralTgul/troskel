@@ -73,6 +73,7 @@
  "ui.times.save": "Spara",
  "ui.times.saved_rebuilt": "Klart. Schemat är omräknat från i morgon.",
  "ui.times.saved_pending": "Ändringen är sparad. Den används när din coach skickar ett nytt schema.",
+ "ui.times.kept": "Det nya schemat från din coach har tiderna som coachen har. Dina egna tider står kvar nedan: tryck Spara för att lägga schemat på dem.",
  "ui.times.pending": "Du sparade nya tider {date}. De används när din coach skickar ett nytt schema.",
  "ui.times.failed": "Det gick inte att räkna om schemat. Tiderna är sparade.",
  "ui.times.extra": "Extra",

@@ -132,6 +132,9 @@ export interface Settings {
 
 export interface PendingTimes extends Omit<NewAvailability, "from"> {
   saved: string; // ISO date the athlete saved them
+  /** The athlete's own times from before a new plan from the coach (a new test): the new plan came with the times
+   * the coach has, and these wait under "Mina tider" until the athlete chooses to lay the plan on them (keptTimes). */
+  kept?: boolean;
 }
 
 export class Store {

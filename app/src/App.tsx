@@ -8,6 +8,7 @@ import { linkData, PlanError, readPlanText } from "./model/link";
 import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
 import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
+import { keptTimes } from "./model/times";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
 import { canKeepAwake, idleTimer, keepAwake, WALL_IDLE_MS } from "./model/wall";
@@ -130,11 +131,13 @@ export function App(props: AppProps) {
   }, [hc]);
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
+    const kept = isDemo || demo ? null : keptTimes(stored, p, today);
     store.setPlan(p, isDemo);
+    if (kept) store.setTimes(kept);
     onLog(keepFor(store.log(), p));
     setStored(p);
     setDemo(isDemo);
-    setPending(null);
+    setPending(kept);
     setError(null);
     setWelcome(false);
     setQr(false);

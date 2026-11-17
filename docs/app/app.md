@@ -8,6 +8,7 @@
 - [Vad appen gör](#vad-appen-gör)
 - [Hur schemat kommer till appen](#hur-schemat-kommer-till-appen)
   - [Från coach till idrottare](#från-coach-till-idrottare)
+  - [Ett nytt test ger ett nytt schema](#ett-nytt-test-ger-ett-nytt-schema)
 - [Bocka av passen](#bocka-av-passen)
   - [Veckan i siffror](#veckan-i-siffror)
   - [Rutan för dagen](#rutan-för-dagen)
@@ -84,6 +85,17 @@ I Tröskel ger coachen idrottaren schemat på sidan *Träningsschema* ([handboke
 Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och kalenderfilen. Länken, koden och mejlets länk bär underlaget (`link_payload`), och filen hela schemat. QR-koden ritas med segno (`src/lopanalys/share/qr.py`). Den största QR-koden rymmer 2 953 tecken med lägsta felrättningen. En längre länk får ingen kod, och rutan hänvisar till mejlet eller filen.
 
 Efter *Förnya* eller ett nytt test ger *Till appen* det nya schemat, med samma schema-id och samma start. Appen har ett schema i taget: varje inläst schema ersätter det sparade (`setPlan` i `app/src/model/storage.ts`) och tar bort tider under *Mina tider* som inte har räknats in än.
+
+### Ett nytt test ger ett nytt schema
+
+Passen i telefonen ändras bara av ett nytt test eller av idrottarens eget val under *Mina tider*, aldrig av sig själva. Appen räknar inte fram veckorna efter gränsen för passen, och samma sparade schema ser likadant ut hur långt senare appen än öppnas. Kedjan efter ett nytt test:
+
+1. Tröskel lägger resten av schemat på testet (*Lägg om schemat*, `apply_retest` i `src/lopanalys/ui/services.py`): från testdagen får passen i testets idrott de nya målen, passen före testdagen behåller de gamla (`targets_log`), och inget pass byter dag. De närmaste veckorna får sina pass, som vid *Förnya*.
+2. Coachen ger idrottaren en ny länk, QR-kod eller fil med *Till appen* eller *Skicka till idrottaren*. Den har samma schema-id och samma nycklar på passen.
+3. Telefonen byter schemat. Det idrottaren bockat av, passen utanför planen och hälsodatan ligger kvar (`keepFor` i `app/src/model/log.ts`).
+4. Hade idrottaren ändrat sina tider under *Mina tider*, har det nya schemat ändå coachens tider. Idrottarens tider ligger då kvar under *Mina tider* med en rad om det, och *Spara* lägger det nya schemat på dem, med det nya testets mål (`keptTimes` i `app/src/model/times.ts`). Appen gör det inte av sig själv. Ett schema som är skrivet utanför motorn (`source`, se [Mina tider och planmotorn](#mina-tider-och-planmotorn)) har inga egna tider att spara, och ett schema med ett annat id behåller inga tider.
+
+Proven: `tests/plan/test_retest_chain.py` går hela vägen med två tester på samma idrottare, och `app/test/retest_phone.test.tsx` provar telefonens sida. I en riktig telefon är kedjan inte provad.
 
 ## Bocka av passen
 

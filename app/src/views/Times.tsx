@@ -71,7 +71,9 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
     <section class="view times">
       <h2>{t("ui.times.title")}</h2>
       <p class="muted">{t("ui.times.intro")}</p>
-      {pending && !msg ? <p class="notice">{t("ui.times.pending", { date: dayMonth(pending.saved) })}</p> : null}
+      {pending && !msg ? (
+        <p class="notice">{t(pending.kept ? "ui.times.kept" : "ui.times.pending", { date: dayMonth(pending.saved) })}</p>
+      ) : null}
       <form onSubmit={save}>
         <ol class="time-rows">
           {days.map((d, i) => (

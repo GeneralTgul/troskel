@@ -73,6 +73,7 @@
  "ui.times.save": "Save",
  "ui.times.saved_rebuilt": "Done. The plan is rebuilt from tomorrow.",
  "ui.times.saved_pending": "The change is saved. It is used when your coach sends a new plan.",
+ "ui.times.kept": "The new plan from your coach has the times your coach has. Your own times are kept below: press Save to lay the plan on them.",
  "ui.times.pending": "You saved new times on {date}. They are used when your coach sends a new plan.",
  "ui.times.failed": "The plan could not be rebuilt. Your times are saved.",
  "ui.times.extra": "Extra",
