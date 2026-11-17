@@ -1729,8 +1729,19 @@ class ResultsView(QWidget):
                                                 zone_system=self.zone_system.currentData(),
                                                 zone_compare=self.zone_compare, garmin=self.garmin, vo2max=self.vo2,
                                                 hr_speed=services.hr_speed_dict(self.hr_speed, self.max_hr),
-                                                power=self.power, technique=self.technique)
+                                                power=self.power, technique=self.technique,
+                                                plan_followup=self._plan_followup(prev))
         return self._html
+
+    def _plan_followup(self, prev: Session | None) -> dict | None:
+        """*Mot schemat* in the report (#778); a failure leaves the part out, never the report."""
+        if self.athlete is None or self.athlete.id is None:
+            return None
+        try:
+            return services.plan_followup(self.ctx.store, self.athlete, self.session, prev)
+        except Exception:
+            log.exception("plan follow-up failed")
+            return None
 
     def _tab_changed(self, i: int) -> None:
         if self.tabs.widget(i) is self.report_tab:

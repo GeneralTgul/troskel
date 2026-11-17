@@ -579,6 +579,47 @@
 </section>
 {% endif %}
 
+{# ============================== against the plan (#778) ============================== #}
+{% if followup %}
+<section class="section followup-sec">
+  <div class="section-head">
+    <div class="kicker">{{ t("report.section.followup") }}</div>
+    <h2>{{ t("report.followup.title") }}</h2>
+    <p class="lead">{{ followup.lead }}</p>
+  </div>
+  {% if followup.rows %}
+  <table class="trend followup">
+    <thead><tr><th class="first">{{ t("report.col.metric") }}</th><th class="n">{{ t("report.trend.before") }}</th>
+      <th class="n">{{ t("report.followup.planned") }}</th><th class="n">{{ t("report.followup.measured") }}</th>
+      <th class="n">{{ t("report.followup.against") }}</th><th class="last">{{ t("report.followup.verdict") }}</th></tr></thead>
+    <tbody>
+    {% for r in followup.rows %}
+      <tr class="{{ r.dir }}"><td class="first">{{ r.name }} <span class="muted">{{ r.unit }}</span></td>
+        <td class="n">{{ r.old }}</td><td class="n">{{ r.want }}</td><td class="n strong">{{ r.new }}</td>
+        <td class="n delta">{{ r.delta }}</td><td class="last">{{ r.verdict }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p>{{ followup.done }}</p>
+  {% if followup.sports %}
+  <table class="trend followup-done">
+    <thead><tr><th class="first">{{ t("report.followup.sport") }}</th><th class="n">{{ t("report.followup.planned_min") }}</th>
+      <th class="n">{{ t("report.followup.done_min") }}</th><th class="n">{{ t("report.followup.share") }}</th>
+      <th class="n last">{{ t("report.followup.quality") }}</th></tr></thead>
+    <tbody>
+    {% for s in followup.sports %}
+      <tr><td class="first">{{ s.name }}</td><td class="n">{{ s.planned }}</td><td class="n">{{ s.done }}</td>
+        <td class="n">{{ s.share }}</td><td class="n last">{{ s.quality }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% for n in followup.notes %}<p class="muted">{{ n }}</p>{% endfor %}
+  <p class="muted">{{ followup.estimate }}</p>
+</section>
+{% endif %}
+
 <p class="disclaimer">{{ t("report.disclaimer.long") }}</p>
 </body>
 </html>

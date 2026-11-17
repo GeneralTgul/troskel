@@ -119,6 +119,12 @@ def test_the_plan_from_the_phone_then_a_new_test(demo_window, erik, boxes):
     back = link.expand(link.read_link(url))
     assert back["plan"]["id"] == sent["plan"]["plan"]["id"]
     assert back["request"]["availability"] == sent["plan"]["request"]["availability"]
+    # #778: the new test's report has *Mot schemat*, with what was ticked off on the phone
+    f = services.plan_followup(store, erik, newer, store.previous_session(newer))
+    assert f is not None and f["expected"]["sport"] == "run" and f["expected"]["gain_pct"] > 0
+    assert f["done"]["logged_until"] == date.today().isoformat() and f["done"]["share"] is not None
+    assert f["done"]["extras"] == 1 and f["done"]["done_min"] > 0
+    assert services.plan_followup(store, erik, newer, None) is None
 
 
 def test_not_a_plan_from_the_phone(demo_window, erik, boxes):

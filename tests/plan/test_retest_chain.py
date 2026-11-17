@@ -88,3 +88,41 @@ def test_the_phone_reads_a_retested_plan_from_the_short_link_or_the_whole():
     whole = json.loads(json.dumps(link.stored_plan(plan, "")))
     assert _phone(plan) == whole
     assert any(w["date"] >= (SECOND.tested + timedelta(days=1)).isoformat() for w in _workouts(whole).values())
+
+
+def _lactate(cap):
+    a = cap.anchors
+    return {"lt1": {"speed_kmh": a.lt1_speed_kmh, "hr": a.lt1_hr}, "lt2": {"speed_kmh": a.lt2_speed_kmh, "hr": a.lt2_hr}}
+
+
+def test_the_new_tests_report_shows_the_plan_against_the_measured(tmp_path):
+    """#778: the report of the second test has *Mot schemat*: what the plan counted on since the first test, the
+    measured thresholds against it, and how much of the plan was done after the phone's log was read in."""
+    from lopanalys.core.models import Athlete, Session, TestKind
+    from lopanalys.plan import expected, phone
+    from lopanalys.report import builder
+
+    plan = build_plan(c.CASES["half_12"], plan_id="p7", today=FIRST_DAY)
+    plan = _retest(plan, SECOND, SECOND.tested)
+    handed = [w for w in plan.workouts if w.date < SECOND.tested and w.goal is None]
+    marks = {w.key: {"status": "done"} for w in handed[::2]}
+    log = phone.PhonePlan({}, date(2026, 12, 8), marks).log()
+    f = expected.followup(plan, RUNNING, c.TESTED.tested, SECOND.tested, [log])
+    assert f.expected.gain_pct > 0 and f.done.share == pytest.approx(
+        sum(w.minutes for w in handed[::2]) / sum(w.minutes for w in handed))
+
+    athlete = Athlete(1, "Exempel Löpare", "")
+    first = Session(id=1, athlete_id=1, kind=TestKind.LACTATE_STEP, started=c.TESTED.tested)
+    second = Session(id=2, athlete_id=1, kind=TestKind.LACTATE_STEP, started=SECOND.tested)
+    prev = builder.ReportData(athlete=athlete, session=first, lactate=_lactate(c.TESTED))
+    data = builder.ReportData(athlete=athlete, session=second, lactate=_lactate(SECOND), previous=prev,
+                              plan_followup=f.to_dict())
+    ctx = builder._followup_ctx(data)
+    lt2 = next(r for r in ctx["rows"] if r["name"] == "Fart vid LT2")
+    assert lt2["old"] == "14,4" and lt2["new"] == "14,8"
+    assert lt2["want"] == builder.fmt_num(14.4 * (1 + f.expected.gain_pct / 100), 1)
+    html = builder.render_html(data)
+    assert "Mot schemat" in html and "kvalitetspass" in html and "uppskattning" in html
+    # Without a plan between the tests, or without a previous test, the part is left out.
+    assert builder._followup_ctx(replace(data, plan_followup=None)) is None
+    assert builder._followup_ctx(replace(data, previous=None)) is None

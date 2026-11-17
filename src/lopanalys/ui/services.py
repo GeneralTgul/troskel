@@ -14,7 +14,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1111,12 +1111,12 @@ def report_data(athlete: Athlete, session: Session, records: list[StepRecord],
                 zone_system: str | None = None, zone_compare: list[dict[str, Any]] | None = None,
                 garmin: dict[str, Any] | None = None, vo2max: dict[str, Any] | None = None,
                 hr_speed: dict[str, Any] | None = None, power: dict[str, Any] | None = None,
-                technique: dict[str, Any] | None = None) -> Any:
+                technique: dict[str, Any] | None = None, plan_followup: dict[str, Any] | None = None) -> Any:
     """The report of one test as report.builder.ReportData.
 
     ``previous``: {"session", "records", "lactate" (LactateView|None)} of the previous test, or None.
     ``zone_system``: the system ``zone_list`` is in. ``zone_compare``, ``garmin``, ``vo2max``: the
-    results of zone_comparison(), garmin_setup() and estimate_vo2max().
+    results of zone_comparison(), garmin_setup() and estimate_vo2max(). ``plan_followup``: plan_followup().
     """
     from lopanalys.report import builder  # lazy: pulls in matplotlib and jinja2
     brand = _brand(builder, branding)
@@ -1134,7 +1134,7 @@ def report_data(athlete: Athlete, session: Session, records: list[StepRecord],
                               gait=gait, previous=prev, branding=brand, samples=samples or [],
                               zone_system=zone_system_info(zone_system) if zone_list else None,
                               zone_compare=_compare_dicts(zone_compare), garmin=garmin, vo2max=vo2max,
-                              hr_speed=hr_speed, power=power, technique=technique)
+                              hr_speed=hr_speed, power=power, technique=technique, plan_followup=plan_followup)
     if comment:
         kw["coach_comment"] = comment
     return builder.ReportData(**kw)
@@ -1794,6 +1794,25 @@ def phone_logs(store: Store, stored: StoredPlan | None) -> list[dict[str, Any]]:
     if stored is None or stored.row_id is None:
         return []
     return [e["detail"] for e in store.db.plan_events(stored.row_id) if e["kind"] == "phone"]
+
+
+def plan_followup(store: Store, athlete: Athlete, session: Session, previous: Session | None) -> dict[str, Any] | None:
+    """The report's *Mot schemat* (#778): what the athlete's saved plan counted on in the test's sport between the
+    previous test and this one, and how much of it was done (plan.expected.followup, with the phone's logs). None
+    without a previous test, without a saved plan or when the plan has no days between the tests."""
+    from lopanalys.plan import expected
+    if previous is None:
+        return None
+    stored = load_plan(store, athlete)
+    if stored is None:
+        return None
+
+    def day(s: Session) -> date:
+        return s.started.date() if isinstance(s.started, datetime) else s.started
+
+    f = expected.followup(stored.plan, sport_of(session.sport).value, day(previous), day(session),
+                          phone_logs(store, stored))
+    return f.to_dict() if f is not None else None
 
 
 def plan_renew_due(store: Store, athlete: Athlete, today: date | None = None) -> StoredPlan | None:

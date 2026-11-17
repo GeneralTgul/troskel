@@ -33,6 +33,7 @@ from contextvars import ContextVar
 
 from lopanalys.core.sport import Sport, sport_of
 from lopanalys.core.sport import profile as sport_profile
+from lopanalys.plan.expected import TOLERANCE_PCT
 from lopanalys.pose import findings as pose_findings
 from lopanalys.pose import reliability
 from lopanalys.pose.findings import MetricRange
@@ -101,6 +102,8 @@ class ReportData:
     hr_speed: hr_zones.HrSpeedResult.to_dict() of a zones test without lactate: the settled heart rate
         per step and the line that gives the zones their speed.
     previous: the athlete's previous test of the same kind, for the trend page.
+    plan_followup: plan.expected.Followup.to_dict() of the athlete's plan between the previous test and this one,
+        for the part *Mot schemat* beside the trend (#778): what the plan counted on and how much was done.
     sessions: the separate tests behind a collected report (several tests of one athlete, e.g. a
         lactate test, a max HR test and a gait film the same day); None for one test. See collect().
     highlights / focus: override the automatic "Det viktigaste" texts.
@@ -128,6 +131,7 @@ class ReportData:
     power: dict[str, Any] | None = None              # assessments.power.PowerResult.to_dict(): FTP, best minute, W/kg
     # bike fit or SkiErg technique: {"kind", "views": [TechniqueAnalysis.to_dict()], "checklist", "previous_date"}
     technique: dict[str, Any] | None = None
+    plan_followup: dict[str, Any] | None = None
 
     @property
     def weight_kg(self) -> float | None:
@@ -1066,6 +1070,59 @@ def _trend_ctx(data: ReportData) -> dict[str, Any] | None:
     return {"date": date_long(prev.session.started), "rows": rows}
 
 
+def _followup_ctx(data: ReportData) -> dict[str, Any] | None:
+    """*Mot schemat* (#778): the thresholds the plan counted on against the measured ones, and how much of the plan
+    was done between the tests (plan.expected). None without a plan between the tests or without a previous test."""
+    f, prev = data.plan_followup, data.previous
+    if not f or prev is None:
+        return None
+    exp, dn = f.get("expected"), f.get("done") or {}
+    rows: list[dict[str, Any]] = []
+    if exp:
+        gain = float(exp["gain_pct"])
+        for key, label in (("lt1", "LT1"), ("lt2", "LT2")):
+            a, b = (prev.lactate or {}).get(key) or {}, (data.lactate or {}).get(key) or {}
+            for name, unit, before, now, dec, scale in (
+                    (ts("report.trend.speed_at", lt=label), sport_profile(data.sport).load_unit,
+                     _f(a.get("speed_kmh")), _f(b.get("speed_kmh")), _dec(), True),
+                    (t("report.trend.hr_at", lt=label), unit_label("bpm"), _f(a.get("hr")), _f(b.get("hr")), 0, False)):
+                if before is None or now is None:
+                    continue
+                want = before * (1 + gain / 100) if scale else before
+                d = now - want
+                diff = (d / before * 100) if before else 0.0
+                verdict = ("on" if abs(diff) <= TOLERANCE_PCT else "ahead" if diff > 0 else "behind") if scale else "hr"
+                rows.append({"name": name, "unit": unit, "old": fmt_num(before, dec), "want": fmt_num(want, dec),
+                             "new": fmt_num(now, dec),
+                             "delta": ("+" if d > 0 else "") + fmt_num(d, dec) if abs(d) >= 10 ** -dec / 2 else "±0",
+                             "dir": {"ahead": "better", "behind": "worse", "on": "same"}.get(verdict, "neutral"),
+                             "verdict": t(f"report.followup.verdict.{verdict}")})
+    share = dn.get("share")
+    sports = [{"name": t(f"plan.sport.{s['sport']}"), "planned": s["planned_min"], "done": s["done_min"],
+               "share": fmt_num(s["done_min"] / s["known_min"] * 100, 0) if s["known_min"] else "–",
+               "quality": f"{s['quality_done']}/{s['quality_planned']}" if s["quality_planned"] else "–"}
+              for s in dn.get("sports") or []]
+    if not rows and not sports:
+        return None
+    level = t(f"plan.level.{exp['level']}") if exp else ""
+    lead = (ts("report.followup.lead", weeks=fmt_num(exp["weeks"], 1), gain=fmt_num(exp["gain_pct"], 1), level=level)
+            if exp and rows else t("report.followup.lead_no_thresholds"))
+    if share is None:
+        done_text = t("report.followup.done_unknown")
+    else:
+        done_text = t("report.followup.done", share=fmt_num(share * 100, 0), done=dn["done_min"], known=dn["known_min"],
+                      qd=dn["quality_done"], qp=dn["quality_planned"])
+    notes = []
+    if share is not None and dn["known_min"] < dn["planned_min"]:
+        notes.append(t("report.followup.not_logged", minutes=dn["planned_min"] - dn["known_min"],
+                       date=date_long(date.fromisoformat(dn["logged_until"])))
+                     if dn.get("logged_until") else t("report.followup.no_log"))
+    if dn.get("extras"):
+        notes.append(t("report.followup.extras", n=dn["extras"], minutes=dn["extras_min"]))
+    return {"lead": lead, "rows": rows, "done": done_text, "sports": sports if len(sports) > 1 else [],
+            "notes": notes, "estimate": t("report.followup.estimate", tol=fmt_num(TOLERANCE_PCT, 1))}
+
+
 def _summary_ctx(data: ReportData, sections: dict[str, Any]) -> dict[str, Any]:
     """Up to four key results and three things to work on, picked from what the test measured.
 
@@ -1245,7 +1302,7 @@ def _date_span(data: ReportData, started: date) -> str:
     return date_long(started)
 
 
-def _contents(sections: Mapping[str, Any], trend: Any) -> list[str]:
+def _contents(sections: Mapping[str, Any], trend: Any, followup: Any = None) -> list[str]:
     """Section names in the order the template prints them."""
     order = (["lactate", "zones", "power", "max_hr"] if "lactate" in sections else
              ["hr_zones", "zones", "max_hr"] if "hr_zones" in sections else ["power", "max_hr", "zones"])
@@ -1254,6 +1311,8 @@ def _contents(sections: Mapping[str, Any], trend: Any) -> list[str]:
         names.append(sections["technique"]["name"])
     if trend:
         names.append(t("report.section.trend"))
+    if followup:
+        names.append(t("report.section.followup"))
     return names
 
 
@@ -1486,6 +1545,7 @@ def _render_sport(data: ReportData) -> str:
         del sections["lactate"]
     empty_notice = t("report.empty.notice") if not sections else ""
     trend = _trend_ctx(data)
+    followup = _followup_ctx(data)
     kind = data.kind
     test_names = [_kind_name(k) for k in data.test_kinds]
     summary = _summary_ctx(data, sections)
@@ -1539,8 +1599,9 @@ def _render_sport(data: ReportData) -> str:
         "cover_zones": _cover_zones(sections.get("zones")),
         "collected": len(data.sessions or []) > 1,
         "kicker": " · ".join(test_names) if len(test_names) > 1 else t("report.cover.kicker"),
-        "contents": _contents(sections, trend),
+        "contents": _contents(sections, trend, followup),
         "trend": trend,
+        "followup": followup,
         "coach_comment": data.coach_comment or s.notes,
         "footer_left_css": Markup(_css_str(
             _footer_line(b.business_name, b.coach_name, *b.contact.split(" · ")) or business)
