@@ -1,0 +1,1807 @@
+{
+ "kind": "troskel.athlete",
+ "format": 1,
+ "exported": "2026-11-25",
+ "plan": {
+  "kind": "troskel.plan",
+  "format": 1,
+  "athlete": "Exempel Löpare",
+  "request": {
+   "format": 2,
+   "start": "2026-11-16",
+   "sports": [
+    "run"
+   ],
+   "availability": [
+    {
+     "weekday": 1,
+     "max_minutes": 75,
+     "sports": [
+      "run"
+     ],
+     "start": "18:00:00",
+     "role": "core"
+    },
+    {
+     "weekday": 3,
+     "max_minutes": 75,
+     "sports": [
+      "run"
+     ],
+     "start": "18:00:00",
+     "role": "core"
+    },
+    {
+     "weekday": 5,
+     "max_minutes": 60,
+     "sports": [
+      "run"
+     ],
+     "start": "09:00:00",
+     "role": "core"
+    },
+    {
+     "weekday": 6,
+     "max_minutes": 120,
+     "sports": [
+      "run"
+     ],
+     "start": "09:00:00",
+     "role": "core"
+    }
+   ],
+   "capacity": [
+    {
+     "sport": "run",
+     "anchors": {
+      "max_hr": 192,
+      "resting_hr": 46,
+      "lt1_hr": 165,
+      "lt2_hr": 174,
+      "lt1_speed_kmh": 13.2,
+      "lt2_speed_kmh": 14.4,
+      "sport": "run"
+     },
+     "tested": "2026-11-13",
+     "source": "Laktattrappa"
+    }
+   ],
+   "goals": [
+    {
+     "name": "Stadsvarvet",
+     "date": "2027-02-06",
+     "sport": "run",
+     "distance_km": 21.1,
+     "priority": "A",
+     "target": "under 1:35"
+    },
+    {
+     "name": "Seedningslopp",
+     "date": "2027-01-02",
+     "sport": "run",
+     "distance_km": 10,
+     "priority": "B",
+     "target": ""
+    }
+   ],
+   "duration_weeks": null,
+   "level": "recreational",
+   "recent_weekly_minutes": 200,
+   "roles": []
+  },
+  "plan": {
+   "format": 2,
+   "id": "demo",
+   "created": "2026-11-16T00:00:00+00:00",
+   "engine_version": "9",
+   "zone_system": "garmin",
+   "status": "draft",
+   "based_on": {
+    "run": "2026-11-13"
+   },
+   "notes": [],
+   "capacity_log": [],
+   "blocks": [
+    {
+     "kind": "base",
+     "first_week": 1,
+     "weeks": 5,
+     "start": "2026-11-16",
+     "reason": {
+      "key": "plan.reason.base",
+      "args": [
+       [
+        "goal",
+        "Stadsvarvet"
+       ],
+       [
+        "weeks",
+        5
+       ]
+      ]
+     }
+    },
+    {
+     "kind": "build",
+     "first_week": 6,
+     "weeks": 4,
+     "start": "2026-12-21",
+     "reason": {
+      "key": "plan.reason.build",
+      "args": [
+       [
+        "goal",
+        "Stadsvarvet"
+       ],
+       [
+        "weeks",
+        4
+       ]
+      ]
+     }
+    },
+    {
+     "kind": "peak",
+     "first_week": 10,
+     "weeks": 2,
+     "start": "2027-01-18",
+     "reason": {
+      "key": "plan.reason.peak",
+      "args": [
+       [
+        "goal",
+        "Stadsvarvet"
+       ],
+       [
+        "weeks",
+        2
+       ]
+      ]
+     }
+    },
+    {
+     "kind": "taper",
+     "first_week": 12,
+     "weeks": 1,
+     "start": "2027-02-01",
+     "reason": {
+      "key": "plan.reason.taper",
+      "args": [
+       [
+        "goal",
+        "Stadsvarvet"
+       ],
+       [
+        "weeks",
+        1
+       ]
+      ]
+     }
+    }
+   ],
+   "weeks": [
+    {
+     "index": 1,
+     "monday": "2026-11-16",
+     "block": "base",
+     "kind": "load",
+     "target_minutes": 200,
+     "notes": [
+      {
+       "key": "plan.week.focus.base",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2647-mon",
+       "date": "2026-11-16",
+       "sport": "run",
+       "template_id": "recovery",
+       "family": "recovery",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 1500,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2647-tue",
+       "date": "2026-11-17",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 2100,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2647-thu",
+       "date": "2026-11-19",
+       "sport": "run",
+       "template_id": "fartlek",
+       "family": "fartlek",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 120,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 6,
+         "rest_s": 120,
+         "rest_zone": "Z2"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2647-sat",
+       "date": "2026-11-21",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 1800,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2647-sun",
+       "date": "2026-11-22",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3900,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "monday": "2026-11-23",
+     "block": "base",
+     "kind": "load",
+     "target_minutes": 215,
+     "notes": [
+      {
+       "key": "plan.week.focus.base",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2648-mon",
+       "date": "2026-11-23",
+       "sport": "run",
+       "template_id": "recovery",
+       "family": "recovery",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 1500,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2648-tue",
+       "date": "2026-11-24",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 2400,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2648-thu",
+       "date": "2026-11-26",
+       "sport": "run",
+       "template_id": "hills",
+       "family": "hills",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 45,
+         "zone": "Z5",
+         "rpe": 8,
+         "repeat": 8,
+         "rest_s": 90,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2648-sat",
+       "date": "2026-11-28",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3000,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2648-sun",
+       "date": "2026-11-29",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 4200,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "monday": "2026-11-30",
+     "block": "base",
+     "kind": "load",
+     "target_minutes": 230,
+     "notes": [
+      {
+       "key": "plan.week.focus.base",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2649-tue",
+       "date": "2026-12-01",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3000,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2649-thu",
+       "date": "2026-12-03",
+       "sport": "run",
+       "template_id": "threshold",
+       "family": "threshold",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 360,
+         "zone": "Z4",
+         "rpe": 7,
+         "repeat": 4,
+         "rest_s": 60,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2649-sat",
+       "date": "2026-12-05",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3000,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2649-sun",
+       "date": "2026-12-06",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 4500,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 4,
+     "monday": "2026-12-07",
+     "block": "base",
+     "kind": "easy",
+     "target_minutes": 150,
+     "notes": [
+      {
+       "key": "plan.week.focus.easy",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2650-tue",
+       "date": "2026-12-08",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 1800,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2650-thu",
+       "date": "2026-12-10",
+       "sport": "run",
+       "template_id": "fartlek",
+       "family": "fartlek",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 120,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 5,
+         "rest_s": 120,
+         "rest_zone": "Z2"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2650-sat",
+       "date": "2026-12-12",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 1500,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2650-sun",
+       "date": "2026-12-13",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3300,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "monday": "2026-12-14",
+     "block": "base",
+     "kind": "load",
+     "target_minutes": 245,
+     "notes": [
+      {
+       "key": "plan.week.focus.base",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2651-tue",
+       "date": "2026-12-15",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2651-thu",
+       "date": "2026-12-17",
+       "sport": "run",
+       "template_id": "fartlek",
+       "family": "fartlek",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 120,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 8,
+         "rest_s": 120,
+         "rest_zone": "Z2"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2651-sat",
+       "date": "2026-12-19",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3300,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2651-sun",
+       "date": "2026-12-20",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 4800,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 6,
+     "monday": "2026-12-21",
+     "block": "build",
+     "kind": "load",
+     "target_minutes": 260,
+     "notes": [
+      {
+       "key": "plan.week.focus.build",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2652-tue",
+       "date": "2026-12-22",
+       "sport": "run",
+       "template_id": "vo2max",
+       "family": "vo2max",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 180,
+         "zone": "Z5",
+         "rpe": 9,
+         "repeat": 5,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2652-thu",
+       "date": "2026-12-24",
+       "sport": "run",
+       "template_id": "threshold",
+       "family": "threshold",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 360,
+         "zone": "Z4",
+         "rpe": 7,
+         "repeat": 5,
+         "rest_s": 60,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2652-sat",
+       "date": "2026-12-26",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2652-sun",
+       "date": "2026-12-27",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 5400,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 7,
+     "monday": "2026-12-28",
+     "block": "build",
+     "kind": "load",
+     "target_minutes": 210,
+     "notes": [
+      {
+       "key": "plan.week.focus.build",
+       "args": []
+      },
+      {
+       "key": "plan.week.race_b",
+       "args": [
+        [
+         "name",
+         "Seedningslopp"
+        ]
+       ]
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2653-tue",
+       "date": "2026-12-29",
+       "sport": "run",
+       "template_id": "vo2max",
+       "family": "vo2max",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 240,
+         "zone": "Z5",
+         "rpe": 9,
+         "repeat": 4,
+         "rest_s": 180,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2653-thu",
+       "date": "2026-12-31",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 2400,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2653-sat-race",
+       "date": "2027-01-02",
+       "sport": "run",
+       "template_id": "race",
+       "family": "race",
+       "quality": true,
+       "start": null,
+       "status": "planned",
+       "goal": {
+        "name": "Seedningslopp",
+        "date": "2027-01-02",
+        "sport": "run",
+        "distance_km": 10,
+        "priority": "B",
+        "target": ""
+       },
+       "parts": [
+        {
+         "kind": "race",
+         "duration_s": 0,
+         "zone": null,
+         "rpe": 10,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2653-sun",
+       "date": "2027-01-03",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 4500,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 8,
+     "monday": "2027-01-04",
+     "block": "build",
+     "kind": "test",
+     "target_minutes": 180,
+     "notes": [
+      {
+       "key": "plan.week.focus.test",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2701-thu",
+       "date": "2027-01-07",
+       "sport": "run",
+       "template_id": "test",
+       "family": "test",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "test",
+         "duration_s": 2100,
+         "zone": null,
+         "rpe": 10,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2701-sun",
+       "date": "2027-01-10",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 4200,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "monday": "2027-01-11",
+     "block": "build",
+     "kind": "load",
+     "target_minutes": 300,
+     "notes": [
+      {
+       "key": "plan.week.focus.build",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2702-tue",
+       "date": "2027-01-12",
+       "sport": "run",
+       "template_id": "vo2max",
+       "family": "vo2max",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 180,
+         "zone": "Z5",
+         "rpe": 9,
+         "repeat": 6,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2702-thu",
+       "date": "2027-01-14",
+       "sport": "run",
+       "template_id": "threshold",
+       "family": "threshold",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 480,
+         "zone": "Z4",
+         "rpe": 7,
+         "repeat": 4,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2702-sat",
+       "date": "2027-01-16",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2702-sun",
+       "date": "2027-01-17",
+       "sport": "run",
+       "template_id": "long",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 6000,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "monday": "2027-01-18",
+     "block": "peak",
+     "kind": "load",
+     "target_minutes": 300,
+     "notes": [
+      {
+       "key": "plan.week.focus.peak",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2703-tue",
+       "date": "2027-01-19",
+       "sport": "run",
+       "template_id": "threshold",
+       "family": "threshold",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 480,
+         "zone": "Z4",
+         "rpe": 7,
+         "repeat": 4,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2703-thu",
+       "date": "2027-01-21",
+       "sport": "run",
+       "template_id": "fartlek",
+       "family": "fartlek",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 120,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 8,
+         "rest_s": 120,
+         "rest_zone": "Z2"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2703-sat",
+       "date": "2027-01-23",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2703-sun",
+       "date": "2027-01-24",
+       "sport": "run",
+       "template_id": "long_progressive",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 5700,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "steady",
+         "duration_s": 1200,
+         "zone": "Z3",
+         "rpe": 6,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 11,
+     "monday": "2027-01-25",
+     "block": "peak",
+     "kind": "load",
+     "target_minutes": 300,
+     "notes": [
+      {
+       "key": "plan.week.focus.peak",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2704-tue",
+       "date": "2027-01-26",
+       "sport": "run",
+       "template_id": "threshold",
+       "family": "threshold",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 900,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 480,
+         "zone": "Z4",
+         "rpe": 7,
+         "repeat": 4,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2704-thu",
+       "date": "2027-01-28",
+       "sport": "run",
+       "template_id": "fartlek",
+       "family": "fartlek",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 120,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 8,
+         "rest_s": 120,
+         "rest_zone": "Z2"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2704-sat",
+       "date": "2027-01-30",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 3600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2704-sun",
+       "date": "2027-01-31",
+       "sport": "run",
+       "template_id": "long_progressive",
+       "family": "long",
+       "quality": false,
+       "start": "09:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 6000,
+         "zone": "Z2",
+         "rpe": 4,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "steady",
+         "duration_s": 1200,
+         "zone": "Z3",
+         "rpe": 6,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "index": 12,
+     "monday": "2027-02-01",
+     "block": "taper",
+     "kind": "race",
+     "target_minutes": 165,
+     "notes": [
+      {
+       "key": "plan.week.focus.race",
+       "args": []
+      }
+     ],
+     "workouts": [
+      {
+       "key": "demo-2705-tue",
+       "date": "2027-02-02",
+       "sport": "run",
+       "template_id": "opener",
+       "family": "opener",
+       "quality": true,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "warmup",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "work",
+         "duration_s": 60,
+         "zone": "Z4",
+         "rpe": 6,
+         "repeat": 4,
+         "rest_s": 120,
+         "rest_zone": "Z1"
+        },
+        {
+         "kind": "cooldown",
+         "duration_s": 600,
+         "zone": "Z2",
+         "rpe": 2,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2705-thu",
+       "date": "2027-02-04",
+       "sport": "run",
+       "template_id": "easy",
+       "family": "easy",
+       "quality": false,
+       "start": "18:00:00",
+       "status": "planned",
+       "goal": null,
+       "parts": [
+        {
+         "kind": "steady",
+         "duration_s": 2400,
+         "zone": "Z2",
+         "rpe": 3,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      },
+      {
+       "key": "demo-2705-sat-race",
+       "date": "2027-02-06",
+       "sport": "run",
+       "template_id": "race",
+       "family": "race",
+       "quality": true,
+       "start": null,
+       "status": "planned",
+       "goal": {
+        "name": "Stadsvarvet",
+        "date": "2027-02-06",
+        "sport": "run",
+        "distance_km": 21.1,
+        "priority": "A",
+        "target": "under 1:35"
+       },
+       "parts": [
+        {
+         "kind": "race",
+         "duration_s": 0,
+         "zone": null,
+         "rpe": 10,
+         "repeat": 1,
+         "rest_s": 0,
+         "rest_zone": "Z1"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "horizon": null
+  },
+  "targets": {
+   "run": {
+    "Z1": {
+     "hr_low": 96,
+     "hr_high": 115,
+     "speed_low_kmh": null,
+     "speed_high_kmh": null,
+     "estimated": false,
+     "speed_low_approx": false,
+     "speed_high_approx": false,
+     "speed_from_hr": false
+    },
+    "Z2": {
+     "hr_low": 115,
+     "hr_high": 165,
+     "speed_low_kmh": null,
+     "speed_high_kmh": 13.2,
+     "estimated": false,
+     "speed_low_approx": false,
+     "speed_high_approx": false,
+     "speed_from_hr": false
+    },
+    "Z3": {
+     "hr_low": 165,
+     "hr_high": 170,
+     "speed_low_kmh": 13.2,
+     "speed_high_kmh": 13.8,
+     "estimated": false,
+     "speed_low_approx": false,
+     "speed_high_approx": false,
+     "speed_from_hr": false
+    },
+    "Z4": {
+     "hr_low": 170,
+     "hr_high": 174,
+     "speed_low_kmh": 13.8,
+     "speed_high_kmh": 14.4,
+     "estimated": false,
+     "speed_low_approx": false,
+     "speed_high_approx": false,
+     "speed_from_hr": false
+    },
+    "Z5": {
+     "hr_low": 174,
+     "hr_high": 192,
+     "speed_low_kmh": 14.4,
+     "speed_high_kmh": null,
+     "estimated": false,
+     "speed_low_approx": false,
+     "speed_high_approx": false,
+     "speed_from_hr": false
+    }
+   }
+  },
+  "targets_log": []
+ },
+ "marks": {
+  "demo-2647-mon": {
+   "status": "done"
+  },
+  "demo-2647-tue": {
+   "status": "partial",
+   "minutes": 20
+  },
+  "demo-2647-thu": {
+   "status": "done",
+   "auto": true
+  }
+ },
+ "extras": [
+  {
+   "id": "2026-11-23-1",
+   "date": "2026-11-23",
+   "sport": "other",
+   "minutes": 30,
+   "name": "Yoga"
+  }
+ ]
+}

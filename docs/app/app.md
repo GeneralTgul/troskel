@@ -8,6 +8,7 @@
 - [Vad appen gör](#vad-appen-gör)
 - [Hur schemat kommer till appen](#hur-schemat-kommer-till-appen)
   - [Från coach till idrottare](#från-coach-till-idrottare)
+  - [Från idrottare till coach](#från-idrottare-till-coach)
   - [Ett nytt test ger ett nytt schema](#ett-nytt-test-ger-ett-nytt-schema)
 - [Bocka av passen](#bocka-av-passen)
   - [Veckan i siffror](#veckan-i-siffror)
@@ -86,16 +87,28 @@ Båda kräver hälsodeklarationen och sparar schemat först, som utskriften och 
 
 Efter *Förnya* eller ett nytt test ger *Till appen* det nya schemat, med samma schema-id och samma start. Appen har ett schema i taget: varje inläst schema ersätter det sparade (`setPlan` i `app/src/model/storage.ts`) och tar bort tider under *Mina tider* som inte har räknats in än.
 
+### Från idrottare till coach
+
+Inför ett nytt test kan coachen läsa in idrottarens schema i Tröskel, så att testet ger nya mål i idrottarens eget schema och inte i det som en gång skickades. Under *Om* finns rutan ***Skicka schemat till din coach*** (`app/src/views/Share.tsx`), när appen har ett eget schema (inte exemplet):
+
+- **Vad som följer med** står i rutan: schemat som det ser ut i telefonen, med idrottarens tider och det appens motor räknat om, det som är avbockat (också det [hälsodatan](#passen-bockas-av-av-sig-själva) bockat av, märkt `auto`), passen utanför schemat, tider som väntar under *Mina tider* och dagen för exporten. Nätterna (sömn, vilopuls, HRV) och klockans pass stannar i telefonen.
+- **Idrottarens godkännande:** knapparna *Spara som fil* och *Kopiera länken* är grå tills idrottaren kryssat i *Jag vill dela det här med min coach*.
+- **Filen** heter `troskel-<namn>-<dag>.troskel` och är JSON i formatet `troskel.athlete` (format 1, `app/src/model/share.ts`). **Länken** är `…/troskel/app/#a=<data>`, kodad som schemats länk (deflate och base64url). Appen öppnar inte en sådan länk, och delen efter `#` skickas aldrig till en server. Länken är längre än schemats, eftersom den bär hela schemat.
+- **Appen skickar inget själv:** idrottaren väljer vem filen eller länken går till, till exempel i ett meddelande eller ett mejl.
+
+I Tröskel läser coachen in det med *Läs in från appen* på sidan *Träningsschema* ([handboken](../handbok/traningsschema/traningsschema.md#läs-in-schemat-från-appen)). Tröskel läser formatet med `src/lopanalys/plan/phone.py`.
+
 ### Ett nytt test ger ett nytt schema
 
 Passen i telefonen ändras bara av ett nytt test eller av idrottarens eget val under *Mina tider*, aldrig av sig själva. Appen räknar inte fram veckorna efter gränsen för passen, och samma sparade schema ser likadant ut hur långt senare appen än öppnas. Kedjan efter ett nytt test:
 
-1. Tröskel lägger resten av schemat på testet (*Lägg om schemat*, `apply_retest` i `src/lopanalys/ui/services.py`): från testdagen får passen i testets idrott de nya målen, passen före testdagen behåller de gamla (`targets_log`), och inget pass byter dag. De närmaste veckorna får sina pass, som vid *Förnya*.
-2. Coachen ger idrottaren en ny länk, QR-kod eller fil med *Till appen* eller *Skicka till idrottaren*. Den har samma schema-id och samma nycklar på passen.
-3. Telefonen byter schemat. Det idrottaren bockat av, passen utanför planen och hälsodatan ligger kvar (`keepFor` i `app/src/model/log.ts`).
-4. Hade idrottaren ändrat sina tider under *Mina tider*, har det nya schemat ändå coachens tider. Idrottarens tider ligger då kvar under *Mina tider* med en rad om det, och *Spara* lägger det nya schemat på dem, med det nya testets mål (`keptTimes` i `app/src/model/times.ts`). Appen gör det inte av sig själv. Ett schema som är skrivet utanför motorn (`source`, se [Mina tider och planmotorn](#mina-tider-och-planmotorn)) har inga egna tider att spara, och ett schema med ett annat id behåller inga tider.
+1. Har idrottaren ändrat sina tider eller bockat av pass, läser coachen först in schemat från telefonen ([Från idrottare till coach](#från-idrottare-till-coach)). Då bygger resten av kedjan på idrottarens schema.
+2. Tröskel lägger resten av schemat på testet (*Lägg om schemat*, `apply_retest` i `src/lopanalys/ui/services.py`): från testdagen får passen i testets idrott de nya målen, passen före testdagen behåller de gamla (`targets_log`), och inget pass byter dag. De närmaste veckorna får sina pass, som vid *Förnya*.
+3. Coachen ger idrottaren en ny länk, QR-kod eller fil med *Till appen* eller *Skicka till idrottaren*. Den har samma schema-id och samma nycklar på passen.
+4. Telefonen byter schemat. Det idrottaren bockat av, passen utanför planen och hälsodatan ligger kvar (`keepFor` i `app/src/model/log.ts`).
+5. Läste coachen in schemat från telefonen har det nya schemat idrottarens tider, också de som väntade under *Mina tider*, och telefonen behåller inga tider. Annars har det nya schemat coachens tider. Idrottarens tider (de inräknade, eller de som väntar) ligger då kvar under *Mina tider* med en rad om det, och *Spara* lägger det nya schemat på dem, med det nya testets mål (`keptTimes` i `app/src/model/times.ts`). Appen gör det inte av sig själv. Ett schema som är skrivet utanför motorn (`source`, se [Mina tider och planmotorn](#mina-tider-och-planmotorn)) har inga egna tider att spara, och ett schema med ett annat id behåller inga tider.
 
-Proven: `tests/plan/test_retest_chain.py` går hela vägen med två tester på samma idrottare, och `app/test/retest_phone.test.tsx` provar telefonens sida. I en riktig telefon är kedjan inte provad.
+Proven: `tests/plan/test_retest_chain.py` går hela vägen med två tester på samma idrottare, och `app/test/retest_phone.test.tsx` provar telefonens sida. Vägen från telefonen och tillbaka provas med en fixtur ur `app/scripts/make_fixtures.py` (`athlete.troskel` och `athlete.back.link.txt`): `app/test/share.test.tsx` på telefonens sida, `tests/plan/test_phone.py` och `tests/ui/test_plan_phone.py` i Tröskel. I en riktig telefon är kedjan inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
 
 ## Bocka av passen
 
@@ -245,7 +258,7 @@ Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriv
 
 ## Integritet
 
-Appen skickar inga data någonstans. Den har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen, [hälsodatan](#hälsodatan) och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
+Appen skickar inga data någonstans. Det idrottaren själv delar med *Skicka schemat till din coach* ([Från idrottare till coach](#från-idrottare-till-coach)) går som en fil eller en länk som idrottaren ger vidare. Appen har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen, [hälsodatan](#hälsodatan) och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
 
 Var de sparas står i `app/src/model/storage.ts`:
 

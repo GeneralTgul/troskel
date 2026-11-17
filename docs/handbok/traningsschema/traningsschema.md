@@ -18,6 +18,7 @@
   - [Till appen](#till-appen)
   - [Skicka schemat med e-post](#skicka-schemat-med-e-post)
 - [Efter ett nytt test](#efter-ett-nytt-test)
+  - [Läs in schemat från appen](#läs-in-schemat-från-appen)
 - [Det som inte är provat](#det-som-inte-är-provat)
 <!-- /toc -->
 
@@ -243,6 +244,23 @@ Ett test i en annan idrott än löpning flyttar bara den idrottens mål. Löpnin
 
 Skriv ut schemat igen, spara en ny kalenderfil eller använd *Till appen* efteråt, så får idrottaren de nya målen. Vill du i stället ha ett helt nytt schema från i dag: välj det nya testet under *Bygger på testet*, ändra startdatumet och spara.
 
+### Läs in schemat från appen
+
+Har idrottaren ändrat sina tider i appen, bockat av pass eller lagt till pass utanför schemat, läs in schemat från telefonen före det nya testet. Då lägger *Lägg om schemat* de nya målen i idrottarens eget schema, och länken från *Till appen* har idrottarens tider.
+
+1. Idrottaren väljer *Skicka schemat till din coach* under *Om* i appen, kryssar i godkännandet och skickar filen eller länken till dig ([appen](../../app/app.md#från-idrottare-till-coach)).
+2. På sidan *Träningsschema*: *Läs in från appen* → *Från en fil …* (filen `.troskel`) eller *Klistra in länken* (kopiera först länken ur meddelandet; resten av texten gör inget).
+3. Programmet säger vad som är inläst: hur många pass som är gjorda, delvis gjorda och missade, och passen utanför schemat. Lägg sedan om schemat efter det nya testet och ge idrottaren det med *Till appen*.
+
+Vad inläsningen gör:
+
+- **Samma schema** (samma schema-id som det sparade) läses in direkt. Schemat från telefonen, med idrottarens tider, ersätter det sparade. Testet under *Bygger på testet* och hälsodeklarationen ligger kvar.
+- **Tider som väntar** under *Mina tider* i appen läggs på schemat från och med i morgon, med samma regel som appens *Spara*. Ett schema som är skrivet utanför motorn behåller sina pass.
+- **Det avbockade** blir passens status: *gjort* och *missat*. Ett delvis gjort pass står kvar som planerat, med minuterna i loggen.
+- **Loggen:** allt från telefonen (märkena, passen utanför schemat, väntande tider och exportdagen) sparas i schemats logg, och raden *Från appen …* under översikten säger när det senast lästes in.
+- **Ett annat schema**, eller ett schema som står på någon annans namn, frågar programmet om först. Ett annat schema kommer då i det sparades ställe, utan test under *Bygger på testet*.
+- Ett schema från Tröskel (länken eller filen till appen) är inte idrottarens schema, och programmet säger det.
+
 ## Det som inte är provat
 
-Utskriften på en riktig skrivare, kalenderfilen i en telefon, QR-koden från *Till appen* med en riktig telefon och schemat med e-post till en riktig inkorg är inte provade än, och inte heller formuläret och utskriften med flera idrotter på Windows. Läget står i [PROV.md](../../PROV.md).
+Utskriften på en riktig skrivare, kalenderfilen i en telefon, QR-koden från *Till appen* med en riktig telefon, *Läs in från appen* med en fil och en länk från en riktig telefon och schemat med e-post till en riktig inkorg är inte provade än, och inte heller formuläret och utskriften med flera idrotter på Windows. Läget står i [PROV.md](../../PROV.md).

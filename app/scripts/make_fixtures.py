@@ -7,7 +7,7 @@ The example plan is the demo runner of ``lopanalys.plan.demo`` (12 weeks, a half
 
 ``engine.json.gz`` is what the app's TypeScript engine (app/src/engine) is checked against: plans that
 ``build_plan`` and ``roll_forward`` make from demo requests, and ``rebuild`` on the demo plans with new times.
-``rebuild`` here is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
+``rebuild`` (``lopanalys.plan.phone.rebuild``) is the rule the app's ``rebuild`` follows, written with the Python engine's own functions.
 ``texts`` is what the app shows of a workout in another sport (title, parts and their watt, time per 500 m or per
 100 m, how it should feel, tips and drills), written by text.py and resolve.py; ``guide`` is library.TIPS and
 library.DRILLS, which app/src/engine/library.ts has too.
@@ -28,7 +28,7 @@ from typing import Any
 
 from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
-from lopanalys.plan import codec, demo, ics, library, link, text
+from lopanalys.plan import codec, demo, ics, library, link, phone, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
 from lopanalys.plan.models import Capacity, Goal, HardDay, PlanRequest, SportRole
 from lopanalys.plan.rolling import roll_forward
@@ -46,34 +46,7 @@ def _texts(lang: str) -> bytes:
     return (json.dumps(out, ensure_ascii=False, indent=1, sort_keys=True) + "\n").encode("utf-8")
 
 
-def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: list[str], from_day: str) -> dict[str, Any]:
-    """The stored plan with new times from ``from_day`` on: what ``rebuild`` in app/src/engine/index.ts does.
-
-    The request gets the new slots and the engine builds the whole plan again (same id, same ``created``),
-    so the blocks stay and the weekly time follows what the new slots hold. A week that ends before
-    ``from_day`` is kept as it was saved; in the week of ``from_day`` the workouts before it are kept (with
-    their status) and the rest are new. The horizon of a rolling plan stays: the weeks after it are sketches
-    of the new plan. On the dates in ``unavailable`` the workouts are dropped (races stay). Raises ValueError
-    when the engine cannot make a plan."""
-    day = date.fromisoformat(from_day)
-    off = {date.fromisoformat(d) for d in unavailable}
-    request = codec.request_from_dict({**stored["request"], "availability": slots}, stored["athlete"])
-    old = codec.plan_from_dict(stored["plan"], codec.request_from_dict(stored["request"], stored["athlete"]))
-    fresh = build_plan(request, plan_id=old.id, created=old.created)
-    assert len(fresh.weeks) == len(old.weeks)
-    weeks = []
-    for was, new in zip(old.weeks, fresh.weeks):
-        if was.sunday < day:
-            weeks.append(was)
-        elif old.horizon is not None and new.index > old.horizon:
-            weeks.append(sketch_of(new))
-        else:
-            kept = [w for w in was.workouts if w.date < day]
-            made = [w for w in new.workouts if w.date >= day and (w.goal is not None or w.date not in off)]
-            weeks.append(replace(new, workouts=sorted(kept + made, key=lambda w: (w.date, w.key))))
-    plan = replace(old, request=request, blocks=fresh.blocks, notes=fresh.notes, weeks=weeks,
-                   engine_version=ENGINE_VERSION)
-    return {**stored, "request": codec.request_to_dict(request), "plan": codec.plan_to_dict(plan)}
+rebuild = phone.rebuild        # the rule the app's rebuild follows, in lopanalys.plan.phone (Tröskel uses it too)
 
 
 def _slot(weekday: int, minutes: int, start: str | None = "18:00:00", role: str = "core",
@@ -397,6 +370,34 @@ def short_links(build: list[dict[str, Any]], roll: list[dict[str, Any]], rolling
     return out
 
 
+def athlete_fixture(stored: dict[str, Any]) -> dict[str, Any]:
+    """What the app sends the coach (app/src/model/share.ts, read by plan.phone): the demo plan without Mondays from
+    26 November (the app's *Spara* on the 25th), the first workout done, the second partly done, the third ticked off
+    by the watch, and a session outside the plan. app/test/share.test.ts builds the same with the app's engine."""
+    slots = [s for s in stored["request"]["availability"] if s["weekday"] != 0]
+    plan = phone.rebuild(stored, slots, [], "2026-11-26")
+    w = [x for wk in plan["plan"]["weeks"] for x in wk["workouts"]]
+    return {"kind": phone.KIND, "format": phone.FORMAT, "exported": "2026-11-25", "plan": plan,
+            "marks": {w[0]["key"]: {"status": "done"}, w[1]["key"]: {"status": "partial", "minutes": 20},
+                      w[2]["key"]: {"status": "done", "auto": True}},
+            "extras": [{"id": "2026-11-23-1", "date": "2026-11-23", "sport": "other", "minutes": 30, "name": "Yoga"}]}
+
+
+# The new test after the coach read the athlete's plan in (app/test/share.test.tsx): the day after the export.
+RETEST = Capacity("run", Anchors(192, 45, 168, 177, 13.6, 14.8), date(2026, 11, 26), "Laktattrappa")
+
+
+def athlete_back(athlete: dict[str, Any]) -> dict[str, Any]:
+    """The way back to the phone: Tröskel reads ``athlete`` in (plan.phone, as services.import_phone_plan), a new
+    test lays its targets on it (resolve.retest and roll_forward, as services.apply_retest), and the plan goes to the
+    app again. It has the athlete's times, so the app keeps nothing waiting (keptTimes)."""
+    from lopanalys.plan import resolve
+    day = RETEST.tested
+    got = phone.read(json.dumps(athlete))
+    plan = roll_forward(resolve.retest(phone.to_plan(got, got.athlete, day), RETEST, from_date=day), day)
+    return link.stored_plan(plan)
+
+
 def _gz(data: Any) -> bytes:
     raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return gzip.compress(raw, compresslevel=9, mtime=0)
@@ -409,7 +410,12 @@ def outputs() -> dict[Path, bytes]:
     out = {APP / "public" / "demo.troskel": link.plan_file(stored),
            APP / "test" / "fixtures" / "demo.link.txt": (link.plan_link(link.link_payload(stored)) + "\n").encode("ascii"),
            APP / "test" / "fixtures" / "demo.full.link.txt": (link.plan_link(stored) + "\n").encode("ascii"),
-           APP / "test" / "fixtures" / "demo.sv.ics": ics.to_ics(plan).encode("utf-8")}
+           APP / "test" / "fixtures" / "demo.sv.ics": ics.to_ics(plan).encode("utf-8"),
+           APP / "test" / "fixtures" / "athlete.troskel":
+               (json.dumps(athlete_fixture(stored), ensure_ascii=False, indent=1) + "\n").encode("utf-8"),
+           APP / "test" / "fixtures" / "athlete.link.txt": (phone.athlete_link(athlete_fixture(stored)) + "\n").encode("ascii"),
+           APP / "test" / "fixtures" / "athlete.back.link.txt":
+               (link.plan_link(link.link_payload(athlete_back(athlete_fixture(stored)))) + "\n").encode("ascii")}
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
     out[APP / "test" / "fixtures" / "engine.json.gz"] = _gz(engine_fixtures())

@@ -1742,6 +1742,60 @@ def renew_plan(store: Store, athlete: Athlete, today: date | None = None) -> Sto
     return StoredPlan(plan, stored.session_id, stored.health, stored.row_id)
 
 
+def read_phone_plan(text: str) -> Any:
+    """The athlete's plan from the app (plan.phone.read): the contents of the file or a pasted link."""
+    from lopanalys.plan import phone
+    return phone.read(text)
+
+
+def phone_plan_question(stored: StoredPlan | None, athlete: Athlete, phone_plan: Any) -> str | None:
+    """The question the plan page asks before it reads ``phone_plan`` in, or None when it reads it in at once: the
+    same plan (a plan from Tröskel the athlete has changed), or no saved plan for an athlete of the same name. Another
+    plan id puts another plan in place of the saved one; another name may be another athlete's phone."""
+    parts = []
+    if stored is not None and stored.plan.id != phone_plan.plan_id:
+        parts.append(t("ui.plan.phone.replace", start=stored.plan.start.isoformat()))
+    if phone_plan.athlete and phone_plan.athlete.casefold() != athlete.name.casefold():
+        parts.append(t("ui.plan.phone.other_name", name=phone_plan.athlete, athlete=athlete.name))
+    return " ".join([*parts, t("ui.plan.phone.ask")]) if parts else None
+
+
+def import_phone_plan(store: Store, athlete: Athlete, phone_plan: Any, today: date | None = None) -> StoredPlan:
+    """Read the athlete's plan from the phone in (#781): the phone's plan, with the athlete's times and what the app
+    rebuilt, replaces the saved one; the times still waiting under *Mina tider* are laid on it from tomorrow, and what
+    is ticked off becomes the workouts' status. The whole log (marks, the sessions outside the plan) is kept in the
+    plan's event log as ``phone``. The test and the health declaration stay as saved; the targets follow the tests
+    (``load_plan``). A new test then lays its targets on the athlete's own plan (``apply_retest``), and the link
+    back holds the athlete's times, so the phone takes it without the athlete pressing *Spara* (app: keptTimes)."""
+    from lopanalys.plan import phone
+    old = load_plan(store, athlete)
+    plan = phone.to_plan(phone_plan, athlete.name, today)
+    same = old is not None and old.plan.id == plan.id
+    session_id = old.session_id if same else None
+    detail = {**phone_plan.log(), "plan_id": plan.id, "replaced": None if old is None or same else old.plan.id}
+    row = save_plan(store, athlete, plan, session_id, None, "phone", detail)
+    return load_plan(store, athlete) or StoredPlan(plan, session_id, old.health if old else {}, row)
+
+
+def phone_read_text(phone_plan: Any, plan: Any, today: date | None = None) -> str:
+    """What the plan page says when the plan from the phone is read in: what was ticked off, the athlete's times
+    when they were laid on the plan here, and that a new test now lays its targets on this plan."""
+    c = phone_plan.counts()
+    out = [t("ui.plan.phone.read", date=phone_plan.exported.isoformat(), done=c["done"], partial=c["partial"],
+             missed=c["missed"], extras=c["extras"])]
+    if phone_plan.times and not plan.source:
+        out.append(t("ui.plan.phone.times", date=((today or date.today()) + timedelta(days=1)).isoformat()))
+    out.append(t("ui.plan.phone.next"))
+    return " ".join(out)
+
+
+def phone_logs(store: Store, stored: StoredPlan | None) -> list[dict[str, Any]]:
+    """The logs the athlete has sent from the phone for the saved plan, oldest first (the ``phone`` events)."""
+    if stored is None or stored.row_id is None:
+        return []
+    return [e["detail"] for e in store.db.plan_events(stored.row_id) if e["kind"] == "phone"]
+
+
 def plan_renew_due(store: Store, athlete: Athlete, today: date | None = None) -> StoredPlan | None:
     """The athlete's saved plan when its detailed weeks end within 7 days and more weeks follow, else None."""
     from lopanalys.plan import rolling

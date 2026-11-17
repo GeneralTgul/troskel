@@ -349,6 +349,14 @@ class PlanView(QWidget):
         self.del_btn = button(t("ui.plan.delete"), "trash", kind="ghost")
         self.del_btn.clicked.connect(self.delete)
         row.addWidget(self.del_btn)
+        # *Läs in från appen* (#781): the athlete's plan from the phone, as a file or a pasted link
+        self.phone_btn = button(t("ui.plan.phone.button"), "upload", kind="ghost")
+        self.phone_btn.setToolTip(t("ui.plan.phone.tip"))
+        phone_menu = QMenu(self.phone_btn)
+        phone_menu.addAction(t("ui.plan.phone.from_file"), lambda: self.read_phone_file())
+        phone_menu.addAction(t("ui.plan.phone.from_clipboard"), lambda: self.read_phone_clipboard())
+        self.phone_btn.setMenu(phone_menu)
+        row.addWidget(self.phone_btn)
         self.mail_note = label("", "Hint", wrap=True)     # when it was mailed, or why it cannot be
         row.addWidget(self.mail_note, 1)
         self.cancel_btn = button(t("ui.common.cancel"), "x", kind="ghost")
@@ -613,6 +621,8 @@ class PlanView(QWidget):
         s.addLayout(self.zone_lay)
         self.notes = label("", "Hint", wrap=True)
         s.addWidget(self.notes)
+        self.phone_note = label("", "Hint", wrap=True)     # the latest plan read in from the athlete's phone
+        s.addWidget(self.phone_note)
         v.addWidget(self.shown, 1)
         self.shown.hide()
 
@@ -996,6 +1006,13 @@ class PlanView(QWidget):
                            before=old.tested.isoformat() if old.tested else "–"))
         self.notes.setText("\n".join(notes))
         self.notes.setVisible(bool(notes))
+        sent = services.phone_logs(self.ctx.store, self.stored) if plan is (self.stored.plan if self.stored else None) else []
+        if sent:
+            last = sent[-1]
+            done = sum(1 for m in last.get("marks", {}).values() if m.get("status") in ("done", "partial"))
+            self.phone_note.setText(t("ui.plan.phone.note", date=last.get("exported", ""), done=done,
+                                      extras=len(last.get("extras", []))))
+        self.phone_note.setVisible(bool(sent))
 
     # ------------------------------------------------------------------ form -> plan
     def _fail(self, text: str) -> None:
@@ -1226,6 +1243,56 @@ class PlanView(QWidget):
         QMessageBox.information(self, t("ui.plan.title"),
                                 t("ui.plan.renew_done", week=plan.detailed_until.index) if plan.horizon != before
                                 else t("ui.plan.renew_nothing"))
+        return True
+
+    def read_phone_file(self) -> bool:
+        """*Läs in från appen → Från en fil*: the ``.troskel`` file the athlete saved in the app."""
+        if self.athlete is None:
+            return False
+        fn, _ = QFileDialog.getOpenFileName(self, t("ui.plan.phone.button"), str(Path.home()), t("ui.plan.phone.filter"))
+        if not fn:
+            return False
+        try:
+            text = Path(fn).read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeDecodeError) as e:
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.plan.phone.err.file", detail=str(e)))
+            return False
+        return self.read_from_phone(text)
+
+    def read_phone_clipboard(self) -> bool:
+        """*Läs in från appen → Klistra in länken*: the link the athlete copied in the app and sent in a message."""
+        from PySide6.QtGui import QGuiApplication
+        return self.read_from_phone(QGuiApplication.clipboard().text())
+
+    def read_from_phone(self, text: str, today: date | None = None) -> bool:
+        """Read the athlete's plan from the phone in (services.import_phone_plan): the plan as the athlete has it,
+        so that a new test lays its targets on it. Another plan, or a plan with another name, is asked about first."""
+        from lopanalys.plan import phone
+        a = self.athlete
+        if a is None or not self.confirm_discard():
+            return False
+        try:
+            got = services.read_phone_plan(text)
+        except phone.NotFromPhone as e:
+            QMessageBox.warning(self, t("ui.plan.phone.button"), t(f"ui.plan.phone.err.{e.code}"))
+            return False
+        question = services.phone_plan_question(self.stored, a, got)
+        if question is not None:
+            r = QMessageBox.question(self, t("ui.plan.phone.button"), question,
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                                     QMessageBox.StandardButton.Cancel)
+            if r != QMessageBox.StandardButton.Yes:
+                return False
+        try:
+            services.import_phone_plan(self.ctx.store, a, got, today)
+        except Exception as e:
+            log.exception("reading the plan from the phone failed")
+            QMessageBox.warning(self, t("ui.app.name"), t("ui.err.save_failed", detail=str(e)))
+            return False
+        self.stored = services.load_plan(self.ctx.store, a)
+        self._fill(None)
+        assert self.stored is not None
+        QMessageBox.information(self, t("ui.plan.title"), services.phone_read_text(got, self.stored.plan, today))
         return True
 
     def confirm_discard(self) -> bool:

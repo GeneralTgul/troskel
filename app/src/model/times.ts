@@ -1,4 +1,5 @@
 /** The athlete's times as one row per weekday, and back to the plan's slots. */
+import type { PendingTimes } from "./storage";
 import type { IsoDate, StoredPlan, StoredSlot } from "./types";
 
 export interface DayTimes {
@@ -38,14 +39,17 @@ export function slotsFromDays(days: DayTimes[], original: StoredSlot[], sports: 
 
 /** The athlete's own times to keep when a new plan replaces `old` (#776): a new test gives a new link with the
  * same plan id, built on the times the coach has. When the athlete had changed the times in the app ("Mina tider"
- * rebuilt the plan), the new plan would drop them without a word. They are kept as pending times instead, so the
- * athlete sees them and chooses to lay the new plan on them; the app never rebuilds it by itself. None: nothing to
- * keep (another plan, the same times, or a plan written outside the engine, whose times are not the athlete's). */
-export function keptTimes(old: StoredPlan | null, incoming: StoredPlan, today: IsoDate): {
+ * rebuilt the plan, or `pending` waits there), the new plan would drop them without a word. They are kept as pending
+ * times instead, so the athlete sees them and chooses to lay the new plan on them; the app never rebuilds it by
+ * itself. None: nothing to keep (another plan, the athlete's times already in the new plan, or a plan written outside
+ * the engine, whose times are not the athlete's). The coach who read the athlete's plan in from the phone (#781)
+ * sends a plan that has the athlete's times, also those that were waiting, so it gives none. */
+export function keptTimes(old: StoredPlan | null, incoming: StoredPlan, today: IsoDate, pending: PendingTimes | null = null): {
   slots: StoredSlot[]; unavailable: IsoDate[]; saved: IsoDate; kept: true;
 } | null {
   if (!old || old.plan.id !== incoming.plan.id || old.plan.source || incoming.plan.source) return null;
   const key = (s: StoredSlot[]) => JSON.stringify(s.map((x) => [x.weekday, x.max_minutes, x.start, x.role, [...x.sports].sort()]));
-  if (key(old.request.availability) === key(incoming.request.availability)) return null;
-  return { slots: old.request.availability, unavailable: [], saved: today, kept: true };
+  const own = pending?.slots ?? old.request.availability;
+  if (key(own) === key(incoming.request.availability)) return null;
+  return { slots: own, unavailable: (pending?.unavailable ?? []).filter((d) => d > today), saved: today, kept: true };
 }

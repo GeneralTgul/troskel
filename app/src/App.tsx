@@ -8,6 +8,7 @@ import { linkData, PlanError, readPlanText } from "./model/link";
 import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
 import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
+import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
 import { keptTimes } from "./model/times";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
@@ -131,7 +132,7 @@ export function App(props: AppProps) {
   }, [hc]);
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
-    const kept = isDemo || demo ? null : keptTimes(stored, p, today);
+    const kept = isDemo || demo ? null : keptTimes(stored, p, today, pending);
     store.setPlan(p, isDemo);
     if (kept) store.setTimes(kept);
     onLog(keepFor(store.log(), p));
@@ -233,6 +234,22 @@ export function App(props: AppProps) {
     ? () => props.download!("troskel.ics", toIcs(stored, { from: today }), "text/calendar")
     : undefined;
 
+  // The plan to the coach (#781): the plan as the phone has it, what is ticked off and the sessions outside it.
+  const toCoach = () => athletePayload(stored!, log, auto, pending, today);
+  const share = stored && !demo ? {
+    file: props.download
+      ? () => { const p = toCoach(); props.download!(athleteFileName(p), athleteFile(p), "application/json"); }
+      : undefined,
+    copy: async () => {
+      try {
+        await globalThis.navigator.clipboard.writeText(athleteLink(toCoach()));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  } : undefined;
+
   const camera = props.hasCamera ? () => { setError(null); setQr(true); } : undefined;
 
   let body;
@@ -278,7 +295,8 @@ export function App(props: AppProps) {
           <About lang={lang} stored={stored} onLang={changeLang} onDelete={deleteAll}
             wall={wall} onWall={stored ? changeWall : undefined} canKeepAwake={props.canKeepAwake ?? canKeepAwake()}
             onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined}
-            healthConnect={hc ? { on: hcOn, read: () => void readHc(true), settings: () => void hc.openHealthConnectSettings().catch(() => {}) } : undefined} />
+            healthConnect={hc ? { on: hcOn, read: () => void readHc(true), settings: () => void hc.openHealthConnectSettings().catch(() => {}) } : undefined}
+            share={share} />
         ) : null}
       </main>
       {toast ? <div class="toast" role="status">{toast}</div> : null}
