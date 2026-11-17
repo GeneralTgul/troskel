@@ -21,7 +21,10 @@ Appen i butikerna är samma webbapp som på GitHub Pages ([Appen för idrottaren
 - appen läser bara sina egna filer (`dist/`), utan någon server-adress, så inget lämnar telefonen,
 - de inbyggda projekten ligger i `app/android` (Gradle) och `app/ios` (Swift Package Manager, inga CocoaPods).
 
-Det enda insticket är `@capacitor/preferences`, som sparar schemat, tiderna och inställningarna i telefonens egen lagring i stället för webbvyns ([Integritet](../app.md#integritet)).
+Insticken är två:
+
+- `@capacitor/preferences`, som sparar schemat, tiderna och inställningarna i telefonens egen lagring i stället för webbvyns ([Integritet](../app.md#integritet)),
+- `@capgo/capacitor-health` (MPL-2.0), som bara på Android läser Health Connect: pass, puls, sömn, vilopuls och HRV, aldrig skrivning ([Health Connect i Android-appen](../app.md#health-connect-i-android-appen)). Därför kräver Android 8 (API 26). Innan en version med hälsobehörigheterna får publiceras på Google Play ska behörigheterna deklareras i Play Console (*App content → Health apps* och datasäkerheten), med integritetspolicyns adress. *ej verifierat mot källa*
 
 Ikonen och startbilden ritas ur källorna i `app/resources`.
 

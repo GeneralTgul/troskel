@@ -15,9 +15,14 @@ interface Props {
   /** Missing until there is a plan to show on the wall. */
   onWall?: (on: boolean) => void;
   canKeepAwake?: boolean;
+  /** Health Connect, only in the Android app: `on` once the athlete let the app read it. */
+  healthConnect?: { on: boolean; read: () => void; settings: () => void };
 }
 
-export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false, onWall, canKeepAwake = true }: Props) {
+/** The privacy page, also shown by Health Connect as the app's rationale for the permissions. */
+export const PRIVACY_URL = "https://generaltgul.github.io/troskel/app/privacy.html";
+
+export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false, onWall, canKeepAwake = true, healthConnect }: Props) {
   return (
     <section class="view about">
       <h2>{t("ui.about.title")}</h2>
@@ -42,6 +47,22 @@ export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false,
           </label>
           <p class="muted small">{t("ui.about.wall")}</p>
           {wall && !canKeepAwake ? <p class="notice small">{t("ui.about.wall_no_lock")}</p> : null}
+        </>
+      ) : null}
+
+      {healthConnect ? (
+        <>
+          <h3>{t("ui.hc.title")}</h3>
+          <p class="small">{t("ui.hc.why")}</p>
+          <button class={`${healthConnect.on ? "secondary" : "primary"} wide`} onClick={healthConnect.read}>
+            {t(healthConnect.on ? "ui.hc.again" : "ui.hc.read")}
+          </button>
+          {healthConnect.on ? <p class="muted small">{t("ui.hc.on")}</p> : null}
+          <p class="small">
+            <button class="link-btn" onClick={healthConnect.settings}>{t("ui.hc.settings")}</button>
+            {" · "}
+            <a href={PRIVACY_URL} target="_blank" rel="noopener">{t("ui.hc.privacy")}</a>
+          </p>
         </>
       ) : null}
 

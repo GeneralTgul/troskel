@@ -6,6 +6,7 @@ import { liveDemo } from "./model/demo";
 import { toIcs } from "./model/ics";
 import { linkData, PlanError, readPlanText } from "./model/link";
 import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
+import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
@@ -44,6 +45,8 @@ export interface AppProps {
   /** The wall mode's screen lock (wall.keepAwake); a stand-in in the tests. */
   keepAwake?: () => () => void;
   canKeepAwake?: boolean;
+  /** Health Connect in the Android app (healthconnect.ts); missing in the browser and on iOS. */
+  healthConnect?: HealthPluginLike | null;
 }
 
 function errorText(e: unknown): string {
@@ -71,6 +74,7 @@ export function App(props: AppProps) {
   const [log, setLogState] = useState<TrainingLog>(() => store.log());
   const [health, setHealth] = useState<HealthData | null>(() => store.health());
   const [wall, setWall] = useState(() => store.settings().wall === true);
+  const [hcOn, setHcOn] = useState(() => store.settings().healthConnect === true);
   // Bumped when the wall mode goes back home: the views start again, the week view on this week.
   const [home, setHome] = useState(0);
 
@@ -94,6 +98,36 @@ export function App(props: AppProps) {
       setError(t("ui.health.error"));
     }
   };
+
+  // Health Connect: the button in "About" asks for the permission; afterwards the app reads at each start and
+  // when it comes back to the front, without asking.
+  const hc = props.healthConnect;
+  const readHc = async (ask: boolean) => {
+    if (!hc) return;
+    const now = props.now?.() ?? new Date();
+    const r = await readHealthConnect(hc, ask, now);
+    if (r.ok) {
+      const h = mergeHealth(store.health(), r.data, todayIn(now, props.timeZone));
+      store.setHealth(h);
+      setHealth(h);
+      if (!store.settings().healthConnect) store.setSettings({ ...store.settings(), healthConnect: true });
+      setHcOn(true);
+      if (ask) {
+        setError(null);
+        setToast(t("ui.health.loaded"));
+      }
+    } else if (ask) setError(t(`ui.hc.${r.why}`));
+  };
+
+  useEffect(() => {
+    if (!hc) return;
+    const again = () => {
+      if (store.settings().healthConnect && globalThis.document?.visibilityState !== "hidden") void readHc(false);
+    };
+    again();
+    globalThis.document?.addEventListener("visibilitychange", again);
+    return () => globalThis.document?.removeEventListener("visibilitychange", again);
+  }, [hc]);
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
     store.setPlan(p, isDemo);
@@ -184,6 +218,7 @@ export function App(props: AppProps) {
     store.clear();
     setLogState(store.log());
     setHealth(null);
+    setHcOn(false);
     setWall(false);
     setStored(null);
     setDemo(false);
@@ -239,7 +274,8 @@ export function App(props: AppProps) {
         {(tab === "about" && showTabs) || (!stored && !qr) ? (
           <About lang={lang} stored={stored} onLang={changeLang} onDelete={deleteAll}
             wall={wall} onWall={stored ? changeWall : undefined} canKeepAwake={props.canKeepAwake ?? canKeepAwake()}
-            onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined} />
+            onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined}
+            healthConnect={hc ? { on: hcOn, read: () => void readHc(true), settings: () => void hc.openHealthConnectSettings().catch(() => {}) } : undefined} />
         ) : null}
       </main>
       {toast ? <div class="toast" role="status">{toast}</div> : null}
