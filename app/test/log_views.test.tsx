@@ -144,6 +144,15 @@ describe("the week board", () => {
     expect(root.querySelector(".sheet .status")).toBeNull();
   });
 
+  it("is a row per day with the workouts as pills, the state at the right, and the next race beside", async () => {
+    await mount({ tab: "week" });
+    const days = root.querySelectorAll(".board .day");
+    expect(days[0].querySelector(".pill .sport-icon")).not.toBeNull();
+    expect(root.querySelector(".board .day.is-today > .st-mark.st-today")!.textContent).toBe("I dag");
+    expect(root.querySelector(".week .races .race-days")!.textContent).toMatch(/^\d+ dagar$/);
+    expect(root.querySelector(".week .week-season .strip")).not.toBeNull();
+  });
+
   it("closes the day with Escape and shows the week's numbers", async () => {
     await mount({ tab: "week" });
     expect(root.querySelector(".week .numbers .sum-row")).not.toBeNull();

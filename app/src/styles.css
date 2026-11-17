@@ -144,36 +144,79 @@ button:disabled { opacity: .5; cursor: default; }
 .explain { margin-top: 10px; font-size: .95rem; }
 .date { font-size: 1rem; color: var(--muted); font-weight: 500; margin-left: 6px; }
 
-/* The week as a board */
-.week-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.week-title { text-align: center; flex: 1; }
-.week-title h2 { margin: 0; }
-.week-title p { margin: 0; }
-.week-of { display: block; }
-@media (min-width: 760px) { .week-of { display: inline; } .week-of::before { content: " · "; } }
-.week-sum { text-align: center; margin: 4px 0 12px; }
-.week-sum .num { font-size: 1.4rem; }
-.board { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.day {
-  background: var(--surface); border-radius: 14px; padding: 12px 14px; border-top: 5px solid var(--zc);
-  box-shadow: var(--shadow); display: grid; grid-template-columns: 70px 1fr; gap: 4px 12px; align-items: start;
+/* The week, as the hall screen: a row per day with the workouts as pills and the day's state at the right */
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 16px; }
+.week { display: grid; gap: 12px; }
+.week-main, .week-side { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.week-head { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 8px; align-items: stretch; }
+.week-arrow {
+  border: 0; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); color: var(--text);
+  font-size: 1.8rem; line-height: 1; min-height: 52px;
 }
-.day.is-rest { background: transparent; border: 1px dashed var(--line); border-top: 5px solid var(--rest); box-shadow: none; }
-.day.is-past { opacity: .6; }
-.day.is-today { outline: 3px solid var(--today); outline-offset: 0; opacity: 1; }
-.day-head { display: flex; flex-direction: column; }
-.dow { font-weight: 700; font-size: 1.1rem; }
-.dom { color: var(--muted); font-size: .85rem; }
-.day-w { min-width: 0; }
-.day-w + .day-w { margin-top: 8px; grid-column: 2; }
+.week-title { text-align: center; padding: 8px 10px; }
+.week-title .kicker { justify-content: center; text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; }
+.week-line { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 6px; }
+.week-title h2 { margin: 0; font-size: 1.2rem; }
+.week-block { font-weight: 700; font-size: 1.2rem; white-space: nowrap; }
+.week-title p { margin: 0; }
+.week-of { display: none; }
+@media (min-width: 760px) { .week-of { display: inline; } .week-of::before { content: " · "; } }
+.this-week { justify-self: center; padding: 4px 0; }
+.board { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.day {
+  background: var(--surface); border-radius: 12px; padding: 8px 12px; box-shadow: var(--shadow); min-height: 56px;
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+}
+.day.is-rest { background: transparent; border: 1px solid var(--line); box-shadow: none; }
+.day.is-past .pill:not(.is-done):not(.is-partial) { opacity: .7; }
+.day.is-today { background: var(--surface-2); outline: 2px solid var(--today); outline-offset: -2px; }
+.day-head { display: flex; flex-direction: column; line-height: 1.15; }
+.dow { font-weight: 700; font-size: 1rem; }
+.dom { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; padding: 4px 10px 4px 8px;
+  border-radius: 999px; border: 1.5px solid var(--zc); background: color-mix(in srgb, var(--zc) 14%, transparent);
+  font-size: .92rem;
+}
+.pill .day-title { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill .num { font-weight: 600; white-space: nowrap; }
+.pill .chip { font-size: .7rem; padding: 0 2px; gap: 0; background: none; }
+.pill .chip b { font-size: .68rem; padding: 0 5px; }
+.pill-time { font-size: .8rem; white-space: nowrap; }
+.pill.is-missed { text-decoration: line-through; text-decoration-color: var(--danger); opacity: .75; }
+.pill.is-partial { border-style: dashed; }
+.tick { color: var(--done); font-weight: 700; width: 18px; text-align: center; flex: none; }
+.sport-icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rest-pill { border-color: var(--line); background: none; color: var(--muted); }
+.rest-pill .day-title { font-weight: 500; }
+.day-extra { white-space: nowrap; }
+.day > .st-mark { margin: 0; justify-self: end; white-space: nowrap; }
+.st-mark.st-today { background: var(--today); }
+.st-mark.st-rest { background: none; color: var(--muted); padding: 0; }
+/* On a phone the state goes under the pills when the row gets tight. */
+@media (max-width: 420px) {
+  .day { grid-template-columns: 50px minmax(0, 1fr); padding: 8px 10px; }
+  .day > .st-mark { grid-column: 2; justify-self: start; }
+  .day > .st-mark.st-rest { display: none; }
+  .pill-time { display: none; }
+  .pill { border-radius: 14px; }
+  .pill .day-title { white-space: normal; overflow-wrap: anywhere; }
+}
 /* The zone's name gives way before the chip grows out of a narrow card. */
 .chip { max-width: 100%; }
 .chip .zn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-title { font-weight: 600; }
-.rest-label { color: var(--muted); font-weight: 500; align-self: center; }
-.day-meta { display: flex; flex-wrap: wrap; gap: 0 10px; color: var(--muted); font-size: .92rem; margin: 2px 0 4px; }
-.day-meta span { white-space: nowrap; }
-.day-meta .num { color: var(--text); }
+/* The next races */
+.races { display: grid; gap: 8px; }
+.race-next { display: flex; gap: 14px; align-items: center; }
+.race-next .sport-icon { width: 44px; height: 44px; padding: 9px; border-radius: 50%; background: var(--surface-2); color: var(--accent); }
+.race-next p { margin: 0; }
+.race-next .kicker { text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; }
+.race-days { font-size: 1.8rem; line-height: 1.1; }
+.race-list { list-style: none; padding: 0; margin: 0; }
+.race-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.race-list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.week-side .numbers h3, .week-season .season h3 { margin-top: 0; }
 .week-notes { margin-top: 12px; color: var(--muted); font-size: .95rem; }
 .calendar { margin-top: 20px; }
 
@@ -241,7 +284,6 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 .st-mark.st-missed { background: var(--danger); }
 @media (prefers-color-scheme: dark) { .st-mark { color: var(--bg); } }
 .day[role="button"] { cursor: pointer; }
-.day-extra .day-title { color: var(--muted); }
 
 /* Sessions outside the plan */
 .extras { margin: 4px 0 12px; }
@@ -320,15 +362,13 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 @media (min-width: 760px) {
   .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; align-items: start; }
   .overview.two-col { grid-template-columns: 1fr 1fr; }
-  .board { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .day { grid-template-columns: minmax(0, 1fr); min-height: 170px; align-content: start; padding: 12px 6px 12px 8px; }
-  .day .chip { font-size: .76rem; gap: 3px; padding: 2px 5px 2px 3px; }
-  .day .chip b { font-size: .72rem; padding: 0 6px; }
-  .day-w + .day-w { grid-column: 1; }
   .bars { height: 260px; }
 }
-/* Seven cards in a row need 900 px for the longest zone name ("Z4 Threshold"); a narrower tablet gets four and three. */
-@media (min-width: 900px) { .board { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+/* A wide screen: the week at the left, the races and the numbers at the right, the season under both. */
+@media (min-width: 900px) {
+  .week { grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); align-items: start; }
+  .week-season, .week .calendar { grid-column: 1 / -1; }
+}
 @media (min-width: 900px) and (orientation: landscape), (min-width: 1100px) {
   .app.has-tabs { padding-left: 96px; }
   .app.has-tabs main { padding-bottom: 24px; }

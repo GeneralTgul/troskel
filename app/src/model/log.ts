@@ -47,6 +47,19 @@ export function markOf(log: TrainingLog, w: StoredWorkout): Mark | null {
   return log.marks[w.key] ?? fromPlan(w.status);
 }
 
+/** A day's state on the week board, as the hall screen's: "done" when every workout is done, "partial" when some
+ * is done or partly done, "missed" when only missed ones are marked, "today" for today without marks, "rest" for a
+ * day without workouts, null for the rest (a day ahead, or a past one nobody ticked off). */
+export type DayState = Status | "today" | "rest" | null;
+export function dayState(log: TrainingLog, ws: StoredWorkout[], day: IsoDate, today: IsoDate): DayState {
+  if (!ws.length) return "rest";
+  const set = ws.map((w) => markOf(log, w)).filter((m): m is Mark => m !== null);
+  if (!set.length) return day === today ? "today" : null;
+  if (set.length === ws.length && set.every((m) => m.status === "done")) return "done";
+  if (set.some((m) => m.status !== "missed")) return "partial";
+  return "missed";
+}
+
 /** The log with `w` marked (null: the mark taken away). */
 export function setMark(log: TrainingLog, key: string, mark: Mark | null): TrainingLog {
   const marks = { ...log.marks };

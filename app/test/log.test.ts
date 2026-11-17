@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { engine } from "../src/engine";
 import { setLang } from "../src/i18n";
 import {
-  addExtra, checkLog, doneMinutes, emptyLog, halfOf, keepFor, markOf, removeExtra, setMark, weekTotals,
+  addExtra, checkLog, dayState, doneMinutes, emptyLog, halfOf, keepFor, markOf, removeExtra, setMark, weekTotals,
 } from "../src/model/log";
 import { workoutMinutes } from "../src/model/plan";
 import { season, seasonGoal } from "../src/model/season";
 import { memoryStore } from "../src/model/storage";
-import type { StoredPlan } from "../src/model/types";
+import type { StoredPlan, StoredWorkout } from "../src/model/types";
 import { idleTimer, keepAwake, WALL_IDLE_MS } from "../src/model/wall";
 import { demoPlan } from "./helpers";
 
@@ -220,3 +220,19 @@ describe("the wall mode", () => {
 });
 
 setLang("sv");
+
+describe("dayState: the day's state on the week board", () => {
+  const w = (key: string) => ({ key, status: "planned" }) as unknown as StoredWorkout;
+  const log = (marks: Record<string, { status: "done" | "partial" | "missed" }>) => ({ marks, extras: [] });
+  it("is done only when every workout is done, partly when some is, missed when only missed ones are marked", () => {
+    expect(dayState(log({ a: { status: "done" }, b: { status: "done" } }), [w("a"), w("b")], "2026-11-16", "2026-11-19")).toBe("done");
+    expect(dayState(log({ a: { status: "done" } }), [w("a"), w("b")], "2026-11-16", "2026-11-19")).toBe("partial");
+    expect(dayState(log({ a: { status: "missed" }, b: { status: "partial" } }), [w("a"), w("b")], "2026-11-16", "2026-11-19")).toBe("partial");
+    expect(dayState(log({ a: { status: "missed" } }), [w("a"), w("b")], "2026-11-16", "2026-11-19")).toBe("missed");
+  });
+  it("is today, rest, or nothing for a day nobody ticked off", () => {
+    expect(dayState(log({}), [w("a")], "2026-11-19", "2026-11-19")).toBe("today");
+    expect(dayState(log({}), [], "2026-11-17", "2026-11-19")).toBe("rest");
+    expect(dayState(log({}), [w("a")], "2026-11-17", "2026-11-19")).toBeNull();
+  });
+});

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { t } from "../i18n";
-import { addDays, dayMonth, isoWeek, mondayOf, weekDays, weekdayShort } from "../model/dates";
+import { addDays, dayMonth, daysBetween, isoWeek, mondayOf, weekDays, weekdayShort } from "../model/dates";
 import { duration, hours, mainZone, noteText, weekMinutes, weekOf, workoutSeconds, workoutsOn, planTitle } from "../model/plan";
 import type { IsoDate, StoredPlan, StoredWorkout } from "../model/types";
-import { extrasOn } from "../model/log";
-import { Extras, StatusMark, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
-import { clock, dayLabel, shownZone, workoutColor, WorkoutCard, zoneColor, ZoneChip } from "./parts";
+import { dayState, extrasOn, markOf, type DayState } from "../model/log";
+import { Extras, SeasonStrip, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
+import { clock, dayLabel, shownZone, SportIcon, workoutColor, WorkoutCard, zoneColor } from "./parts";
 
 /** The colour of a day's card: that of its first workout that has one (a zone, or a test), so that strength before
  * a run (no zone) does not make the day look like a rest day. */
@@ -45,7 +45,48 @@ function DaySheet({ stored, day, today, log, onLog, onClose }: {
   );
 }
 
-/** The week as a board on the wall: seven cards, today marked, rest days plain. A tap on a day opens it. */
+/** The next race from today and the ones after it, with days left: the hall screen's race card. */
+function Races({ stored, today }: { stored: StoredPlan; today: IsoDate }) {
+  const ahead = [...stored.request.goals].filter((g) => g.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  if (!ahead.length) return null;
+  const left = (d: IsoDate) => daysBetween(today, d);
+  const days = (n: number) => (n === 0 ? t("ui.race.today") : t(n === 1 ? "ui.race.day" : "ui.race.days", { n }));
+  const [next, ...rest] = ahead;
+  return (
+    <section class="races card" aria-label={t("ui.race.title")}>
+      <div class="race-next">
+        <SportIcon sport={next.sport} />
+        <div>
+          <p class="kicker">{t("ui.race.title")}</p>
+          <p class="race-days num">{days(left(next.date))}</p>
+          <p class="muted">{next.name} · {dayMonth(next.date)}</p>
+        </div>
+      </div>
+      {rest.length ? (
+        <ul class="race-list">
+          {rest.slice(0, 3).map((g) => (
+            <li key={g.name + g.date}>
+              <SportIcon sport={g.sport} />
+              <span class="grow"><b>{g.name}</b> <span class="muted small">{dayMonth(g.date)}</span></span>
+              <span class="num">{t("ui.race.short", { n: left(g.date) })}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+/** Where a day stands, at the right of its row: done, partly, missed, rest or today. */
+function DayStateMark({ state }: { state: DayState }) {
+  if (!state) return null;
+  const text = state === "today" ? t("ui.week.today") : state === "rest" ? t("ui.week.rest") : t(`ui.log.${state}`);
+  return <span class={`st-mark st-${state}`}>{text}</span>;
+}
+
+/** The week as the hall screen shows it: a row per day with the workouts as pills in their zone's colour and the
+ * sport's icon, the sessions outside the plan as "+ name", and the day's state at the right. Beside it on a wide
+ * screen the week in numbers and the next races, under it the season. A tap on a day opens it. */
 export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore }: {
   stored: StoredPlan; today: IsoDate; onCalendar?: () => void;
 } & Partial<LogProps>) {
@@ -53,68 +94,75 @@ export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore }
   const [open, setOpen] = useState<IsoDate | null>(null);
   const wk = weekOf(stored, monday);
   const thisWeek = mondayOf(today);
+  const offset = Math.round(daysBetween(thisWeek, monday) / 7);
+  const kicker = offset === 0 ? t("ui.week.this") : offset === -1 ? t("ui.week.prev") : offset === 1 ? t("ui.week.next")
+    : `${dayMonth(monday)} – ${dayMonth(addDays(monday, 6))}`;
   return (
     <section class="view week">
-      <header class="week-head">
-        <button class="ghost" aria-label={t("ui.week.prev")} onClick={() => setMonday(addDays(monday, -7))}>‹</button>
-        <div class="week-title">
-          <h2>{t("ui.week.title", { n: isoWeek(monday) })}</h2>
-          <p class="muted">
-            <span class="week-dates">{dayMonth(monday)} – {dayMonth(addDays(monday, 6))}</span>
-            {wk ? <span class="week-of">{t("ui.week.plan_week", { i: wk.index, n: stored.plan.weeks.length })}</span> : null}
-          </p>
-        </div>
-        <button class="ghost" aria-label={t("ui.week.next")} onClick={() => setMonday(addDays(monday, 7))}>›</button>
-      </header>
-      {monday !== thisWeek ? (
-        <button class="link-btn" onClick={() => setMonday(thisWeek)}>{t("ui.week.this")}</button>
-      ) : null}
-      {wk ? (
-        <p class="week-sum">
-          <span class="num">{hours(weekMinutes(wk))}</span> {t("ui.week.training")} ·{" "}
-          {t(`plan.week.kind.${wk.kind}`)} · {t(`plan.block.${wk.block}`)}
-        </p>
-      ) : (
-        <p class="notice">{t("ui.week.outside")}</p>
-      )}
-      <ol class="board">
-        {weekDays(monday).map((day, i) => {
-          const ws = workoutsOn(stored, day);
-          const isToday = day === today;
-          const extra = extrasOn(log, day);
-          return (
-            <li key={day} class={`day ${isToday ? "is-today" : ""} ${ws.length ? "" : "is-rest"} ${day < today ? "is-past" : ""}`}
-              style={{ "--zc": dayColor(ws) }} aria-current={isToday ? "date" : undefined}
-              role="button" tabIndex={0} aria-label={t("ui.day.open", { day: dayLabel(day) })}
-              onClick={() => setOpen(day)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(day); } }}>
-              <div class="day-head">
-                <span class="dow">{weekdayShort(i)}</span>
-                <span class="dom">{dayMonth(day)}</span>
-              </div>
-              {ws.length ? ws.map((w) => (
-                <div class="day-w" key={w.key}>
-                  <div class="day-title">{planTitle(stored, w)}</div>
-                  <div class="day-meta">
-                    {workoutSeconds(w) ? <span class="num">{duration(workoutSeconds(w))}</span> : null}
-                    {w.start ? <span>{clock(w.start)}</span> : null}
-                  </div>
-                  {shownZone(w) ? <ZoneChip zone={shownZone(w)!} /> : null}
-                  <StatusMark w={w} log={log} />
+      <div class="week-main">
+        <header class="week-head">
+          <button class="week-arrow" aria-label={t("ui.week.prev")} onClick={() => setMonday(addDays(monday, -7))}>‹</button>
+          <div class="week-title card">
+            <p class="kicker">{kicker}</p>
+            <div class="week-line">
+              <h2>{t("ui.week.title", { n: isoWeek(monday) })}</h2>
+              {wk ? <span class="week-block">· {t(`plan.block.${wk.block}`)}</span> : null}
+            </div>
+            <p class="muted small">
+              {wk ? <><span class="num">{hours(weekMinutes(wk))}</span> {t("ui.week.training")} · {t(`plan.week.kind.${wk.kind}`)}
+                <span class="week-of">{t("ui.week.plan_week", { i: wk.index, n: stored.plan.weeks.length })}</span></>
+                : t("ui.week.outside")}
+            </p>
+          </div>
+          <button class="week-arrow" aria-label={t("ui.week.next")} onClick={() => setMonday(addDays(monday, 7))}>›</button>
+        </header>
+        {offset ? <button class="link-btn this-week" onClick={() => setMonday(thisWeek)}>{t("ui.week.this")}</button> : null}
+        <ol class="board">
+          {weekDays(monday).map((day, i) => {
+            const ws = workoutsOn(stored, day);
+            const isToday = day === today;
+            const extra = extrasOn(log, day);
+            return (
+              <li key={day} class={`day ${isToday ? "is-today" : ""} ${ws.length ? "" : "is-rest"} ${day < today ? "is-past" : ""}`}
+                style={{ "--zc": dayColor(ws) }} aria-current={isToday ? "date" : undefined}
+                role="button" tabIndex={0} aria-label={t("ui.day.open", { day: dayLabel(day) })}
+                onClick={() => setOpen(day)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(day); } }}>
+                <div class="day-head">
+                  <span class="dow">{weekdayShort(i)}</span>
+                  <span class="dom">{dayMonth(day)}</span>
                 </div>
-              )) : !extra.length ? <div class="day-title rest-label">{t("ui.week.rest")}</div> : null}
-              {extra.map((x) => (
-                <div class="day-w day-extra" key={x.id}>
-                  <div class="day-title">+ {x.name}</div>
-                  <div class="day-meta"><span class="num">{duration(x.minutes * 60)}</span></div>
+                <div class="pills">
+                  {ws.map((w) => {
+                    const mark = markOf(log, w);
+                    const zone = shownZone(w);
+                    return (
+                      <div class={`day-w pill ${mark ? `is-${mark.status}` : ""}`} key={w.key} style={{ "--zc": workoutColor(w) }}>
+                        {mark?.status === "done" ? <span class="tick" aria-hidden="true">✓</span> : <SportIcon sport={w.sport} />}
+                        <span class="day-title">{planTitle(stored, w)}</span>
+                        {workoutSeconds(w) ? <span class="num">{duration(workoutSeconds(w))}</span> : null}
+                        {zone ? <span class="chip" style={{ "--zc": zoneColor(zone) }}><b>{zone}</b></span> : null}
+                        {w.start ? <span class="pill-time muted">{clock(w.start)}</span> : null}
+                      </div>
+                    );
+                  })}
+                  {!ws.length && !extra.length ? <span class="day-w pill rest-pill"><span class="day-title">{t("ui.week.rest")}</span></span> : null}
+                  {extra.map((x) => (
+                    <span class="day-extra muted small" key={x.id}>+ {x.name} {duration(x.minutes * 60)}</span>
+                  ))}
                 </div>
-              ))}
-            </li>
-          );
-        })}
-      </ol>
-      <WeekNumbers stored={stored} monday={monday} log={log} />
-      {wk?.notes.length ? <div class="week-notes">{wk.notes.map((n, i) => <p key={i}>{noteText(n)}</p>)}</div> : null}
+                <DayStateMark state={ws.length ? dayState(log, ws, day, today) : extra.length ? null : "rest"} />
+              </li>
+            );
+          })}
+        </ol>
+        {wk?.notes.length ? <div class="week-notes">{wk.notes.map((n, i) => <p key={i}>{noteText(n)}</p>)}</div> : null}
+      </div>
+      <aside class="week-side">
+        <Races stored={stored} today={today} />
+        <div class="card"><WeekNumbers stored={stored} monday={monday} log={log} /></div>
+      </aside>
+      <div class="week-season card"><SeasonStrip stored={stored} today={today} /></div>
       {onCalendar ? (
         <div class="calendar">
           <button class="secondary" onClick={onCalendar}>{t("ui.calendar.button")}</button>

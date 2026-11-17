@@ -38,6 +38,23 @@ export function distanceText(km: number): string {
   return t("plan.goal.distance", { km: getLang() === "sv" ? n.replace(".", ",") : n });
 }
 
+/** Line icons of the sports (24 × 24, stroked) for the pills of the week: the hall screen's sport icon. */
+const SPORT_ICONS: Record<string, string> = {
+  run: "M15 3.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6M13.5 8.5l-3 5l4 2.5l-1.5 5M8 10l4-2l3 3l3 .5M10.5 13.5l-1.5 3l-4 .5",
+  bike: "M6 13a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7M18 13a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7M6 16.5l4-7h6l2 7M10 9.5l3 7H6M14.5 6h2.5",
+  swim: "M16 5a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6M4 13l5-4l4 3l4-1.5M2 18c2 0 2-1.5 4-1.5s2 1.5 4 1.5s2-1.5 4-1.5s2 1.5 4 1.5s2-1.5 4-1.5",
+  ski: "M15 2.5a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6M14 8l-3 4.5l3 2l-2 5M9 9l5-1l3 3M8 10l-3 9M3 21l18-5",
+  skierg: "M6 3v5M18 3v5M6 8c0 3 3 4.5 6 4.5s6-1.5 6-4.5M12 12.5V20M8 20h8",
+  strength: "M3 10v4M6 7.5v9M18 7.5v9M21 10v4M6 12h12",
+  other: "M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16M8 12h8",
+};
+
+export function SportIcon({ sport }: { sport: string }) {
+  return (
+    <svg class="sport-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={SPORT_ICONS[sport] ?? SPORT_ICONS.other} /></svg>
+  );
+}
+
 export const clock = (start: string | null) => (start ? start.slice(0, 5) : "");
 
 export function when(w: StoredWorkout): string {
