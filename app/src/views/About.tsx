@@ -12,6 +12,8 @@ interface Props {
   onLang: (l: Lang) => void;
   onDelete: () => void;
   onNewPlan?: () => void;
+  /** *Gör ett schema själv* (#777), from the plan the phone has. */
+  onOwnPlan?: () => void;
   wall?: boolean;
   /** Missing until there is a plan to show on the wall. */
   onWall?: (on: boolean) => void;
@@ -25,7 +27,7 @@ interface Props {
 /** The privacy page, also shown by Health Connect as the app's rationale for the permissions. */
 export const PRIVACY_URL = "https://generaltgul.github.io/troskel/app/privacy.html";
 
-export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false, onWall, canKeepAwake = true, healthConnect, share }: Props) {
+export function About({ lang, stored, onLang, onDelete, onNewPlan, onOwnPlan, wall = false, onWall, canKeepAwake = true, healthConnect, share }: Props) {
   return (
     <section class="view about">
       <h2>{t("ui.about.title")}</h2>
@@ -40,6 +42,7 @@ export function About({ lang, stored, onLang, onDelete, onNewPlan, wall = false,
       </div>
 
       {onNewPlan ? <button class="secondary wide" onClick={onNewPlan}>{t("ui.load.new")}</button> : null}
+      {onOwnPlan ? <button class="secondary wide" onClick={onOwnPlan}>{t("ui.load.own")}</button> : null}
 
       {onWall ? (
         <>

@@ -8,6 +8,8 @@ import { linkData, PlanError, readPlanText } from "./model/link";
 import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
 import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
+import { fromEngine } from "./model/plan";
+import { emptyForm, formFromPlan, newPlanId, planFromForm, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
 import { keptTimes } from "./model/times";
 import type { PendingTimes, Store } from "./model/storage";
@@ -16,6 +18,7 @@ import { canKeepAwake, idleTimer, keepAwake, WALL_IDLE_MS } from "./model/wall";
 import { About } from "./views/About";
 import { Overview } from "./views/Overview";
 import { Qr } from "./views/Qr";
+import { Request } from "./views/Request";
 import { Times } from "./views/Times";
 import { Today } from "./views/Today";
 import { Week } from "./views/Week";
@@ -49,6 +52,8 @@ export interface AppProps {
   canKeepAwake?: boolean;
   /** Health Connect in the Android app (healthconnect.ts); missing in the browser and on iOS. */
   healthConnect?: HealthPluginLike | null;
+  /** The id of a plan the athlete makes in the app (request.newPlanId); a fixed one in the tests. */
+  newPlanId?: () => string;
 }
 
 function errorText(e: unknown): string {
@@ -73,6 +78,8 @@ export function App(props: AppProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [qr, setQr] = useState(false);
   const [welcome, setWelcome] = useState(false);
+  // *Gör ett schema själv* (#777): the form while it is open.
+  const [request, setRequest] = useState<RequestForm | null>(null);
   const [log, setLogState] = useState<TrainingLog>(() => store.log());
   const [health, setHealth] = useState<HealthData | null>(() => store.health());
   const [wall, setWall] = useState(() => store.settings().wall === true);
@@ -142,6 +149,7 @@ export function App(props: AppProps) {
     setError(null);
     setWelcome(false);
     setQr(false);
+    setRequest(null);
     if (!keepTab) setTab("today");
     if (!isDemo) setToast(t("ui.load.loaded"));
   };
@@ -250,12 +258,27 @@ export function App(props: AppProps) {
     },
   } : undefined;
 
+  // The athlete's own plan (#777): the form starts from the plan the phone has (its answers and tests), else empty.
+  const openRequest = () => {
+    setError(null);
+    setRequest(stored && !demo && fromEngine(stored) ? formFromPlan(stored, today) : emptyForm(today));
+  };
+  const makePlan = (f: RequestForm) => {
+    const p = planFromForm(f, { id: (props.newPlanId ?? newPlanId)(),
+      targets: f.capacity.length && stored ? stored.targets : undefined });
+    if (stored && !demo && typeof confirm === "function" && !confirm(t("ui.request.replace_confirm"))) return;
+    accept(p);
+    setToast(t("ui.request.made"));
+  };
+
   const camera = props.hasCamera ? () => { setError(null); setQr(true); } : undefined;
 
   let body;
   if (qr) body = <Qr onText={readText} onClose={() => setQr(false)} />;
+  else if (request)
+    body = <Request form={request} today={today} onMake={makePlan} onCancel={() => setRequest(null)} />;
   else if (!stored || welcome)
-    body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} />;
+    body = <Welcome error={error} onText={readText} onDemo={showDemo} onQr={camera} onOwn={openRequest} />;
   else if (tab === "today") body = <Today key={home} stored={stored} today={today} log={shown} onLog={onLog} health={health} />;
   else if (tab === "week") body = <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog} />;
   else if (tab === "plan") body = <Overview stored={stored} today={today} onCalendar={calendar} />;
@@ -267,7 +290,7 @@ export function App(props: AppProps) {
     );
   else body = null;
 
-  const showTabs = !!stored && !qr && !welcome;
+  const showTabs = !!stored && !qr && !welcome && !request;
   return (
     <div class={`app ${showTabs ? "has-tabs" : ""}`} lang={lang}>
       {showTabs ? (
@@ -291,10 +314,11 @@ export function App(props: AppProps) {
         ) : null}
         {error && showTabs ? <p class="notice error" role="alert">{error}</p> : null}
         {body}
-        {(tab === "about" && showTabs) || (!stored && !qr) ? (
+        {(tab === "about" && showTabs) || (!stored && !qr && !request) ? (
           <About lang={lang} stored={stored} onLang={changeLang} onDelete={deleteAll}
             wall={wall} onWall={stored ? changeWall : undefined} canKeepAwake={props.canKeepAwake ?? canKeepAwake()}
             onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined}
+            onOwnPlan={stored && !welcome ? openRequest : undefined}
             healthConnect={hc ? { on: hcOn, read: () => void readHc(true), settings: () => void hc.openHealthConnectSettings().catch(() => {}) } : undefined}
             share={share} />
         ) : null}

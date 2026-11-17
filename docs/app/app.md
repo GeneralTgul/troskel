@@ -10,6 +10,7 @@
   - [Från coach till idrottare](#från-coach-till-idrottare)
   - [Från idrottare till coach](#från-idrottare-till-coach)
   - [Ett nytt test ger ett nytt schema](#ett-nytt-test-ger-ett-nytt-schema)
+  - [Ett schema utan coach](#ett-schema-utan-coach)
 - [Bocka av passen](#bocka-av-passen)
   - [Veckan i siffror](#veckan-i-siffror)
   - [Rutan för dagen](#rutan-för-dagen)
@@ -39,7 +40,7 @@ Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 - *Veckan*: en rad per dag från måndag till söndag, byggd som hallskärmens vecka. Passen står som piller i zonens färg med idrottens ikon, längd, zon och klocktid, och ett pass utanför planen står som *+ namn* bredvid. Till höger på raden står dagens läge: *Gjort* när alla pass är gjorda, *Delvis* när något är gjort, *Missat* när bara missade pass är avbockade, *I dag* och *Vila*. Ett gjort pass har en bock i stället för ikonen, ett delvis gjort en streckad kant och ett missat är överstruket. Dagens rad är markerad. Rubriken mellan pilarna säger vilken vecka, vilket block, veckans tid och veckotyp, och pilarna bläddrar vecka för vecka. Ett tryck på en dag visar dagens pass med rutan för dagen, och fram till i dag går de att bocka av där. Bredvid veckan (under den på en telefon) står nästa lopp med dagar kvar och de följande loppen, och veckan i siffror. Säsongsremsan går i full bredd under.
 - *Schemat*: målen och testdagarna (i ett schema med flera idrotter med idrotten som testas), blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
-- *Om appen*: språket, [väggläget](#väggläget), integriteten, licensen och knappen som tar bort all data på enheten.
+- *Om appen*: språket, *Gör ett schema själv* ([Ett schema utan coach](#ett-schema-utan-coach)), [väggläget](#väggläget), integriteten, licensen och knappen som tar bort all data på enheten.
 
 Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Från 900 punkters bredd står loppen och veckan i siffror i en högerkolumn bredvid veckan. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
@@ -109,6 +110,22 @@ Passen i telefonen ändras bara av ett nytt test eller av idrottarens eget val u
 5. Läste coachen in schemat från telefonen har det nya schemat idrottarens tider, också de som väntade under *Mina tider*, och telefonen behåller inga tider. Annars har det nya schemat coachens tider. Idrottarens tider (de inräknade, eller de som väntar) ligger då kvar under *Mina tider* med en rad om det, och *Spara* lägger det nya schemat på dem, med det nya testets mål (`keptTimes` i `app/src/model/times.ts`). Appen gör det inte av sig själv. Ett schema som är skrivet utanför motorn (`source`, se [Mina tider och planmotorn](#mina-tider-och-planmotorn)) har inga egna tider att spara, och ett schema med ett annat id behåller inga tider.
 
 Proven: `tests/plan/test_retest_chain.py` går hela vägen med två tester på samma idrottare, och `app/test/retest_phone.test.tsx` provar telefonens sida. Vägen från telefonen och tillbaka provas med en fixtur ur `app/scripts/make_fixtures.py` (`athlete.troskel` och `athlete.back.link.txt`): `app/test/share.test.tsx` på telefonens sida, `tests/plan/test_phone.py` och `tests/ui/test_plan_phone.py` i Tröskel. I en riktig telefon är kedjan inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
+
+### Ett schema utan coach
+
+Idrottaren kan göra ett schema i appen utan coach och utan test: ***Gör ett schema själv*** på välkomstsidan och under *Om* (`app/src/views/Request.tsx`, `app/src/model/request.ts`). Formuläret har samma frågor som coachens formulär på sidan *Träningsschema* i Tröskel:
+
+- idrotterna, med roll (huvudidrott, stödjande, underhåll) när de är flera, och styrkepass i veckan (0–3),
+- nivån och minuter i veckan de senaste veckorna,
+- minuter och klockslag per veckodag (20–480 minuter), och med flera idrotter vilken idrott dagen är till,
+- ett lopp med dag, distans och måltid, och delmål före det (viktigt lopp eller träningslopp), eller ett antal veckor,
+- dagen då schemat börjar, och namnet (frivilligt).
+
+Appens planmotor bygger schemat i telefonen, med ett eget id (`app-` och åtta tecken). Alla veckor får sina pass: utan coach finns ingen som trycker *Förnya*. Utan test blir passen i zoner och efter ansträngning, utan puls och tempo, som i Tröskel utan test. Har telefonen redan ett schema (inte exemplet) står dess svar i formuläret, och dess tester och mål i puls och tempo följer med. Det nya schemat ersätter det gamla efter en fråga, och det idrottaren bockat av ligger kvar.
+
+Begäran följer reglerna i coachens formulär (`collect` i `src/lopanalys/ui/views/plan.py`), så att schemat blir det Tröskel hade gjort av samma svar och går att läsa in i Tröskel med *Läs in från appen* ([Från idrottare till coach](#från-idrottare-till-coach)). Samma formulär byggs i Python i `app/scripts/make_fixtures.py` (`form_request`, `form_from_plan`), och `app/test/request.test.tsx` jämför appens begäran och schema med Pythons (`app/test/fixtures/request.json.gz`).
+
+Formuläret har inte en andra tid samma dag, fasta hårda pass eller andelar per idrott. Ett schema från Tröskel som har dem tappar dem när idrottaren gör ett nytt schema av det.
 
 ## Bocka av passen
 

@@ -14,6 +14,8 @@ library.DRILLS, which app/src/engine/library.ts has too.
 ``links`` is the short link's data (link.short_plan, format 2) of every plan above that has one: the app builds each
 of them with its engine and gets the stored plan back. ``demo.link.txt`` is the demo plan's link as Tröskel sends
 it (the short one) and ``demo.full.link.txt`` the link with the whole plan (format 1).
+``request.json.gz`` is the athlete's own plan (#777): forms of the app's *Gör ett schema själv* and the plans Tröskel builds
+from the same answers (``form_request``), checked by app/test/request.test.tsx.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ import gzip
 import json
 import sys
 from dataclasses import replace
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +32,8 @@ from lopanalys.assessments.zone_systems import Anchors
 from lopanalys.core.i18n import set_language, t
 from lopanalys.plan import codec, demo, ics, library, link, phone, text
 from lopanalys.plan.engine import ENGINE_VERSION, build_plan, sketch_of
-from lopanalys.plan.models import Capacity, Goal, HardDay, PlanRequest, SportRole
+from lopanalys.plan.models import (BORROWS, LEVELS, PLAN_SPORTS, RUNNING, Capacity, Goal, HardDay, PlanRequest, Slot,
+                                   SportRole)
 from lopanalys.plan.rolling import roll_forward
 
 APP = Path(__file__).resolve().parents[1]
@@ -398,6 +401,115 @@ def athlete_back(athlete: dict[str, Any]) -> dict[str, Any]:
     return link.stored_plan(plan)
 
 
+# ---- the athlete's own plan (#777): the form "Gör ett schema själv" in the app (app/src/model/request.ts) ----------------
+
+def form_request(f: dict[str, Any]) -> PlanRequest:
+    """The request of the app's form, by the rules of the coach's form (views/plan.py, ``collect``): the slots of the days
+    that are on (a day's own sports, or all of them), the first goal the A goal and the others milestones, a length in
+    weeks without a goal, and the roles only with more than one sport or another sport than running. The tests are the
+    ones of the plan the form was filled in from, for the plan's sports (skis: the SkiErg's, without the SkiErg)."""
+    sports: list[str] = []
+    for x in f["sports"]:
+        if x["sport"] in PLAN_SPORTS and x["sport"] not in sports:
+            sports.append(x["sport"])
+    slots = tuple(Slot(wd, round(d["minutes"]), tuple(s for s in d["sports"] if s in sports) or tuple(sports),
+                       start=time.fromisoformat(d["start"]) if d["start"] else None)
+                  for wd, d in enumerate(f["days"]) if d["on"])
+    goals = tuple(Goal(g["name"].strip(), date.fromisoformat(g["date"]), g["sport"] if g["sport"] in sports else sports[0],
+                       distance_km=g["distance_km"] or None, priority="A" if i == 0 else g["priority"],
+                       target=g["target"].strip() if i == 0 else "")
+                  for i, g in enumerate(f["goals"])) if f["mode"] == "goal" else ()
+    caps = tuple(codec.capacity_from_dict(c) for c in f["capacity"]
+                 if c["sport"] in sports or any(src == c["sport"] and to in sports and src not in sports
+                                                for to, src in BORROWS.items()))
+    roles = tuple(SportRole(x["sport"], x["role"], x["share"]) for x in f["sports"])
+    return PlanRequest(f["athlete"].strip(), date.fromisoformat(f["start"]), slots, caps, tuple(sports), goals=goals,
+                       duration_weeks=None if goals else f["weeks"], level=f["level"],
+                       recent_weekly_minutes=f["recent_weekly_minutes"] or None,
+                       roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else (),
+                       strength_sessions=f["strength_sessions"])
+
+
+def form_from_plan(stored: dict[str, Any], today: str) -> dict[str, Any]:
+    """The app's form filled in from a plan the phone has (request.ts, ``formFromPlan``): its answers and tests, a start
+    on ``today``, the goals still ahead with the A goal first, and a day's own sports only when they are not all."""
+    r = codec.request_from_dict(stored["request"], stored.get("athlete") or "")
+    roles = r.plan_roles()
+    every = [x.sport for x in roles]
+    days = []
+    for wd in range(7):
+        s = next((x for x in r.availability if x.weekday == wd and x.role != "extra"), None)
+        own = [x for x in s.sports if x in every] if s else []
+        days.append({"on": s is not None, "minutes": s.max_minutes if s else 45,
+                     "start": s.start.strftime("%H:%M") if s and s.start else "",
+                     "sports": own if own and len(own) < len(every) else []})
+    goals = [{"name": g.name, "date": g.date.isoformat(), "sport": g.sport, "distance_km": g.distance_km,
+              "priority": g.priority, "target": g.target} for g in r.goals if g.date.isoformat() >= today]
+    if goals:
+        a = next((i for i, g in enumerate(goals) if g["priority"] == "A"), 0)
+        goals.insert(0, goals.pop(a))
+        goals[0]["priority"] = "A"
+    empty = {"name": "", "date": "", "sport": "", "distance_km": None, "priority": "A", "target": ""}
+    return {"athlete": stored.get("athlete") or "", "start": today,
+            "sports": [{"sport": x.sport, "role": x.role, "share": x.share} for x in roles],
+            "level": r.level if r.level in LEVELS else "", "recent_weekly_minutes": r.recent_weekly_minutes, "days": days,
+            "mode": "goal" if goals else "weeks", "goals": goals or [empty], "weeks": r.duration_weeks or 8,
+            "strength_sessions": r.strength_sessions, "capacity": [codec.capacity_to_dict(c) for c in r.capacity]}
+
+
+def _day(on: bool = False, minutes: int = 45, start: str = "", sports: tuple[str, ...] = ()) -> dict[str, Any]:
+    return {"on": on, "minutes": minutes, "start": start, "sports": list(sports)}
+
+
+def _goal(name: str, day: str, km: float | None = None, priority: str = "A", target: str = "",
+          sport: str = "") -> dict[str, Any]:
+    return {"name": name, "date": day, "sport": sport, "distance_km": km, "priority": priority, "target": target}
+
+
+def _form(**kw: Any) -> dict[str, Any]:
+    """A form as the app keeps it (request.ts, ``RequestForm``); the defaults are an empty form's."""
+    out = {"athlete": "", "start": "2026-11-18", "sports": [{"sport": "run", "role": "main", "share": 0}], "level": "",
+           "recent_weekly_minutes": None, "days": [_day() for _ in range(7)], "mode": "weeks", "goals": [_goal("", "")],
+           "weeks": 8, "strength_sessions": 0, "capacity": []}
+    return {**out, **kw}
+
+
+def request_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
+    """The app's own plans (test/request.test.ts): forms, the plan Tröskel builds from each of them (``form_request``,
+    ``build_plan`` with every week detailed, ``link.stored_plan``), and the demo plan's form (``form_from_plan``)."""
+    three = [_day(), _day(True, 45), _day(), _day(True, 50, "18:00"), _day(), _day(), _day(True, 80, "09:30")]
+    five = [_day(True, 45, "18:00"), _day(True, 70, "18:00"), _day(), _day(True, 60, "06:30"), _day(),
+            _day(True, 60, "10:00"), _day(True, 110, "09:00")]
+    multi = [_day(True, 60, "", ("bike",)), _day(True, 60), _day(), _day(True, 45, "07:00", ("swim",)), _day(True, 60),
+             _day(), _day(True, 150, "09:00", ("bike",))]
+    forms = [
+        ("run-weeks", _form(level="recreational", days=three, weeks=10)),
+        ("run-goal-milestones", _form(athlete=" Exempel Löpare ", level="trained", recent_weekly_minutes=240, days=five,
+                                      mode="goal", strength_sessions=1,
+                                      goals=[_goal("Halvmaran", "2027-03-13", 21.1, target=" 1:45 "),
+                                             _goal("Milen", "2027-01-16", 10, "B", "ska bort"),
+                                             _goal("Parkrun", "2026-12-12", 5, "C")])),
+        ("beginner-weeks", _form(level="beginner", days=three, weeks=12, start="2026-11-23")),
+        ("multi-sport", _form(level="recreational", recent_weekly_minutes=300, days=multi, mode="goal",
+                              sports=[{"sport": "bike", "role": "main", "share": 0}, {"sport": "run", "role": "support", "share": 0},
+                                      {"sport": "swim", "role": "maintenance", "share": 0}],
+                              goals=[_goal("Cykelloppet", "2027-05-15", 90, sport="bike")])),
+        ("high-ski", _form(level="high", recent_weekly_minutes=480, days=[_day(True, 90) for _ in range(6)] + [_day(True, 240)],
+                           mode="goal", sports=[{"sport": "ski", "role": "main", "share": 0},
+                                                {"sport": "run", "role": "support", "share": 0}],
+                           goals=[_goal("Långloppet", "2027-03-07", 90, sport="ski")], strength_sessions=2)),
+    ]
+    cases = []
+    for name, f in forms:
+        plan_id = f"app-{name[:8]}"
+        cases.append({"name": name, "form": f, "plan_id": plan_id,
+                      "stored": link.stored_plan(build_plan(form_request(f), plan_id=plan_id))})
+    f = form_from_plan(demo_stored, "2026-11-25")
+    cases.append({"name": "from-demo", "from": "demo", "today": "2026-11-25", "form": f, "plan_id": "app-fromdemo",
+                  "stored": link.stored_plan(build_plan(form_request(f), plan_id="app-fromdemo"))})
+    return {"cases": cases}
+
+
 def _gz(data: Any) -> bytes:
     raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return gzip.compress(raw, compresslevel=9, mtime=0)
@@ -416,6 +528,7 @@ def outputs() -> dict[Path, bytes]:
            APP / "test" / "fixtures" / "athlete.link.txt": (phone.athlete_link(athlete_fixture(stored)) + "\n").encode("ascii"),
            APP / "test" / "fixtures" / "athlete.back.link.txt":
                (link.plan_link(link.link_payload(athlete_back(athlete_fixture(stored)))) + "\n").encode("ascii")}
+    out[APP / "test" / "fixtures" / "request.json.gz"] = _gz(request_fixtures(stored))
     set_language("en")
     out[APP / "test" / "fixtures" / "demo.en.ics"] = ics.to_ics(plan).encode("utf-8")
     out[APP / "test" / "fixtures" / "engine.json.gz"] = _gz(engine_fixtures())

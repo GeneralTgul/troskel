@@ -6,10 +6,12 @@ interface Props {
   onText: (text: string) => void;
   onDemo: () => void;
   onQr?: () => void;
+  /** *Gör ett schema själv* (#777): the plan from the athlete's own answers, without a coach. */
+  onOwn?: () => void;
 }
 
 /** No plan yet: how to get one, and the example. */
-export function Welcome({ error, onText, onDemo, onQr }: Props) {
+export function Welcome({ error, onText, onDemo, onQr, onOwn }: Props) {
   const file = useRef<HTMLInputElement>(null);
   const [paste, setPaste] = useState("");
   return (
@@ -36,6 +38,13 @@ export function Welcome({ error, onText, onDemo, onQr }: Props) {
             onInput={(e) => setPaste(e.currentTarget.value)} />
           <button class="secondary" disabled={!paste.trim()}>{t("ui.load.paste_go")}</button>
         </form>
+        {onOwn ? (
+          <>
+            <h3>{t("ui.load.own_title")}</h3>
+            <p class="small">{t("ui.load.own_intro")}</p>
+            <button class="secondary wide" onClick={onOwn}>{t("ui.load.own")}</button>
+          </>
+        ) : null}
         <button class="link-btn" onClick={onDemo}>{t("ui.load.demo")}</button>
       </div>
     </section>

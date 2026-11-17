@@ -297,6 +297,10 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 }
 .extra-form label { display: flex; flex-direction: column; min-width: 0; }
 .extra-form input, .extra-form select { width: 100%; }
+.field { display: flex; flex-direction: column; gap: 2px; margin: .5rem 0; }
+.request-sports li { gap: 8px; padding: 4px 0; }
+.request-sports .switch { flex: 1; }
+.request-goal { margin: 10px 0; }
 .extra-actions { display: flex; gap: 8px; grid-column: 1 / -1; flex-wrap: wrap; }
 
 /* The week in numbers */
@@ -390,3 +394,4 @@ input[type="number"] { width: 6.5em; font-weight: 700; font-size: 1.2rem; }
 .form h3 { margin: 2px 0 4px; }
 .form-reasons { margin: 4px 0; padding-left: 1.2em; }
 .auto-note { flex-basis: 100%; margin: 0; }
+.request-goal p { grid-column: 1 / -1; margin: 0; }
