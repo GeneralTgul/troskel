@@ -86,7 +86,6 @@
  "ui.times.pending": "You saved new times on {date}. They are used when your coach sends a new plan.",
  "ui.times.failed": "The plan could not be rebuilt. Your times are saved.",
  "ui.times.extra": "Extra",
- "ui.times.locked": "The plan is written week by week, not worked out from your times. The times are changed where the plan is made, and a new plan replaces this one.",
  "ui.calendar.button": "Add the workouts to the calendar",
  "ui.calendar.help": "Downloads a calendar file with the workouts from today. Open it to add them to the phone's calendar.",
  "ui.load.title": "Your training plan",

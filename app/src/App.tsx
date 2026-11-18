@@ -8,7 +8,6 @@ import { linkData, PlanError, readPlanText } from "./model/link";
 import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto, type HealthData } from "./model/health";
 import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
-import { fromEngine } from "./model/plan";
 import { emptyForm, formFromPlan, newPlanId, planFromForm, renewOwn, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
 import { copyData, copyFileName, mergeLog, readCopyText, remindCopy, type Restored, type StorageState } from "./model/backup";
@@ -326,7 +325,7 @@ export function App(props: AppProps) {
   // The athlete's own plan (#777): the form starts from the plan the phone has (its answers and tests), else empty.
   const openRequest = () => {
     setError(null);
-    setRequest(stored && !demo && fromEngine(stored) ? formFromPlan(stored, today) : emptyForm(today));
+    setRequest(stored && !demo ? formFromPlan(stored, today) : emptyForm(today));
   };
   const makePlan = (f: RequestForm) => {
     const p = planFromForm(f, { id: (props.newPlanId ?? newPlanId)(), today,
@@ -348,7 +347,7 @@ export function App(props: AppProps) {
   else if (tab === "week")
     body = (
       <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog}
-        onPlan={demo || !fromEngine(stored) ? undefined
+        onPlan={demo ? undefined
           : (p) => { store.setPlan(p, false); setStored(p); setToast(t("ui.adjust.saved")); }} />
     );
   else if (tab === "plan" && values)

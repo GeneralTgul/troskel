@@ -99,20 +99,3 @@ def test_a_zones_test_keeps_its_speed_line_in_json():
     # a capacity without a line is stored as before, and an old plan without the key reads back
     d = codec.capacity_to_dict(BETTER)
     assert "speed_line" not in d and codec.capacity_from_dict(d) == BETTER
-
-
-def test_a_plan_written_outside_the_engine_keeps_its_source_and_titles():
-    """A schedule written week by week (Plan.source): the source and each workout's own title survive JSON, and
-    a plan from the engine is stored without either key, as before."""
-    from dataclasses import replace
-
-    plan = build_plan(c.CASES["half_12"])
-    body = codec.plan_to_dict(plan)
-    assert "source" not in body and all("name" not in w for wk in body["weeks"] for w in wk["workouts"])
-    first = plan.weeks[0].workouts[0]
-    plan.weeks[0].workouts[0] = replace(first, name="Löp 5x1000 m (4:00)")
-    written = replace(plan, source="schedule")
-    back = _roundtrip(written)
-    assert back == written
-    assert not back.from_engine and plan.from_engine
-    assert back.title(back.weeks[0].workouts[0]) == "Löp 5x1000 m (4:00)"

@@ -1625,7 +1625,7 @@ def with_saved_edits(saved: Any, plan: Any) -> Any:
     """The coach's plan from the form with the athlete's changes of single workouts (#777) from the saved plan of the
     same id: the moved and shortened workouts stay when the coach changes the form, as in the app (``keptEdits``)."""
     from lopanalys.plan import edits
-    if saved is None or saved.id != plan.id or not saved.edits or plan.source:
+    if saved is None or saved.id != plan.id or not saved.edits:
         return plan
     return edits.apply_edits(dataclass_replace(plan, edits=edits.merged(plan.edits, saved.edits)))
 
@@ -1803,7 +1803,7 @@ def phone_read_text(phone_plan: Any, plan: Any, today: date | None = None) -> st
     c = phone_plan.counts()
     out = [t("ui.plan.phone.read", date=phone_plan.exported.isoformat(), done=c["done"], partial=c["partial"],
              missed=c["missed"], extras=c["extras"])]
-    if phone_plan.times and not plan.source:
+    if phone_plan.times:
         out.append(t("ui.plan.phone.times", date=((today or date.today()) + timedelta(days=1)).isoformat()))
     out.append(t("ui.plan.phone.next"))
     return " ".join(out)

@@ -4,8 +4,7 @@
  * renewed or laid on a new test, in the app and in Tröskel (plan/edits.py), and it goes to the coach with the plan
  * (#781).
  *
- * Only a plan from the engine is changed here: a plan written outside it (a schedule) keeps its weeks. To undo or
- * change an edit, the workout as the engine made it is made again (the weeks are filled from the plan's own sketch, as
+ * To undo or change an edit, the workout as the engine made it is made again (the weeks are filled from the plan's own sketch, as
  * `rollForward` does, and give the same workouts) and the edits are laid on it.
  */
 import { applyEdits, editable, mergedEdits, shortest } from "../engine/edits";
@@ -14,7 +13,7 @@ import { normRequest } from "../engine/models";
 import { sortedBy } from "../engine/py";
 import { skeletonOf } from "../engine/rolling";
 import { addDays } from "./dates";
-import { fromEngine, workoutMinutes } from "./plan";
+import { workoutMinutes } from "./plan";
 import type { IsoDate, StoredEdit, StoredPlan, StoredWeek, StoredWorkout } from "./types";
 
 export const editOf = (stored: StoredPlan, key: string): StoredEdit | undefined =>
@@ -38,10 +37,9 @@ function findWorkout(stored: StoredPlan, key: string): StoredWorkout | undefined
 const weekWith = (stored: StoredPlan, w: StoredWorkout): StoredWeek | undefined =>
   stored.plan.weeks.find((wk) => !wk.sketch && wk.workouts.some((x) => x.key === w.key));
 
-/** True when the athlete may change the workout on `today`: a plan from the engine, a workout that is not a race or
- * a test, not before today. */
-export const adjustable = (stored: StoredPlan, w: StoredWorkout, today: IsoDate) =>
-  fromEngine(stored) && editable(w) && w.date >= today;
+/** True when the athlete may change the workout on `today`: a workout that is not a race or a test, not before
+ * today. */
+export const adjustable = (_stored: StoredPlan, w: StoredWorkout, today: IsoDate) => editable(w) && w.date >= today;
 
 /** The days of the workout's week it may move to: from today on, not its own day. */
 export function moveDays(stored: StoredPlan, w: StoredWorkout, today: IsoDate): IsoDate[] {
@@ -113,12 +111,11 @@ export const undoEdit = (stored: StoredPlan, key: string) => withEdits(stored, {
 
 /**
  * The athlete's edits to keep when a plan from the coach replaces `old` (as `keptTimes` and `keptOwnValues`): the same
- * plan id and both from the engine. The new plan's own edits stay (the coach read the phone's plan in), and the old
+ * plan id. The new plan's own edits stay (the coach read the phone's plan in), and the old
  * plan's for the workouts it has none for are laid on it. Another plan: none are kept.
  */
 export function keptEdits(old: StoredPlan | null, incoming: StoredPlan): StoredPlan {
-  if (!old?.plan.edits?.length || old.plan.id !== incoming.plan.id || !fromEngine(old) || !fromEngine(incoming))
-    return incoming;
+  if (!old?.plan.edits?.length || old.plan.id !== incoming.plan.id) return incoming;
   const edits = mergedEdits(incoming.plan.edits, old.plan.edits);
   if (edits.length === (incoming.plan.edits?.length ?? 0)) return incoming;
   return { ...incoming, plan: applyEdits({ ...incoming.plan, edits }, normRequest(incoming.request)) };

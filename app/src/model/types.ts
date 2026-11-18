@@ -117,9 +117,6 @@ export interface StoredWorkout {
   status: "planned" | "done" | "moved" | "missed" | "skipped" | string;
   goal: StoredGoal | null;
   parts: StoredPart[];
-  /** A title written for this workout in place of the template's (a plan written outside the engine); missing:
-   * the template's. */
-  name?: string;
 }
 
 /** A week beyond the rolling plan's horizon: the sums the engine filled it with, without the workouts. */
@@ -165,9 +162,6 @@ export interface StoredPlanBody {
   weeks: StoredWeek[];
   /** The last week with workouts (1-based) in a rolling plan; null or missing: every week has its workouts. */
   horizon?: number | null;
-  /** Who wrote the plan (plan.models.Plan.source): missing the engine; anything else (e.g. "schedule") a plan written
-   * outside the engine, week by week, which the app never rebuilds (`fromEngine`). */
-  source?: string;
   /** The athlete's changes of single workouts (#777, plan.models.Edit), laid on the weeks again by every rebuild
    * (engine/edits.ts); missing when there are none. */
   edits?: StoredEdit[];

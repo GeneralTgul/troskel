@@ -101,10 +101,6 @@ def test_times_waiting_on_the_phone_are_laid_on_from_tomorrow(athlete):
     for k, w in old.items():
         if w.date <= date(2026, 11, 26):
             assert new[k] == w
-    # a plan written outside the engine keeps its workouts: the times are not the engine's to lay
-    athlete["plan"]["plan"]["source"] = "Eget schema"
-    written = phone.to_plan(phone.read(json.dumps(athlete)), "", date(2026, 11, 26))
-    assert [s.max_minutes for s in written.request.availability if s.weekday == 1] != [90]
 
 
 def test_a_new_test_on_the_athletes_plan_keeps_the_athletes_times():

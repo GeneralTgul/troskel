@@ -216,6 +216,6 @@ export const ownPlan = (s: StoredPlan | null) => !!s && s.plan.id.startsWith(APP
  * an own plan, every week detailed already (a plan made before #789), or not yet time. A coach's plan is renewed by
  * the coach (*Förnya* in Tröskel) and comes with a new link. */
 export function renewOwn(s: StoredPlan | null, today: IsoDate): StoredPlan | null {
-  if (!s || !ownPlan(s) || s.plan.source || due(s.plan, today) === 0) return null;
+  if (!s || !ownPlan(s) || due(s.plan, today) === 0) return null;
   return { ...s, plan: rollForward(s.plan, s.request, today) };
 }

@@ -166,7 +166,7 @@ def to_plan(phone: PhonePlan, athlete_name: str = "", today: date | None = None)
     planned, its minutes are in the log). The targets are not taken from the phone: Tröskel works them out from
     the tests, as for its own plans."""
     stored = phone.stored
-    if phone.times and not stored["plan"].get("source"):
+    if phone.times:
         frm = (today or date.today()).toordinal() + 1
         later = [d for d in phone.times.get("unavailable", []) if date.fromisoformat(d).toordinal() >= frm]
         stored = rebuild(stored, phone.times["slots"], later, date.fromordinal(frm).isoformat())

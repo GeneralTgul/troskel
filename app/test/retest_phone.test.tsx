@@ -88,13 +88,12 @@ describe("a new test from the coach", () => {
     expect(store.times()).toBeNull();
   });
 
-  it("keeps nothing for another plan, the same times or a plan written outside the engine", () => {
+  it("keeps nothing for another plan or the same times", () => {
     const p = demoPlan();
     const moved = { ...p, request: { ...p.request, availability: p.request.availability.slice(1) } };
     expect(keptTimes(moved, p, "2026-11-25")).toMatchObject({ kept: true });
     expect(keptTimes(p, retested(p), "2026-11-25")).toBeNull();
     expect(keptTimes(moved, { ...p, plan: { ...p.plan, id: "other" } }, "2026-11-25")).toBeNull();
-    expect(keptTimes({ ...moved, plan: { ...moved.plan, source: "schedule" } }, p, "2026-11-25")).toBeNull();
     expect(keptTimes(null, p, "2026-11-25")).toBeNull();
   });
 });

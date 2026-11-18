@@ -313,8 +313,6 @@ När idrottaren sparar nya tider räknar appen om schemat från i morgon med pla
 - De dagar som inte går stryks passen (loppen ligger kvar). Motorn flyttar dem inte till en annan dag, eftersom motorn i Python inte har dagar som faller bort.
 - Går det inte att göra ett schema, till exempel utan någon dag för schemats idrotter, sparas tiderna på enheten som förut, och appen säger att de används när coachen skickar ett nytt schema.
 
-Ett schema som är skrivet vecka för vecka utanför motorn räknas aldrig om. Det har `source` i schemat (`Plan.source` i `src/lopanalys/plan/models.py`, till exempel `"schedule"`), och varje pass har sin egen titel i `name`, som appen visar i stället för passmallens. *Mina tider* visar då tiderna utan formulär och säger att ett nytt schema ersätter det här, och `rebuild` vägrar ett sådant schema (`fromEngine` i `app/src/model/plan.ts`, provet i `app/test/schedule_plan.test.tsx`). Annars skulle motorn byta ut passen mot sina egna. Ett schema från motorn har inget av fälten och sparas som förut.
-
 Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriven med Python-motorns egna funktioner. Med flera idrotter ger appen varje pass samma idrott som Tröskel och skriver idrottens namn först i titeln ([Träningsplanen → Flera idrotter](../TRANINGSPLAN.md#flera-idrotter)). Målen i puls och fart räknas inte om i appen: de beror på testet, inte på tiderna, och följer med schemat från Tröskel.
 
 ## En kopia av schemat

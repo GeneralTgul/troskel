@@ -54,16 +54,12 @@ export function mainZone(w: StoredWorkout): ZoneCode | null {
 /** The template's title (plan.models.Workout.title_in): in a sport other than running, and in every sport of a plan
  * with several (`multi`), with the sport's name first. */
 export function workoutTitle(w: StoredWorkout, multi = false): string {
-  if (w.name) return w.name;
   if (w.goal) return w.goal.name;
   if (w.sport === "run" && !multi) return t(`plan.workout.${w.template_id}.title`);
   const any = `plan.workout.${w.template_id}.title_any`;
   return t("plan.workout.in_sport", { sport: t(`plan.sport.${w.sport}`),
     title: t(has(any) ? any : `plan.workout.${w.template_id}.title`) });
 }
-/** False for a plan written outside the engine (Plan.source): the engine must not rebuild it, or the weeks the
- * schedule gave would be replaced by the engine's. */
-export const fromEngine = (stored: StoredPlan) => !stored.plan.source;
 /** The title in its plan (Plan.title): with the sport first when the plan has several sports or strength. */
 export const planTitle = (stored: StoredPlan, w: StoredWorkout) => workoutTitle(w, multiSport(stored.request));
 export const workoutPurpose = (w: StoredWorkout) => t(`plan.workout.${w.template_id}.purpose`);

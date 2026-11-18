@@ -19,9 +19,6 @@ a swimming test is stored as before, and a plan saved before reads back with non
 The fixed hard days (``PlanRequest.hard_days``, engine version 9) are stored the same way, under ``hard_days`` as
 ``{"weekday": 3, "sport": "ski"}`` (the sport left out when the engine picks it), only when there are any.
 
-A plan written outside the engine (``Plan.source``, the weeks as a schedule gives them) is stored with ``source`` and
-each workout with its own title under ``name``; both only when set, so every other plan is stored as before.
-
 The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
 ``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any. The day of the next
 test the coach chose (``Plan.next_test``, #778) is stored under ``next_test``, only when set.
@@ -134,7 +131,7 @@ def _workout_to_dict(w: Workout) -> dict[str, Any]:
     return {"key": w.key, "date": _d(w.date), "sport": w.sport, "template_id": w.template_id, "family": w.family,
             "quality": w.quality, "start": w.start.isoformat() if w.start else None, "status": w.status,
             "goal": _goal_to_dict(w.goal) if w.goal else None,
-            "parts": [_part_to_dict(p) for p in w.parts], **({"name": w.name} if w.name else {})}
+            "parts": [_part_to_dict(p) for p in w.parts]}
 
 
 def _part_to_dict(p: Part) -> dict[str, Any]:
@@ -151,7 +148,7 @@ def _workout_from_dict(d: dict[str, Any]) -> Workout:
                   p.get("rest_zone", "Z1"), p.get("band", "")) for p in d["parts"]]
     return Workout(d["key"], date.fromisoformat(d["date"]), _sport(d["sport"]), d["template_id"], d["family"], d["quality"],
                    parts, _pt(d.get("start")), _goal_from_dict(d["goal"]) if d.get("goal") else None,
-                   d.get("status", "planned"), d.get("name", ""))
+                   d.get("status", "planned"))
 
 
 def plan_to_dict(p: Plan) -> dict[str, Any]:
@@ -164,7 +161,7 @@ def plan_to_dict(p: Plan) -> dict[str, Any]:
         "blocks": [{"kind": b.kind, "first_week": b.first_week, "weeks": b.weeks, "start": _d(b.start),
                     "reason": _note_to_dict(b.reason)} for b in p.blocks],
         "weeks": [_week_to_dict(w) for w in p.weeks],
-        "horizon": p.horizon, **({"source": p.source} if p.source else {}),
+        "horizon": p.horizon,
         **({"edits": [edit_to_dict(e) for e in p.edits]} if p.edits else {}),
         **({"next_test": _d(p.next_test)} if p.next_test else {}),
     }
@@ -208,7 +205,7 @@ def plan_from_dict(d: dict[str, Any], request: PlanRequest) -> Plan:
     return Plan(d["id"], request, datetime.fromisoformat(d["created"]), d.get("engine_version", ""), blocks, weeks,
                 [_note_from_dict(n) for n in d.get("notes", [])], d.get("zone_system", DEFAULT_SYSTEM),
                 {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log,
-                d.get("horizon"), d.get("source", ""), tuple(edit_from_dict(e) for e in d.get("edits", [])),
+                d.get("horizon"), tuple(edit_from_dict(e) for e in d.get("edits", [])),
                 _pd(d.get("next_test")))
 
 

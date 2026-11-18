@@ -41,13 +41,12 @@ export function slotsFromDays(days: DayTimes[], original: StoredSlot[], sports: 
  * same plan id, built on the times the coach has. When the athlete had changed the times in the app ("Mina tider"
  * rebuilt the plan, or `pending` waits there), the new plan would drop them without a word. They are kept as pending
  * times instead, so the athlete sees them and chooses to lay the new plan on them; the app never rebuilds it by
- * itself. None: nothing to keep (another plan, the athlete's times already in the new plan, or a plan written outside
- * the engine, whose times are not the athlete's). The coach who read the athlete's plan in from the phone (#781)
+ * itself. None: nothing to keep (another plan, or the athlete's times already in the new plan). The coach who read the athlete's plan in from the phone (#781)
  * sends a plan that has the athlete's times, also those that were waiting, so it gives none. */
 export function keptTimes(old: StoredPlan | null, incoming: StoredPlan, today: IsoDate, pending: PendingTimes | null = null): {
   slots: StoredSlot[]; unavailable: IsoDate[]; saved: IsoDate; kept: true;
 } | null {
-  if (!old || old.plan.id !== incoming.plan.id || old.plan.source || incoming.plan.source) return null;
+  if (!old || old.plan.id !== incoming.plan.id) return null;
   const key = (s: StoredSlot[]) => JSON.stringify(s.map((x) => [x.weekday, x.max_minutes, x.start, x.role, [...x.sports].sort()]));
   const own = pending?.slots ?? old.request.availability;
   if (key(own) === key(incoming.request.availability)) return null;

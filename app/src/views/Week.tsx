@@ -92,7 +92,7 @@ function DayStateMark({ state }: { state: DayState }) {
 /** The week as the hall screen shows it: a row per day with the workouts as pills in their zone's colour and the
  * sport's icon, the sessions outside the plan as "+ name", and the day's state at the right. Beside it on a wide
  * screen the week in numbers and the next races, under it the season. A tap on a day opens it, and there the athlete
- * can move, swap and shorten a workout (`onPlan`, #777: not in the example plan or a plan written outside the engine). */
+ * can move, swap and shorten a workout (`onPlan`, #777: not in the example plan). */
 export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore, onPlan }: {
   stored: StoredPlan; today: IsoDate; onCalendar?: () => void; onPlan?: (p: StoredPlan) => void;
 } & Partial<LogProps>) {
