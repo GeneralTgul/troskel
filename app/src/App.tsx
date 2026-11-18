@@ -9,7 +9,7 @@ import { autoMarks, decodeHealth, healthData, mergeHealth, withAuto, withoutAuto
 import { readHealthConnect, type HealthPluginLike } from "./model/healthconnect";
 import { keepFor, type TrainingLog } from "./model/log";
 import { fromEngine } from "./model/plan";
-import { emptyForm, formFromPlan, newPlanId, planFromForm, type RequestForm } from "./model/request";
+import { emptyForm, formFromPlan, newPlanId, planFromForm, renewOwn, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
 import { keptEdits } from "./model/adjust";
 import { keptTimes } from "./model/times";
@@ -73,8 +73,18 @@ export function App(props: AppProps) {
     setLang(l);
     return l;
   });
-  const [stored, setStored] = useState<StoredPlan | null>(() => store.plan());
+  // The athlete's own plan renews itself (#789): at the start, and when the day changes in the wall mode (below).
+  const renewed = (s: StoredPlan | null, isDemo: boolean) => {
+    const r = isDemo ? null : renewOwn(s, today);
+    if (r) store.setPlan(r, false);
+    return r;
+  };
+  const [stored, setStored] = useState<StoredPlan | null>(() => renewed(store.plan(), store.isDemo()) ?? store.plan());
   const [demo, setDemo] = useState(() => store.isDemo());
+  useEffect(() => {
+    const r = renewed(stored, demo);
+    if (r) setStored(r);
+  }, [today, stored, demo]);
   const [pending, setPending] = useState<PendingTimes | null>(() => store.times());
   const [tab, setTab] = useState<Tab>(props.tab ?? "today");
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +283,7 @@ export function App(props: AppProps) {
     setRequest(stored && !demo && fromEngine(stored) ? formFromPlan(stored, today) : emptyForm(today));
   };
   const makePlan = (f: RequestForm) => {
-    const p = planFromForm(f, { id: (props.newPlanId ?? newPlanId)(),
+    const p = planFromForm(f, { id: (props.newPlanId ?? newPlanId)(), today,
       targets: f.capacity.length && stored ? stored.targets : undefined });
     if (stored && !demo && typeof confirm === "function" && !confirm(t("ui.request.replace_confirm"))) return;
     accept(p);

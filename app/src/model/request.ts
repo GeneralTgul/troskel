@@ -13,10 +13,15 @@
  * model/values.ts: max HR, thresholds, FTP, CSS) are `values`, one row per sport, and give the targets of their sport;
  * a row in a sport with a test is the athlete's choice to use own values in its place.
  *
+ * The plan rolls as a coach's plan in Tröskel (#789): it is built on the day it is made (`today`), with the weeks up to
+ * four weeks ahead detailed and the rest sketches, and `renewOwn` details the next weeks when the app starts and
+ * `due` says it is time (`rollForward`, Tröskel's *Förnya*). The workouts of the new weeks follow the request as it
+ * is then (new own values, a new test), and the athlete's edits (`plan.edits`) are laid on them again.
+ *
  * Not in the form (yet): a second time on a day, extra slots, fixed hard days and the shares of the sports; a form
  * filled in from a plan with them leaves them out.
  */
-import { buildPlan } from "../engine";
+import { buildPlan, due, rollForward } from "../engine";
 import { BORROWS, LEVELS, RUNNING, normRequest, planRoles } from "../engine/models";
 import { daysFromSlots } from "./times";
 import { FORMAT, KIND, type IsoDate, type Sport, type StoredCapacity, type StoredPlan, type StoredRequest,
@@ -189,13 +194,15 @@ export interface OwnPlanOptions {
   id: string;
   /** The targets of the plan the form was filled in from (its tests', as Tröskel sent them); none without a test. */
   targets?: Record<Sport, ZoneTargets>;
+  /** The day the plan is made: the weeks after four weeks from it are sketches, detailed by `renewOwn` later. */
+  today: IsoDate;
 }
 
 /** The stored plan of the form, as Tröskel would store it (link.stored_plan); throws FormError or PlanError. */
 export function planFromForm(f: RequestForm, o: OwnPlanOptions): StoredPlan {
   const request = requestFromForm(f);
-  // Every week with its workouts (no horizon): without a coach nobody renews a rolling plan (*Förnya* in Tröskel).
-  const plan = buildPlan(request, { planId: o.id });
+  // A rolling plan, as Tröskel builds one: the app renews it itself (`renewOwn`), as the coach's *Förnya*.
+  const plan = buildPlan(request, { planId: o.id, today: o.today });
   return {
     kind: KIND, format: FORMAT, athlete: f.athlete.trim(), request, plan,
     targets: targetsFor(request, o.targets ?? {}), targets_log: [],
@@ -204,3 +211,11 @@ export function planFromForm(f: RequestForm, o: OwnPlanOptions): StoredPlan {
 
 /** A plan the athlete made in the app (not one from a coach). */
 export const ownPlan = (s: StoredPlan | null) => !!s && s.plan.id.startsWith(APP_ID_PREFIX);
+
+/** The athlete's own plan renewed on `today` (`rollForward` when `due`), or null when there is nothing to renew: not
+ * an own plan, every week detailed already (a plan made before #789), or not yet time. A coach's plan is renewed by
+ * the coach (*Förnya* in Tröskel) and comes with a new link. */
+export function renewOwn(s: StoredPlan | null, today: IsoDate): StoredPlan | null {
+  if (!s || !ownPlan(s) || s.plan.source || due(s.plan, today) === 0) return null;
+  return { ...s, plan: rollForward(s.plan, s.request, today) };
+}

@@ -15,7 +15,8 @@ library.DRILLS, which app/src/engine/library.ts has too.
 of them with its engine and gets the stored plan back. ``demo.link.txt`` is the demo plan's link as Tröskel sends
 it (the short one) and ``demo.full.link.txt`` the link with the whole plan (format 1).
 ``request.json.gz`` is the athlete's own plan (#777): forms of the app's *Gör ett schema själv* and the plans Tröskel builds
-from the same answers (``form_request``), checked by app/test/request.test.tsx.
+from the same answers (``form_request``, rolling from the day the form is sent), and the same plans renewed later with the
+athlete's edits and new own values (``roll_forward``, #789), checked by app/test/request.test.tsx.
 ``zones.json.gz`` is the zones' targets the app works out itself for the athlete's own values (#777, app/src/engine/zones.ts):
 capacities and the targets ``link.zone_targets`` gives them, the targets per sport of requests (``link._targets``), the
 capacity of typed-in values (``values_capacity``) and a plan laid on new own values (``with_values``), checked by
@@ -492,7 +493,7 @@ def _form(**kw: Any) -> dict[str, Any]:
 
 def request_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
     """The app's own plans (test/request.test.ts): forms, the plan Tröskel builds from each of them (``form_request``,
-    ``build_plan`` with every week detailed, ``link.stored_plan``), and the demo plan's form (``form_from_plan``)."""
+    ``build_plan`` rolling from the day the form is sent, ``link.stored_plan``), and the demo plan's form (``form_from_plan``)."""
     three = [_day(), _day(True, 45), _day(), _day(True, 50, "18:00"), _day(), _day(), _day(True, 80, "09:30")]
     five = [_day(True, 45, "18:00"), _day(True, 70, "18:00"), _day(), _day(True, 60, "06:30"), _day(),
             _day(True, 60, "10:00"), _day(True, 110, "09:00")]
@@ -522,15 +523,39 @@ def request_fixtures(demo_stored: dict[str, Any]) -> dict[str, Any]:
                                      "bike": _v(max_hr="182", lt2="245"), "swim": _v(css="1:58"),
                                      "skierg": _v(max_hr="185")})),
     ]
+    made = date(2026, 11, 18)          # the day the forms are sent (the default start)
     cases = []
     for name, f in forms:
         plan_id = f"app-{name[:8]}"
-        cases.append({"name": name, "form": f, "plan_id": plan_id,
-                      "stored": link.stored_plan(build_plan(form_request(f), plan_id=plan_id))})
+        cases.append({"name": name, "form": f, "plan_id": plan_id, "today": made.isoformat(),
+                      "stored": link.stored_plan(build_plan(form_request(f), plan_id=plan_id, today=made))})
     f = form_from_plan(demo_stored, "2026-11-25")
     cases.append({"name": "from-demo", "from": "demo", "today": "2026-11-25", "form": f, "plan_id": "app-fromdemo",
-                  "stored": link.stored_plan(build_plan(form_request(f), plan_id="app-fromdemo"))})
-    return {"cases": cases}
+                  "stored": link.stored_plan(build_plan(form_request(f), plan_id="app-fromdemo",
+                                                        today=date(2026, 11, 25)))})
+    return {"cases": cases, "roll": own_roll_fixtures({c["name"]: c["stored"] for c in cases})}
+
+
+def own_roll_fixtures(stored: dict[str, Any]) -> list[dict[str, Any]]:
+    """An own plan renewed in the app (#789, request.ts ``renewOwn``): the plan with the athlete's edits
+    (``_pick_edits``), and optionally new own values (``plan_with_values``), rolled forward (``roll_forward``) on days
+    later in the plan, as Tröskel's *Förnya* would."""
+    out = []
+    values = {"run": _v(max_hr="189", resting_hr="50", lt1_hr="150", lt2_hr="172", lt1="5:40", lt2="4:40")}
+    for name, new_values in (("run-goal-milestones", None), ("own-values", None), ("multi-sport", None),
+                             ("run-goal-milestones", values)):
+        s = stored[name]
+        req = codec.request_from_dict(s["request"], s.get("athlete") or "")
+        plan = codec.plan_from_dict(s["plan"], req)
+        before = link.stored_plan(edits.apply_edits(replace(plan, edits=_pick_edits(plan))), s.get("athlete") or "")
+        if new_values:
+            before = plan_with_values(before, new_values)
+        for today in ("2026-11-20", "2026-12-14", "2027-01-27", "2027-06-01"):
+            r = codec.request_from_dict(before["request"], before.get("athlete") or "")
+            rolled = roll_forward(codec.plan_from_dict(before["plan"], r), date.fromisoformat(today))
+            out.append({"name": f"{name}{'-values' if new_values else ''}", "today": today, "values": new_values,
+                        "before": before, "after": link.stored_plan(rolled, before.get("athlete") or "")})
+    return out
 
 
 # ---- the athlete's own values (#777): app/src/model/values.ts and app/src/engine/zones.ts ----------------------------

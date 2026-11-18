@@ -12,18 +12,20 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
-import { PlanError, engine } from "../src/engine";
+import { PlanError, due, engine } from "../src/engine";
 import { setLang } from "../src/i18n";
 import {
-  FormError, emptyForm, formFromPlan, newPlanId, ownPlan, planFromForm, requestFromForm, type RequestForm,
+  FormError, emptyForm, formFromPlan, newPlanId, ownPlan, planFromForm, renewOwn, requestFromForm, type RequestForm,
 } from "../src/model/request";
+import { planWithValues, type OwnValues } from "../src/model/values";
 import { memoryStore } from "../src/model/storage";
 import type { StoredPlan } from "../src/model/types";
 import { demoPlan, demoText } from "./helpers";
 
-interface Case { name: string; form: RequestForm; plan_id: string; stored: StoredPlan; from?: string; today?: string }
+interface Case { name: string; form: RequestForm; plan_id: string; stored: StoredPlan; from?: string; today: string }
+interface Roll { name: string; today: string; values: OwnValues | null; before: StoredPlan; after: StoredPlan }
 
-const fx: { cases: Case[] } = JSON.parse(
+const fx: { cases: Case[]; roll: Roll[] } = JSON.parse(
   gunzipSync(readFileSync(resolve(process.cwd(), "test/fixtures/request.json.gz"))).toString("utf-8"));
 
 const NOW = new Date("2026-11-25T08:00:00Z");
@@ -55,7 +57,7 @@ describe("the form against Tröskel", () => {
   it.each(fx.cases.map((c) => [c.name, c] as const))("%s: the same request and the same plan", (_, c) => {
     expect(requestFromForm(c.form)).toEqual(c.stored.request);
     const targets = c.from === "demo" ? demoPlan().targets : undefined;
-    expect(planFromForm(c.form, { id: c.plan_id, targets })).toEqual(c.stored);
+    expect(planFromForm(c.form, { id: c.plan_id, targets, today: c.today })).toEqual(c.stored);
   });
 
   it("fills the form in from the demo plan as Tröskel does", () => {
@@ -65,12 +67,17 @@ describe("the form against Tröskel", () => {
 
   it("gives a plan without a test zones and no targets", () => {
     const c = fx.cases.find((x) => x.name === "run-weeks")!;
-    const p = planFromForm(c.form, { id: "app-x" });
+    const p = planFromForm(c.form, { id: "app-x", today: c.today });
     expect(p.request.capacity).toEqual([]);
     expect(p.targets).toEqual({});
     expect(p.plan.notes.map((n) => n.key)).toContain("plan.note.no_test");
-    expect(p.plan.horizon).toBeNull();
-    expect(p.plan.weeks.every((w) => !w.sketch)).toBe(true);
+  });
+
+  it("rolls as a coach's plan: four weeks detailed, the rest sketches (#789)", () => {
+    const c = fx.cases.find((x) => x.name === "run-goal-milestones")!;
+    const p = planFromForm(c.form, { id: c.plan_id, today: c.today });
+    expect(p.plan.horizon).toBe(4);
+    expect(p.plan.weeks.map((w) => !!w.sketch)).toEqual(p.plan.weeks.map((w) => w.index > 4));
   });
 });
 
@@ -100,29 +107,29 @@ describe("what the form stops", () => {
 
   it("leaves the engine's own errors to the engine", () => {
     const f: RequestForm = { ...ok(), mode: "goal", goals: [{ ...ok().goals[0], name: "Snart", date: "2026-11-28" }] };
-    const e = thrown(() => planFromForm(f, { id: "app-x" }));
+    const e = thrown(() => planFromForm(f, { id: "app-x", today: "2026-11-25" }));
     expect(e).toBeInstanceOf(PlanError);
     expect(e.key).toBe("plan.error.goal_too_close");
-    expect(thrown(() => planFromForm({ ...ok(), weeks: 3 }, { id: "app-x" })).key).toBe("plan.error.too_short");
+    expect(thrown(() => planFromForm({ ...ok(), weeks: 3 }, { id: "app-x", today: "2026-11-25" })).key).toBe("plan.error.too_short");
   });
 
   it("makes ids of its own", () => {
     const id = newPlanId();
     expect(id).toMatch(/^app-[0-9a-z]{8}$/);
     expect(newPlanId()).not.toBe(id);
-    expect(ownPlan(planFromForm(ok(), { id }))).toBe(true);
+    expect(ownPlan(planFromForm(ok(), { id, today: "2026-11-25" }))).toBe(true);
     expect(ownPlan(demoPlan())).toBe(false);
   });
 });
 
-async function mount(plan: StoredPlan | null = null, demo = false) {
+async function mount(plan: StoredPlan | null = null, demo = false, now = NOW) {
   const store = memoryStore();
   if (plan) store.setPlan(plan, demo);
   store.setSettings({ lang: "sv" });
   root = document.createElement("div");
   document.body.append(root);
   await act(async () => {
-    render(<App store={store} engine={engine} now={() => NOW} timeZone="Europe/Stockholm" tab={plan ? "about" : undefined}
+    render(<App store={store} engine={engine} now={() => now} timeZone="Europe/Stockholm" tab={plan ? "about" : undefined}
       loadDemo={async () => demoText()} newPlanId={() => "app-test0001"} />, root);
   });
   return store;
@@ -247,5 +254,47 @@ describe("Dina värden (#777)", () => {
     await mount(demoPlan(), true);
     await click(byText(".tabs button", "Schema"));
     expect(byText("button", "Ändra mina värden")).toBeUndefined();
+  });
+});
+
+describe("an own plan renews itself (#789)", () => {
+  it("has every kind of case", () => {
+    expect([...new Set(fx.roll.map((r) => r.name))]).toEqual(
+      ["run-goal-milestones", "own-values", "multi-sport", "run-goal-milestones-values"]);
+    expect(fx.roll.every((r) => (r.before.plan.edits ?? []).length > 0)).toBe(true);
+  });
+
+  it.each(fx.roll.map((r) => [`${r.name} ${r.today}`, r] as const))("%s: the same weeks as Tröskel's Förnya", (_, r) => {
+    const got = renewOwn(r.before, r.today);
+    if (due(r.before.plan, r.today) === 0) expect(got).toBeNull();
+    expect(got ?? r.before).toEqual(r.after);
+    expect(r.after.plan.edits).toEqual(r.before.plan.edits);
+  });
+
+  it("renews on the athlete's new own values", () => {
+    for (const r of fx.roll.filter((x) => x.values)) {
+      const plain = fx.roll.find((x) => x.name === r.name.replace(/-values$/, "") && x.today === r.today)!;
+      expect(planWithValues(plain.before, r.values!)).toEqual(r.before);
+    }
+  });
+
+  it("leaves a coach's plan, a plan without a horizon and the example alone", () => {
+    const r = fx.roll.find((x) => x.today === "2026-12-14")!;
+    expect(renewOwn({ ...r.before, plan: { ...r.before.plan, id: "p1" } }, r.today)).toBeNull();
+    expect(renewOwn({ ...r.before, plan: { ...r.before.plan, horizon: null } }, r.today)).toBeNull();
+    expect(renewOwn(null, r.today)).toBeNull();
+  });
+
+  it("renews the stored plan when the app starts", async () => {
+    const r = fx.roll.find((x) => x.name === "run-goal-milestones" && x.today === "2027-01-27")!;
+    const store = await mount(r.before, false, new Date(`${r.today}T08:00:00Z`));
+    expect(store.plan()).toEqual(r.after);
+    expect(root.querySelector(".tabs")).not.toBeNull();
+  });
+
+  it("does not renew the example", async () => {
+    const r = fx.roll.find((x) => x.name === "run-goal-milestones" && x.today === "2027-01-27")!;
+    const store = await mount(r.before, true, new Date(`${r.today}T08:00:00Z`));
+    expect(store.plan()).toEqual(r.before);
   });
 });
