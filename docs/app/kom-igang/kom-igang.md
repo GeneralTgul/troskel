@@ -61,6 +61,8 @@ Appen på hemskärmen hämtar den nya versionen själv när den öppnas med nät
 
 Schemat, det du bockat av och dina tider sparas bara i telefonen, i webbläsarens lagring för appen. Det finns inget konto och ingen kopia på någon server. *Ta bort all data på enheten* under *Om appen* tömmer allt.
 
+Lägg därför appen på hemskärmen: i en vanlig flik i Safari töms lagringen efter sju dagar utan besök. Spara också en kopia ibland med *Spara en kopia* under *Om appen*, och lägg filen där du hittar den (iCloud Drive, Google Drive eller ett mejl till dig själv). I en ny telefon läser du in den med *Öppna en fil*, och schemat kommer tillbaka med dina ändringar och bockar. Appen påminner på *I dag* när lagringen kan tömmas och den senaste kopian är äldre än två veckor. Mer i [En kopia av schemat](../app.md#en-kopia-av-schemat).
+
 ## Det som inte är provat
 
 Vägen från länken till ett schema är provad i en ren webbläsare (Chromium i telefonstorlek, tom lagring), också utan nät efter första besöket. Hemskärmen på en riktig iPhone och Android-telefon är inte provad; proven står i [PROV.md](../../PROV.md#appen-i-telefonen).

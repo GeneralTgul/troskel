@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
+import { storageState } from "./model/backup";
 import { healthConnectPlugin } from "./model/healthconnect";
 import { openStore } from "./model/storage";
 import "./styles.css";
@@ -33,6 +34,7 @@ Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store
     download={download}
     hasCamera={!!navigator.mediaDevices?.getUserMedia}
     healthConnect={healthConnect}
+    storageState={() => storageState()}
   />,
   document.getElementById("app")!,
 ));

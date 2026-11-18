@@ -128,6 +128,8 @@ export interface Settings {
   wall?: boolean;
   /** The athlete let the Android app read Health Connect (healthconnect.ts): read again at each start. */
   healthConnect?: boolean;
+  /** The day the athlete last saved or copied a copy of the plan (backup.ts, #790). */
+  copied?: string;
 }
 
 export interface PendingTimes extends Omit<NewAvailability, "from"> {

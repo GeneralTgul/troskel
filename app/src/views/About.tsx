@@ -1,6 +1,7 @@
 import { LANGS, t, type Lang } from "../i18n";
 import { dayMonth } from "../model/dates";
 import type { StoredPlan } from "../model/types";
+import { Backup, type BackupProps } from "./Backup";
 import { Share } from "./Share";
 
 export const SOURCE_URL = "https://github.com/GeneralTgul/troskel";
@@ -22,12 +23,14 @@ interface Props {
   healthConnect?: { on: boolean; read: () => void; settings: () => void };
   /** Send the plan to the coach (#781): missing without a plan of the athlete's own (none, or the example). */
   share?: { file?: () => void; copy: () => Promise<boolean> };
+  /** The athlete's own copy (#790): missing without a plan of the athlete's own. */
+  backup?: BackupProps;
 }
 
 /** The privacy page, also shown by Health Connect as the app's rationale for the permissions. */
 export const PRIVACY_URL = "https://generaltgul.github.io/troskel/app/privacy.html";
 
-export function About({ lang, stored, onLang, onDelete, onNewPlan, onOwnPlan, wall = false, onWall, canKeepAwake = true, healthConnect, share }: Props) {
+export function About({ lang, stored, onLang, onDelete, onNewPlan, onOwnPlan, wall = false, onWall, canKeepAwake = true, healthConnect, share, backup }: Props) {
   return (
     <section class="view about">
       <h2>{t("ui.about.title")}</h2>
@@ -71,6 +74,8 @@ export function About({ lang, stored, onLang, onDelete, onNewPlan, onOwnPlan, wa
           </p>
         </>
       ) : null}
+
+      {backup ? <Backup {...backup} /> : null}
 
       {share ? <Share onFile={share.file} onCopy={share.copy} /> : null}
 

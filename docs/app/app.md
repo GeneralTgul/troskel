@@ -25,6 +25,7 @@
   - [Health Connect i Android-appen](#health-connect-i-android-appen)
 - [Väggläget](#väggläget)
 - [Mina tider och planmotorn](#mina-tider-och-planmotorn)
+- [En kopia av schemat](#en-kopia-av-schemat)
 - [Integritet](#integritet)
 - [Appen utan butiken](#appen-utan-butiken)
 - [Bygga och köra lokalt](#bygga-och-köra-lokalt)
@@ -43,7 +44,7 @@ Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 - *Veckan*: en rad per dag från måndag till söndag, byggd som hallskärmens vecka. Passen står som piller i zonens färg med idrottens ikon, längd, zon och klocktid, och ett pass utanför planen står som *+ namn* bredvid. Till höger på raden står dagens läge: *Gjort* när alla pass är gjorda, *Delvis* när något är gjort, *Missat* när bara missade pass är avbockade, *I dag* och *Vila*. Ett gjort pass har en bock i stället för ikonen, ett delvis gjort en streckad kant och ett missat är överstruket. Dagens rad är markerad. Rubriken mellan pilarna säger vilken vecka, vilket block, veckans tid och veckotyp, och pilarna bläddrar vecka för vecka. Ett tryck på en dag visar dagens pass med rutan för dagen, och fram till i dag går de att bocka av där. Bredvid veckan (under den på en telefon) står nästa lopp med dagar kvar och de följande loppen, och veckan i siffror. Säsongsremsan går i full bredd under.
 - *Schemat*: målen och testdagarna (i ett schema med flera idrotter med idrotten som testas), blocken med varför de ligger där, en stapel per vecka med tiden i varje zon och zonerna med puls och tempo. I ett schema med flera idrotter står zonerna för varje idrott som har egna mål: huvudidrotten först, sedan till exempel cykelns watt och simningens tid per 100 m. Under zonerna står vad de bygger på: *Uppmätt i test <dag>* eller *Egna värden*, och knappen *Ändra mina värden* ([Egna värden](#egna-värden)). Efter målen står *Nästa test* (#778, `app/src/model/nexttest.ts`): dagen coachen valt i Tröskel, annars förvalet 8–12 veckor efter testet (samma regel som `plan/next_test.py`), och en rad om att passens mål bygger på testet från <dag> (eller egna värden). Efter dagen blir raden en ruta: målen stämmer allt sämre, och nya mål kräver ett nytt test eller nya egna värden. `app/test/nexttest.test.tsx` jämför med Python (`app/test/fixtures/nexttest.json.gz`, `nexttest_fixtures`) och provar att dagen följer med efter nya tider, *Förnya*, ändrade pass, egna värden, den korta länken och filen till coachen. I ett långt schema står veckans nummer under varannan eller var fjärde stapel.
 - *Mina tider*: hur länge och när idrottaren kan träna varje veckodag, och dagar som inte går.
-- *Om appen*: språket, *Gör ett schema själv* ([Ett schema utan coach](#ett-schema-utan-coach)), [väggläget](#väggläget), integriteten, licensen och knappen som tar bort all data på enheten.
+- *Om appen*: språket, *Gör ett schema själv* ([Ett schema utan coach](#ett-schema-utan-coach)), [väggläget](#väggläget), [en kopia av schemat](#en-kopia-av-schemat), integriteten, licensen och knappen som tar bort all data på enheten.
 
 Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Från 900 punkters bredd står loppen och veckan i siffror i en högerkolumn bredvid veckan. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
@@ -97,7 +98,7 @@ Inför ett nytt test kan coachen läsa in idrottarens schema i Tröskel, så att
 
 - **Vad som följer med** står i rutan: schemat som det ser ut i telefonen, med idrottarens tider och det appens motor räknat om, det som är avbockat (också det [hälsodatan](#passen-bockas-av-av-sig-själva) bockat av, märkt `auto`), passen utanför schemat, tider som väntar under *Mina tider* och dagen för exporten. Nätterna (sömn, vilopuls, HRV) och klockans pass stannar i telefonen.
 - **Idrottarens godkännande:** knapparna *Spara som fil* och *Kopiera länken* är grå tills idrottaren kryssat i *Jag vill dela det här med min coach*.
-- **Filen** heter `troskel-<namn>-<dag>.troskel` och är JSON i formatet `troskel.athlete` (format 1, `app/src/model/share.ts`). **Länken** är `…/troskel/app/#a=<data>`, kodad som schemats länk (deflate och base64url). Appen öppnar inte en sådan länk, och delen efter `#` skickas aldrig till en server. Länken är längre än schemats, eftersom den bär hela schemat.
+- **Filen** heter `troskel-<namn>-<dag>.troskel` och är JSON i formatet `troskel.athlete` (format 1, `app/src/model/share.ts`). **Länken** är `…/troskel/app/#a=<data>`, kodad som schemats länk (deflate och base64url). Samma fil och länk är idrottarens egen kopia ([En kopia av schemat](#en-kopia-av-schemat)), och appen läser in dem som en kopia. Delen efter `#` skickas aldrig till en server. Länken är längre än schemats, eftersom den bär hela schemat.
 - **Appen skickar inget själv:** idrottaren väljer vem filen eller länken går till, till exempel i ett meddelande eller ett mejl.
 
 I Tröskel läser coachen in det med *Läs in från appen* på sidan *Träningsschema* ([handboken](../handbok/traningsschema/traningsschema.md#läs-in-schemat-från-appen)). Tröskel läser formatet med `src/lopanalys/plan/phone.py`.
@@ -316,6 +317,22 @@ Ett schema som är skrivet vecka för vecka utanför motorn räknas aldrig om. D
 
 Samma regel står i Python som `rebuild` i `app/scripts/make_fixtures.py`, skriven med Python-motorns egna funktioner. Med flera idrotter ger appen varje pass samma idrott som Tröskel och skriver idrottens namn först i titeln ([Träningsplanen → Flera idrotter](../TRANINGSPLAN.md#flera-idrotter)). Målen i puls och fart räknas inte om i appen: de beror på testet, inte på tiderna, och följer med schemat från Tröskel.
 
+## En kopia av schemat
+
+Appen har inget moln, så schemat, ändringarna och det som är avbockat finns bara på enheten. Under *Om appen* finns ***En kopia av schemat*** (`app/src/views/Backup.tsx`, `app/src/model/backup.ts`, #790), när appen har ett eget schema eller ett från en coach (inte exemplet):
+
+- **Kopian är det coachen får** ([Från idrottare till coach](#från-idrottare-till-coach)): samma `troskel.athlete`, med schemat som det ser ut i telefonen (ändrade pass, egna värden och tider), det som är avbockat, passen utanför schemat och tider som väntar under *Mina tider*. *Spara en kopia* sparar filen `troskel-kopia-<dag>.troskel`, och *Kopiera kopian som länk* kopierar länken `…#a=<data>`. Rutan kräver inget godkännande, eftersom kopian går till idrottaren själv. Hälsodatan (nätterna och klockans pass) följer inte med; klockan ger den igen. Det klockan bockat av följer med och blir idrottarens egna bockar.
+- **Läs in kopian:** *Öppna en fil* eller *Klistra in en länk* på välkomstsidan (eller under *Ta emot ett nytt schema*), eller länken öppnad i telefonen. Appen känner igen kopian (`readCopyText`) och lägger tillbaka schemat, bockarna, passen utanför schemat och de väntande tiderna. Är telefonens schema ett annat (ett annat schema-id) frågar appen först. Bockarna i kopian går före telefonens för samma pass, och passen utanför schemat finns en gång var (`mergeLog`).
+- **Appen säger till när lagringen kan tömmas** (`storageState`): i en flik i webbläsaren, och i en webbapp på hemskärmen som webbläsaren inte har lovat att spara (`navigator.storage.persist`). Appen ber om beständig lagring bara i en webbapp på hemskärmen, eftersom Firefox frågar användaren i en flik. Rutan i *Om appen* säger läget, och *I dag* påminner om en kopia när lagringen kan tömmas och den senaste kopian är äldre än 14 dagar (`settings.copied`). Appen i butikerna påminner inte.
+
+**När lagringen töms**, enligt källorna (läst 2026-11-18):
+
+- **Safari i en flik:** WebKit tar bort allt som en sida skrivit (`localStorage`, IndexedDB, service workerns cache) efter sju dagar av Safari-användning utan att sidan besökts ([WebKit, *Full Third-Party Cookie Blocking and More*](https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/), 2020).
+- **Webbappen på hemskärmen:** räknas inte som Safari och har sin egen räknare för användningsdagar, så sjudagarsregeln gäller inte (samma inlägg, tillägget om hemskärmen). Den har samma kvot som i webbläsaren, och vid platsbrist tar WebKit bort det som använts längst sedan, utom lagring som gjorts beständig. Beständig lagring ges efter heuristik, till exempel att sidan öppnas som webbapp på hemskärmen ([WebKit, *Updates to Storage Policy*](https://webkit.org/blog/14403/updates-to-storage-policy/), Safari 17).
+- **Appen i butikerna:** Preferences töms inte av sig själv. Avinstalleras appen försvinner de. På Android har appen `android:allowBackup="true"`, så Googles automatiska säkerhetskopia (upp till 25 MB per app, i användarens Google Drive) läggs tillbaka när appen installeras igen, om säkerhetskopian är på i telefonen ([Android, *Back up user data with Auto Backup*](https://developer.android.com/identity/data/autobackup)). En APK från `android-test` installerad ovanpå en äldre behåller sina data.
+
+Proven står i `app/test/backup.test.tsx`. Vägen från en telefon till en annan är provad med två rena Chromium-profiler (2026-11-18), inte i en riktig telefon ([PROV.md](../PROV.md#appen-i-telefonen)).
+
 ## Integritet
 
 Appen skickar inga data någonstans. Det idrottaren själv delar med *Skicka schemat till din coach* ([Från idrottare till coach](#från-idrottare-till-coach)) går som en fil eller en länk som idrottaren ger vidare. Appen har ingen spårning, ingen analys och inga anrop till andra tjänster. Schemat, tiderna, det idrottaren bockat av, passen utanför planen, [hälsodatan](#hälsodatan) och inställningarna (språket och väggläget) sparas bara på enheten, och *Ta bort all data på enheten* tömmer lagringen.
@@ -323,7 +340,7 @@ Appen skickar inga data någonstans. Det idrottaren själv delar med *Skicka sch
 Var de sparas står i `app/src/model/storage.ts`:
 
 - **Webbversionen** (GitHub Pages och på hemskärmen) sparar i webbläsarens `localStorage`.
-- **Appen i butikerna** sparar med Capacitor Preferences, som är telefonens egen lagring för appar (UserDefaults på iOS, SharedPreferences på Android). iOS kan tömma en webbvys `localStorage` när telefonen har ont om plats, men inte Preferences. `Capacitor.isNativePlatform()` väljer lagringen.
+- **Appen i butikerna** sparar med Capacitor Preferences, som är telefonens egen lagring för appar (UserDefaults på iOS, SharedPreferences på Android). iOS kan tömma en webbvys `localStorage` när telefonen har ont om plats, men inte Preferences. När webbläsaren tömmer lagringen står i [En kopia av schemat](#en-kopia-av-schemat). `Capacitor.isNativePlatform()` väljer lagringen.
 - Preferences är asynkron. Appen läser därför in allt en gång vid starten (`openStore` i `main.tsx`) och läser sedan ur minnet och skriver igenom till Preferences, i ordning. Vyerna är synkrona som förut. Går Preferences inte att läsa startar appen med `localStorage` i stället.
 - En installerad app som sparat i `localStorage` förut flyttar sina data till Preferences första gången, när Preferences är tom, och tömmer sedan `localStorage`. Misslyckas flytten ligger de kvar där.
 - *Ta bort all data på enheten* tömmer både Preferences och `localStorage`.

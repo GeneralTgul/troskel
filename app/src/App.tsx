@@ -11,6 +11,7 @@ import { keepFor, type TrainingLog } from "./model/log";
 import { fromEngine } from "./model/plan";
 import { emptyForm, formFromPlan, newPlanId, planFromForm, renewOwn, type RequestForm } from "./model/request";
 import { athleteFile, athleteFileName, athleteLink, athletePayload } from "./model/share";
+import { copyData, copyFileName, mergeLog, readCopyText, remindCopy, type Restored, type StorageState } from "./model/backup";
 import { keptEdits } from "./model/adjust";
 import { keptTimes } from "./model/times";
 import { keptOwnValues } from "./model/values";
@@ -57,6 +58,8 @@ export interface AppProps {
   healthConnect?: HealthPluginLike | null;
   /** The id of a plan the athlete makes in the app (request.newPlanId); a fixed one in the tests. */
   newPlanId?: () => string;
+  /** Whether the browser may empty the storage (backup.storageState, #790); missing in the tests: no reminder. */
+  storageState?: () => Promise<StorageState>;
 }
 
 function errorText(e: unknown): string {
@@ -99,6 +102,12 @@ export function App(props: AppProps) {
   const [health, setHealth] = useState<HealthData | null>(() => store.health());
   const [wall, setWall] = useState(() => store.settings().wall === true);
   const [hcOn, setHcOn] = useState(() => store.settings().healthConnect === true);
+  // The storage (#790): may the browser empty it, and the day of the athlete's last copy.
+  const [storage, setStorage] = useState<StorageState | null>(null);
+  const [copied, setCopied] = useState(() => store.settings().copied);
+  useEffect(() => {
+    void props.storageState?.().then(setStorage).catch(() => {});
+  }, []);
   // Bumped when the wall mode goes back home: the views start again, the week view on this week.
   const [home, setHome] = useState(0);
 
@@ -170,8 +179,22 @@ export function App(props: AppProps) {
     if (!isDemo) setToast(t("ui.load.loaded"));
   };
 
+  // The athlete's own copy (#790): the plan, the marks, the sessions outside the plan and the waiting times come back.
+  const restore = (c: Restored, keepTab: boolean) => {
+    const other = stored && !demo && stored.plan.id !== c.plan.plan.id;
+    if (other && typeof confirm === "function" && !confirm(t("ui.copy.replace_confirm"))) return;
+    const kept = other || demo ? { marks: {}, extras: store.log().extras } : store.log();
+    accept(c.plan, false, keepTab);
+    onLog(mergeLog(keepFor(kept, c.plan), c.log));
+    if (c.times) store.setTimes(c.times);
+    setPending(c.times ?? store.times());
+    setToast(t("ui.copy.restored"));
+  };
+
   const readText = (text: string, keepTab = false) => {
     try {
+      const c = readCopyText(text);
+      if (c) return restore(c, keepTab);
       // The athlete's own values in a sport the coach's plan has no test in stay (#777); a test takes their place.
       // The athlete's moved, swapped and shortened workouts stay on the same plan (#777, model/adjust.keptEdits).
       const old = demo ? null : stored;
@@ -184,7 +207,7 @@ export function App(props: AppProps) {
 
   useEffect(() => {
     const take = (href: string | undefined) => {
-      if (href && linkData(href)) {
+      if (href && (linkData(href) || copyData(href))) {
         readText(href, true);
         props.onIncomingRead?.();
       } else if (href && healthData(href)) {
@@ -277,6 +300,29 @@ export function App(props: AppProps) {
     },
   } : undefined;
 
+  // The athlete's own copy (#790): the same payload as to the coach, to the athlete.
+  const markCopied = () => {
+    store.setSettings({ ...store.settings(), copied: today });
+    setCopied(today);
+  };
+  const backup = stored && !demo ? {
+    state: storage,
+    copied,
+    file: props.download
+      ? () => { props.download!(copyFileName(today), athleteFile(toCoach()), "application/json"); markCopied(); }
+      : undefined,
+    copy: async () => {
+      try {
+        await globalThis.navigator.clipboard.writeText(athleteLink(toCoach()));
+        markCopied();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  } : undefined;
+  const remind = !!stored && !demo && remindCopy(storage, copied, today);
+
   // The athlete's own plan (#777): the form starts from the plan the phone has (its answers and tests), else empty.
   const openRequest = () => {
     setError(null);
@@ -343,6 +389,12 @@ export function App(props: AppProps) {
           </div>
         ) : null}
         {error && showTabs ? <p class="notice error" role="alert">{error}</p> : null}
+        {remind && showTabs && tab === "today" ? (
+          <p class="notice small copy-remind">
+            {t(storage === "tab" ? "ui.copy.remind_tab" : "ui.copy.remind")}{" "}
+            <button class="link-btn" onClick={() => setTab("about")}>{t("ui.copy.remind_go")}</button>
+          </p>
+        ) : null}
         {body}
         {(tab === "about" && showTabs) || (!stored && !qr && !request) ? (
           <About lang={lang} stored={stored} onLang={changeLang} onDelete={deleteAll}
@@ -350,7 +402,7 @@ export function App(props: AppProps) {
             onNewPlan={stored && !welcome ? () => setWelcome(true) : undefined}
             onOwnPlan={stored && !welcome ? openRequest : undefined}
             healthConnect={hc ? { on: hcOn, read: () => void readHc(true), settings: () => void hc.openHealthConnectSettings().catch(() => {}) } : undefined}
-            share={share} />
+            share={share} backup={backup} />
         ) : null}
       </main>
       {toast ? <div class="toast" role="status">{toast}</div> : null}
