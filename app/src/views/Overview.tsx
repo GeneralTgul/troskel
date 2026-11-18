@@ -47,6 +47,9 @@ export function Overview({ stored, today, onCalendar, onValues }: {
   const step = labelStep(weeks.length);
   // The next test (#778): the day, and that the targets build on the last test and fit worse and worse after it.
   const next = weeks.length ? nextTest(stored, today) : null;
+  // Without a test and without targets (a plan made in the app with no own values, #787) the workouts have zones and
+  // effort only: "zones" says so instead of the max HR that Tröskel's plans without a test build on.
+  const basisKey = next && next.basis === "none" && !hasTargets(stored, main) ? "zones" : next?.basis;
   return (
     <section class="view overview two-col">
       <div class="col">
@@ -84,7 +87,7 @@ export function Overview({ stored, today, onCalendar, onValues }: {
               </li>
             </ul>
             <p class={next.passed ? "notice small" : "muted small"}>
-              {t(`ui.plan.next_test.${next.passed ? "after" : "before"}.${next.basis}`,
+              {t(`ui.plan.next_test.${next.passed ? "after" : "before"}.${basisKey}`,
                 { date: next.tested ? dayMonth(next.tested) : "" })}
             </p>
           </div>

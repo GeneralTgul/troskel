@@ -169,6 +169,22 @@ describe("Gör ett schema själv", () => {
     expect(store.isDemo()).toBe(false);
   });
 
+  it("a friend without a coach: the own plan first on the welcome page, and no max HR it does not have (#787)", async () => {
+    await mount();
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>(".welcome .actions button")];
+    expect(buttons[0].textContent).toBe("Gör ett schema själv");
+    expect(root.querySelectorAll(".welcome .primary")).toHaveLength(1);
+    expect(buttons[0].classList.contains("primary")).toBe(true);
+    expect(byText(".welcome h3", "Schema från en coach")).toBeTruthy();
+    await click(buttons[0]);
+    await change(root.querySelector(".request select[name=level]"), "recreational");
+    await click(byText(".request button", "Gör schemat"));
+    await click(byText(".tabs button", "Schemat"));
+    const next = root.querySelector(".next-test")!.textContent!;
+    expect(next).toContain("ger passen puls och tempo");
+    expect(next).not.toContain("maxpuls");
+  });
+
   it("starts from the plan the phone has, with its tests, and asks before it replaces it", async () => {
     const plan = demoPlan();
     const store = await mount(plan);

@@ -29,5 +29,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req).catch(() => caches.match(new URL("./", self.registration.scope).href)));
     return;
   }
-  event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
+  // ignoreVary: a module script asks with an Origin header that the cached copy was not fetched with, and a server
+  // that answers "Vary: Origin" (vite preview, maybe a CDN) would otherwise miss the cache without a network (#787).
+  event.respondWith(caches.match(req, { ignoreSearch: true, ignoreVary: true }).then((hit) => hit || fetch(req)));
 });

@@ -32,6 +32,7 @@
 **Undersidor:**
 
 - [Appen i App Store och Google Play](butikerna/butikerna.md)
+- [Kom igång med appen](kom-igang/kom-igang.md)
 <!-- /toc -->
 
 ## Vad appen gör
@@ -331,7 +332,7 @@ Proven står i `app/test/storage.test.ts`. I en riktig telefon är lagringen int
 
 ## Appen utan butiken
 
-Appen behöver ingen butik för att provas. På Android installeras APK:n från en fast länk, och på iPhone och iPad läggs webbappen på hemskärmen.
+Appen behöver ingen butik för att provas. På Android installeras APK:n från en fast länk, och på iPhone och iPad läggs webbappen på hemskärmen. Länken och QR-koden att skicka till någon som ska komma igång själv står i [Kom igång med appen](kom-igang/kom-igang.md).
 
 **Android (telefon eller surfplatta):** den senaste APK:n från `main` ligger alltid på samma adress:
 

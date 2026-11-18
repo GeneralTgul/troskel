@@ -10,7 +10,8 @@ interface Props {
   onOwn?: () => void;
 }
 
-/** No plan yet: how to get one, and the example. */
+/** No plan yet: how to get one, and the example. A friend without a coach makes one first (#787); the coach's
+ * link, code or file comes after. */
 export function Welcome({ error, onText, onDemo, onQr, onOwn }: Props) {
   const file = useRef<HTMLInputElement>(null);
   const [paste, setPaste] = useState("");
@@ -21,11 +22,19 @@ export function Welcome({ error, onText, onDemo, onQr, onOwn }: Props) {
           <svg viewBox="0 0 64 64"><path d="M8 48 L24 40 L36 26 L56 14" /></svg>
         </div>
         <h1>{t("ui.load.title")}</h1>
-        <p>{t("ui.load.intro")}</p>
+        <p>{t(onOwn ? "ui.load.intro_own" : "ui.load.intro")}</p>
       </div>
       {error ? <p class="notice error" role="alert">{error}</p> : null}
       <div class="actions">
-        <button class="primary wide" onClick={() => file.current?.click()}>{t("ui.load.file")}</button>
+        {onOwn ? (
+          <>
+            <p class="small">{t("ui.load.own_intro")}</p>
+            <button class="primary wide" onClick={onOwn}>{t("ui.load.own")}</button>
+            <h3>{t("ui.load.coach_title")}</h3>
+            <p class="small">{t("ui.load.coach_intro")}</p>
+          </>
+        ) : null}
+        <button class={`${onOwn ? "secondary" : "primary"} wide`} onClick={() => file.current?.click()}>{t("ui.load.file")}</button>
         <input ref={file} type="file" hidden accept=".troskel,.json,application/json,text/plain"
           onChange={async (e) => {
             const f = e.currentTarget.files?.[0];
@@ -38,13 +47,6 @@ export function Welcome({ error, onText, onDemo, onQr, onOwn }: Props) {
             onInput={(e) => setPaste(e.currentTarget.value)} />
           <button class="secondary" disabled={!paste.trim()}>{t("ui.load.paste_go")}</button>
         </form>
-        {onOwn ? (
-          <>
-            <h3>{t("ui.load.own_title")}</h3>
-            <p class="small">{t("ui.load.own_intro")}</p>
-            <button class="secondary wide" onClick={onOwn}>{t("ui.load.own")}</button>
-          </>
-        ) : null}
         <button class="link-btn" onClick={onDemo}>{t("ui.load.demo")}</button>
       </div>
     </section>
