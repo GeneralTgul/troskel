@@ -89,3 +89,16 @@ def test_reads_the_programs_own_file():
     s = fit_read.running_dynamics(data)
     assert len(s) == len(fit.decode(data)["record"])
     assert any(x.cadence_spm == pytest.approx(171.0) for x in s)
+
+
+def test_an_empty_or_damaged_file_is_a_fit_error_not_a_crash():
+    """An empty file read as "no records", and a damaged definition (a number field typed as a string)
+    read without the checksum raised ValueError or TypeError instead of FitError."""
+    for short in (b"", b"\x0e\x10", _file(b"")[:11]):
+        with pytest.raises(fit.FitError):
+            fit_read.read(short)
+    text = [(253, 4, 0x07), (3, 1, 0x02)]                    # timestamp declared as a string
+    for number in (20, 99):                                  # a known message and an unknown one
+        body = _definition(0, number, text) + bytes([0]) + b"ab\xffd" + bytes([150])
+        with pytest.raises(fit.FitError):
+            fit_read.read(_file(body), strict=False)

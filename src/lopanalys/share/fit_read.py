@@ -76,6 +76,8 @@ def read(data: bytes, strict: bool = True) -> dict[str, list[dict[str, Any]]]:
     """``{message name: [fields]}`` for the known messages, values scaled. Raises FitError."""
     out: dict[str, list[dict[str, Any]]] = {}
     pos = 0
+    if len(data) < 12:
+        raise FitError("header")
     while pos + 12 <= len(data):                     # chained files: one header after the other
         hsize = data[pos]
         if hsize not in (12, 14) or data[pos + 8:pos + 12] != b".FIT":
@@ -151,7 +153,7 @@ def _read_body(data: bytes, pos: int, end: int, out: dict[str, list[dict[str, An
             if ts_compressed is not None and row.get("timestamp") is None:
                 row["timestamp"] = ts_compressed
             out.setdefault(known[0], []).append(row)
-    except (KeyError, IndexError, struct.error) as e:
+    except (KeyError, IndexError, ValueError, TypeError, struct.error) as e:
         raise FitError("data") from e
 
 
