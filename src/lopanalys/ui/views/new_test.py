@@ -1475,7 +1475,9 @@ class NewTestView(QWidget):
                 self.tm_connected = False
             else:
                 self.hr_connected = False
-        elif state == "disconnected" and (self.tm_connected if st.device == "treadmill" else self.hr_connected):
+        elif state in ("disconnected", "connecting") and \
+                (self.tm_connected if st.device == "treadmill" else self.hr_connected):
+            # a link that drops is reported as "connecting": the backend tries again by itself
             pill.set(t("ui.dev.lost"), "watch")
         elif state == "connected":
             pill.set(t("ui.dev.connected") + (f": {st.name}" if st.name else ""), "ok")

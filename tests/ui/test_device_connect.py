@@ -68,3 +68,19 @@ def test_the_treadmill_used_before_is_listed_without_a_scan(demo_window, qtbot, 
     assert d.address == "AA:01" and "SW1000EAI-0001" in nt.tm_list.item(0).text()
     nt._add_remembered_tm([DeviceInfo("aa:01", "SW1000EAI-0001", -60)])    # found by the scan: not twice
     assert nt.tm_list.count() == 1
+
+
+def test_a_lost_link_is_shown_while_the_device_reconnects(demo_window, qtbot):
+    """Before 2026-11-22 the device step kept "Ansluten" when the treadmill or the strap dropped: the
+    backends report a lost link as "connecting" (they try again), and the step only looked for "disconnected"."""
+    from lopanalys.core.bus import TOPIC_DEVICE_STATUS
+    from lopanalys.devices.base import ConnState, DeviceStatus
+    nt = _to_devices(demo_window, qtbot)
+    for device, pill in (("treadmill", nt.tm_status), ("heart_rate", nt.hr_status)):
+        before = pill._text
+        nt.ctx.bus.publish(TOPIC_DEVICE_STATUS, DeviceStatus(device, ConnState.CONNECTING, "Band", ""))
+        qtbot.waitUntil(lambda: pill._text != before, timeout=2000)
+        assert pill._text == t("ui.dev.lost") and pill._state == "watch"
+        nt.ctx.bus.publish(TOPIC_DEVICE_STATUS, DeviceStatus(device, ConnState.CONNECTED, "Band", ""))
+        qtbot.waitUntil(lambda: pill._state == "ok", timeout=2000)
+    assert nt.tm_connected and nt.hr_connected
