@@ -64,15 +64,21 @@ def install_exception_hook(log_path: str) -> None:
         show = Signal(str)
 
     relay = _Relay()
+    # The dialog that is open. It is kept here: a box that only the function below referred to was
+    # destroyed when the function returned, so the dialog was never seen. One at a time: an error that
+    # repeats (a timer) must not fill the screen.
+    open_box: list[Any] = []
 
     def show(detail: str) -> None:
-        from PySide6.QtCore import Qt
+        from PySide6.QtCore import Qt, QTimer
         from PySide6.QtWidgets import QApplication, QMessageBox
 
         from lopanalys.core.i18n import t
-        if QApplication.instance() is None:
+        if QApplication.instance() is None or open_box:
             return
         box = QMessageBox()
+        open_box.append(box)
+        box.finished.connect(lambda _r=0: QTimer.singleShot(0, open_box.clear))
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(t("ui.app.name"))
         box.setText(t("ui.err.unexpected"))
