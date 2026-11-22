@@ -238,3 +238,42 @@ def test_reminder_24_months_after_the_latest_test(tmp_path):
         assert db.get_athlete(old.id) is not None and db.get_athlete(never.id) is not None   # a reminder, never an erasure
         db.erase_athlete(nostore.id)
         assert "Ejspara" not in [d["athlete"].first_name for d in db.retention_due(now=now)]
+
+
+def test_restore_keeps_the_register_of_saved_files_so_an_erasure_still_finds_them(tmp_path):
+    """A restored backup knew nothing of the files written after it was made (nor of itself: its own
+    row is written after the snapshot). Erasing a person after a restore then left their extract and
+    reports behind without listing them, and did not list the backup the person is in."""
+    root = tmp_path / "data"
+    db = Database(root / "lopanalys.sqlite")
+    olle, s = _person(db, root)
+    anna, _ = _person(db, root, "Anna", "Berg")
+    backup = db.backup(tmp_path / "usb" / "kopia.lopbak", "ett-långt-lösenord")
+    report = tmp_path / "usb" / "rapport.pdf"
+    extract = tmp_path / "usb" / "utdrag.zip"
+    gone = tmp_path / "usb" / "nils.pdf"
+    for f in (report, extract, gone):
+        f.write_bytes(b"x")
+    db.add_saved_file("report", report, athlete_id=olle.id, session_id=s.id)
+    db.add_saved_file("extract", extract, athlete_id=olle.id)
+    nils = db.save_athlete(Athlete(None, "Nils", "Ny"))               # not in the backup
+    db.add_saved_file("report", gone, athlete_id=nils.id)
+    db.close()
+
+    Database.restore_backup(backup, root / "lopanalys.sqlite", password="ett-långt-lösenord")
+    with Database(root / "lopanalys.sqlite") as db2:
+        assert {(f["kind"], os.path.basename(f["path"])) for f in db2.saved_files(olle.id)} == {
+            ("report", "rapport.pdf"), ("extract", "utdrag.zip")}
+        assert db2.saved_files(olle.id, "report")[0]["session_id"] == s.id
+        assert db2.get_athlete(nils.id) is None and db2.saved_files(nils.id) == []   # no row for a person who is not there
+        res = db2.erase_athlete(olle.id)
+        assert not report.exists() and not extract.exists() and gone.exists()
+        assert ("backup", "kopia.lopbak") in {(x["kind"], os.path.basename(x["path"])) for x in res["left"]}
+
+    # on another PC there is no register to carry over: the backup itself is still known
+    other = tmp_path / "pc2" / "lopanalys.sqlite"
+    Database.restore_backup(backup, other, password="ett-långt-lösenord")
+    with Database(other) as db3:
+        assert [(f["kind"], os.path.basename(f["path"])) for f in db3.saved_files(None)] == [("backup", "kopia.lopbak")]
+        res = db3.erase_athlete(olle.id)
+        assert ("backup", "kopia.lopbak") in {(x["kind"], os.path.basename(x["path"])) for x in res["left"]}

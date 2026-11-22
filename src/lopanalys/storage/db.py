@@ -333,6 +333,52 @@ def _carry_erased(db: Path) -> None:
         log.exception("saving the erased ids before the restore failed")
 
 
+def _carry_saved_files(staged: Path, old: Path | None, backup: Path, created: str) -> None:
+    """Before a restore replaces ``old`` with ``staged``: the restored database must still know the
+    files the program wrote, or an erasure after the restore leaves them behind unlisted. The rows of
+    ``saved_files`` in the replaced database are copied for the whole register and for every person who
+    is the same in both (id and creation time), and the backup itself is registered (its own row is
+    written after its snapshot, so it never holds it)."""
+    def has_table(con: sqlite3.Connection, schema: str) -> bool:
+        return bool(con.execute(f"SELECT 1 FROM {schema}.sqlite_master WHERE type='table' AND name='saved_files'").fetchone())
+
+    try:
+        con = sqlite3.connect(str(staged))
+    except sqlite3.Error:
+        return
+    try:
+        if not has_table(con, "main"):      # a backup from before v4 has no such register
+            return
+        if old is not None:
+            try:
+                con.execute("ATTACH DATABASE ? AS old", (str(old),))
+                if has_table(con, "old"):
+                    con.execute(
+                        "INSERT INTO main.saved_files (athlete_id,session_id,kind,path,created) "
+                        "SELECT o.athlete_id, (SELECT s.id FROM main.sessions s JOIN old.sessions os ON os.id=s.id "
+                        "AND os.started=s.started WHERE s.id=o.session_id), o.kind, o.path, o.created "
+                        "FROM old.saved_files o WHERE (o.athlete_id IS NULL OR EXISTS (SELECT 1 FROM main.athletes a "
+                        "JOIN old.athletes oa ON oa.id=a.id AND oa.created=a.created WHERE a.id=o.athlete_id)) "
+                        "AND NOT EXISTS (SELECT 1 FROM main.saved_files m WHERE m.kind=o.kind AND m.path=o.path "
+                        "AND m.athlete_id IS o.athlete_id) ORDER BY o.id")
+                    con.commit()
+            except sqlite3.Error:           # the replaced database is damaged: nothing to carry over
+                con.rollback()
+                log.warning("the register of saved files could not be carried over the restore")
+        try:
+            stored = backup.resolve().relative_to(staged.parent.resolve()).as_posix()
+        except (ValueError, OSError):
+            stored = str(backup.absolute())
+        if not con.execute("SELECT 1 FROM main.saved_files WHERE kind='backup' AND path=? AND athlete_id IS NULL",
+                           (stored,)).fetchone():
+            con.execute("INSERT INTO main.saved_files (kind,path,created) VALUES ('backup',?,?)", (stored, created or _now()))
+        con.commit()
+    except sqlite3.Error:
+        log.exception("registering the saved files in the restored database failed")
+    finally:
+        con.close()
+
+
 # ---------------------------------------------------------------------------- database
 class Database:
     """The app's SQLite database. ``Database()`` opens (and creates/migrates) ``core.paths.db_path()``."""
@@ -1488,7 +1534,8 @@ class Database:
 
     @staticmethod
     def restore_backup(zip_path: str | Path, db_path: str | Path | None = None,
-                       keyframes_root: str | Path | None = None, password: str | None = None) -> Path:
+                       keyframes_root: str | Path | None = None, password: str | None = None, *,
+                       _source: Path | None = None) -> Path:
         """Replace the database (and key frames) with a backup. Close every open Database first.
 
         An encrypted backup needs its ``password``. The current database is kept as
@@ -1506,7 +1553,7 @@ class Database:
             plain = db.with_name(db.name + ".restore.zip")
             try:
                 privacy.decrypt_file(zip_path, plain, password)
-                return Database.restore_backup(plain, db_path, keyframes_root)
+                return Database.restore_backup(plain, db_path, keyframes_root, _source=zip_path)
             finally:
                 plain.unlink(missing_ok=True)
         kroot = Path(keyframes_root) if keyframes_root is not None else (
@@ -1540,6 +1587,7 @@ class Database:
             if ok != "ok":
                 staged.unlink(missing_ok=True)
                 raise StorageError(t("storage.error.bad_backup", err=ok))
+            _carry_saved_files(staged, db if db.exists() else None, _source or zip_path, str(m.get("created") or ""))
             kept = db
             if db.exists():
                 kept = db.with_name(f"{db.stem}.before-restore-{datetime.now():%Y%m%d-%H%M%S}.sqlite")
