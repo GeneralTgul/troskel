@@ -1055,6 +1055,8 @@ class Database:
                 "SELECT video_path FROM sessions WHERE id=? AND video_path IS NOT NULL", (session_id,))]
             for r in self._q("SELECT result_json FROM sessions WHERE id=?", (session_id,)):
                 files += self._earlier_videos(r[0])
+            files += [Path(self._abs(r[0]) or "") for r in self._q(      # as erase_athlete: the analyses' films too
+                "SELECT video_path FROM gait_analyses WHERE session_id=? AND video_path IS NOT NULL", (session_id,))]
             files += [self._abs_keyframe(r[0]) for r in self._q(
                 "SELECT k.path FROM keyframes k JOIN gait_analyses g ON g.id=k.gait_id WHERE g.session_id=?", (session_id,))]
         with self.transaction() as c:

@@ -148,6 +148,20 @@ def test_delete_session_is_an_erasure_too(tmp_path):
         assert db.get_athlete(olle.id) is not None
 
 
+def test_delete_session_removes_the_film_an_analysis_points_to(tmp_path):
+    """A film known only from the analysis row (gait_analyses.video_path) went with the person in
+    erase_athlete() but stayed on the disk when the one test was removed."""
+    root = tmp_path / "data"
+    with Database(root / "lopanalys.sqlite") as db:
+        olle, s = _person(db, root)
+        own = root / "recordings" / f"session-{s.id}-20261101-091500-2.mp4"
+        own.write_bytes(b"v")
+        own.with_name(own.name + ".json").write_text("{}")
+        db.add_gait_analysis(s.id, {"x": 2}, video_path=str(own))
+        db.delete_session(s.id)
+        assert list((root / "recordings").iterdir()) == []
+
+
 # ------------------------------------------------------------------ retention of films
 def test_films_are_removed_30_days_after_the_test(tmp_path):
     from datetime import timedelta
