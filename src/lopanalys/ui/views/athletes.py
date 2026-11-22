@@ -369,7 +369,8 @@ class AthleteForm(Card):
         row.addWidget(self.save_btn)
         self._loaded: tuple = ()
         for w in (self.first, self.last, self.birth.edit, self.height, self.weight, self.max_hr, self.rest_hr,
-                  self.email, self.consent_date.edit, self.watch_vo2, self.watch_vo2_date.edit):
+                  self.email, self.consent_date.edit, self.watch_vo2, self.watch_vo2_date.edit,
+                  self.max_hr_bike, self.max_hr_skierg):
             w.textChanged.connect(self._changed)
         self.sex.currentIndexChanged.connect(self._changed)
         self.notes.textChanged.connect(self._changed)
@@ -380,7 +381,8 @@ class AthleteForm(Card):
                 self.rest_hr.value(), self.notes.toPlainText().strip(), self.email.text().strip(),
                 self.consent_date.text().strip(),
                 tuple(cb.isChecked() for cb in self.consent_boxes.values()),
-                self.watch_vo2.value(), self.watch_vo2_date.text().strip())
+                self.watch_vo2.value(), self.watch_vo2_date.text().strip(),
+                self.max_hr_bike.value(), self.max_hr_skierg.value())
 
     def _consent_toggled(self, on: bool) -> None:
         """A ticked box without a date gets today's date: the form is filled in when it is signed."""
@@ -414,7 +416,7 @@ class AthleteForm(Card):
         self.revert()
         return True
 
-    def load(self, a: Athlete | None) -> None:
+    def load(self, a: Athlete | None, focus: bool = True) -> None:
         self.athlete = a
         self.error.clear()
         new = a is None or a.id is None
@@ -451,7 +453,8 @@ class AthleteForm(Card):
             self.consent_date.set_date(None)
         self._loaded = self._snapshot()
         self._changed()
-        self.first.setFocus()
+        if focus:
+            self.first.setFocus()
 
     def collect(self) -> Athlete | None:
         """The form as an Athlete, or None (with a message) when something is wrong."""
@@ -652,6 +655,11 @@ class AthletesView(QWidget):
             self.list.setItemWidget(it, AthleteRow(a, review=a.id in self.due))
             if a.id == cur:
                 self.list.setCurrentItem(it)
+                if self.stack.currentWidget() is self.form_page and a != self.form.athlete and not self.form.dirty():
+                    # saved elsewhere (a test's max HR, the weight from the wizard): the form shows it,
+                    # so that the next Spara does not write the old values back
+                    self.form.load(a, focus=False)
+                    self._show_reminder()
         self.list.blockSignals(False)
         if self.list.count() and self.list.currentItem() is None and self.stack.currentWidget() is self.empty:
             self.list.setCurrentRow(0)
