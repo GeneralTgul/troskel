@@ -268,3 +268,19 @@ def test_reconnect_after_stop_sends_no_speed(qz):
         wait_for(lambda: any(m["msg"] == "setspeed" for m in qz.received[before:]))
     finally:
         tm.disconnect()
+
+
+def test_stop_while_qz_is_away_is_sent_on_the_reconnect(qz):
+    """The socket dropped and the program stopped the belt: the pause went nowhere."""
+    tm = QzTreadmill(Bus(), port=qz.port, backoff_s=(0.5,))
+    try:
+        tm.connect()
+        tm.set_target(9.0, 1.0)
+        wait_for(lambda: (qz.speed, qz.incline) == (9.0, 1.0))
+        qz.kick_clients()
+        wait_for(lambda: not tm.connected)
+        tm.stop()
+        wait_for(lambda: tm.connected, timeout=5)
+        wait_for(lambda: qz.paused)
+    finally:
+        tm.disconnect()

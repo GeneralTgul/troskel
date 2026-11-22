@@ -246,6 +246,7 @@ class FtmsBike(FtmsTreadmill):
             self._targets.speed_kmh = power
             self._targets.incline_pct = 0.0
             self._targets.stopped = False
+            self._stop_unsent = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=power, free=False)
         self._schedule(self._apply_targets(), "set_target")
@@ -258,6 +259,7 @@ class FtmsBike(FtmsTreadmill):
             self._grade = float(grade_pct)
             self._targets.speed_kmh = None
             self._targets.stopped = False
+            self._stop_unsent = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=None, free=True)
         self._schedule(self._apply_targets(), "set_free")
@@ -266,6 +268,7 @@ class FtmsBike(FtmsTreadmill):
         with self._lock:
             self._targets.running_wanted = True
             self._targets.stopped = False
+            self._stop_unsent = False
         self._schedule(self._start_async(), "start")
 
     def stop(self) -> None:
@@ -273,7 +276,7 @@ class FtmsBike(FtmsTreadmill):
         with self._lock:
             self._targets.running_wanted = False
             self._targets.stopped = True
-        self._schedule(self._command(cmd_stop(), "stop"), "stop")
+        self._schedule(self._stop_async(), "stop")
 
     # --- connection ------------------------------------------------------------------------
     def _describe_error(self, exc: BaseException) -> str:
@@ -310,6 +313,7 @@ class FtmsBike(FtmsTreadmill):
             log.info("%s: no Fitness Machine Status", self._log_id)
         await self._client.start_notify(CONTROL_POINT, self._on_control_point)
         await self._request_control()
+        await self._resend_stop()
         with self._lock:
             wanted = self._targets.running_wanted
         if wanted:                               # a reconnect in the middle of a test

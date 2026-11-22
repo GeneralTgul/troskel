@@ -259,3 +259,27 @@ def test_reconnect_after_stop_sends_no_speed(rig):
     assert struct.pack("<BH", 2, 1100) not in ble.cp_writes()[before:]
     tm.start()                                                                   # the pause is over
     ble.wait_for(lambda: struct.pack("<BH", 2, 1100) in ble.cp_writes()[before:])
+
+
+def test_stop_while_the_link_is_down_is_sent_on_the_reconnect():
+    """The link dropped with the belt running and the program stopped the test: the stop went
+    nowhere, and after the reconnect the belt ran on while the program held it for stopped."""
+    ble = FakeBle(reads=dict(RANGES))
+    tm = FtmsTreadmill(Bus(), client_cls=ble.client_cls, keepalive_s=0, backoff_s=(0.4,), command_timeout_s=1.0)
+    try:
+        tm.connect(RECOIL)
+        tm.start()
+        tm.set_target(11.0, 2.0)
+        ble.wait_for(lambda: struct.pack("<Bh", 3, 20) in ble.cp_writes())
+        ble.client.drop()
+        ble.wait_for(lambda: not tm.connected)
+        before = len(ble.cp_writes())
+        tm.stop()
+        ble.wait_for(lambda: len(ble.clients) == 2 and tm.connected)
+        after = ble.cp_writes()[before:]
+        assert b"\x08\x01" in after and struct.pack("<BH", 2, 1100) not in after
+        ble.client.drop()                                  # sent once: not again on the next reconnect
+        ble.wait_for(lambda: len(ble.clients) == 3 and tm.connected)
+        assert ble.cp_writes()[before:].count(b"\x08\x01") == 1
+    finally:
+        tm.disconnect()

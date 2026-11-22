@@ -305,6 +305,7 @@ class FtmsTreadmill(SupervisedConnection):
         self._cmd_lock: asyncio.Lock | None = None
         self._waiters: dict[int, asyncio.Future[int]] = {}
         self._has_control = False
+        self._stop_unsent = False     # stop() while the link was down: sent first thing on the reconnect
         self._keepalive_task: asyncio.Task[None] | None = None
 
     # --- Treadmill protocol ------------------------------------------------------------------
@@ -354,6 +355,7 @@ class FtmsTreadmill(SupervisedConnection):
             self._targets.speed_kmh = speed
             self._targets.incline_pct = incline
             self._targets.stopped = False
+            self._stop_unsent = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=speed, target_incline_pct=incline)
         self._schedule(self._apply_targets(), "set_target")
@@ -363,6 +365,7 @@ class FtmsTreadmill(SupervisedConnection):
         with self._lock:
             self._targets.running_wanted = True
             self._targets.stopped = False
+            self._stop_unsent = False
         self._schedule(self._start_async(), "start")
 
     def stop(self) -> None:
@@ -370,7 +373,7 @@ class FtmsTreadmill(SupervisedConnection):
         with self._lock:
             self._targets.running_wanted = False
             self._targets.stopped = True
-        self._schedule(self._command(cmd_stop(), "stop"), "stop")
+        self._schedule(self._stop_async(), "stop")
 
     def pause(self) -> None:
         """Pause the belt (FTMS Pause); ``start()`` resumes."""
@@ -411,6 +414,7 @@ class FtmsTreadmill(SupervisedConnection):
             log.info("%s: no Fitness Machine Status", self._log_id)
         await self._client.start_notify(CONTROL_POINT, self._on_control_point)
         await self._request_control()
+        await self._resend_stop()
         await self._apply_targets()
         if self._keepalive_s > 0:
             self._keepalive_task = asyncio.create_task(self._keepalive())
@@ -463,6 +467,19 @@ class FtmsTreadmill(SupervisedConnection):
         res = await self._command(cmd_request_control(), "request_control", retry_control=False)
         self._has_control = res == RESULT_SUCCESS
         return self._has_control
+
+    async def _stop_async(self) -> None:
+        """Stop the belt. With the link down nothing can be sent: the stop is kept for the reconnect."""
+        self._stop_unsent = True
+        if await self._command(cmd_stop(), "stop") is not None:
+            self._stop_unsent = False
+
+    async def _resend_stop(self) -> None:
+        """After a reconnect: the stop that went nowhere while the link was down (the belt ran on)."""
+        with self._lock:
+            stopped = self._targets.stopped
+        if self._stop_unsent and stopped:
+            await self._stop_async()
 
     async def _start_async(self) -> None:
         if not self._has_control:

@@ -129,6 +129,7 @@ class QzTreadmill(SupervisedConnection):
         self._target_speed: float | None = None
         self._target_incline: float | None = None
         self._stopped = False     # paused by the program: no speed goes out until a new target or start
+        self._pause_unsent = False   # stop() while QZ was away: sent first thing on the reconnect
         self._waiters: dict[str, asyncio.Future[Any]] = {}
         self._apply_lock: asyncio.Lock | None = None   # one set of targets at a time, the newest last
         self._device_connected: bool | None = None
@@ -159,19 +160,21 @@ class QzTreadmill(SupervisedConnection):
         with self._lock:
             self._target_speed, self._target_incline = speed, incline
             self._stopped = False
+            self._pause_unsent = False
         self._schedule(self._apply_targets(), "set_target")
 
     def start(self) -> None:
         """Press QZ's start. The Recoil may still need START on its panel."""
         with self._lock:
             self._stopped = False
+            self._pause_unsent = False
         self._schedule(self._send_and_wait("start"), "start")
 
     def stop(self) -> None:
         """Pause in QZ (stops the belt). QZ's own stop is left to the user, since it ends QZ's session."""
         with self._lock:
             self._stopped = True
-        self._schedule(self._send_and_wait("pause"), "pause")
+        self._schedule(self._pause_async(), "pause")
 
     # --- heart rate passthrough --------------------------------------------------------------
     def add_heart_rate_listener(self, fn: Callable[[HeartRateSample], None]) -> Callable[[], None]:
@@ -199,6 +202,8 @@ class QzTreadmill(SupervisedConnection):
         self._device_connected = None
         self._apply_lock = asyncio.Lock()
         self._reader = asyncio.create_task(self._read_loop())
+        if self._pause_unsent and self._stopped:     # the pause that went nowhere while QZ was away
+            await self._pause_async()
         await self._apply_targets()
 
     async def _wait_lost(self) -> None:
@@ -304,6 +309,14 @@ class QzTreadmill(SupervisedConnection):
         finally:
             if self._waiters.get(name) is fut:
                 del self._waiters[name]
+
+    async def _pause_async(self) -> None:
+        """Pause in QZ. Without a socket nothing can be sent: the pause is kept for the reconnect."""
+        self._pause_unsent = True
+        if self._ws is None:
+            return
+        await self._send_and_wait("pause")           # raises when the socket is gone
+        self._pause_unsent = False
 
     async def _apply_targets(self) -> None:
         if self._ws is None or self._apply_lock is None:
