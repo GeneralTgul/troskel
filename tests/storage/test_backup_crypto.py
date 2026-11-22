@@ -181,3 +181,28 @@ def test_the_plain_copy_is_never_written_where_the_backup_goes(tmp_path, monkeyp
         assert not list(root.glob("*.plain.zip")) and not list(root.glob("*.tmp.sqlite"))
         assert [os.path.basename(f["path"]) for f in db.saved_files(None)] == ["kopia.lopbak"]
     Database.restore_backup(dest, tmp_path / "pc2" / "lopanalys.sqlite", password=PW)
+
+
+def test_a_failed_encryption_leaves_no_half_backup_and_no_trace_of_the_plain_copy(tmp_path, monkeypatch):
+    """The stick fills up while the backup is encrypted: before 2026-11-23 a cut-off .lopbak stayed
+    there (over the good backup of the same name), and the register kept a row for the plain copy."""
+    root, _ = main_db.build(tmp_path)
+    usb = tmp_path / "usb"
+    with Database(root / "lopanalys.sqlite") as db:
+        dest = db.backup(usb / "kopia.lopbak", PW)
+        good = dest.read_bytes()
+
+        def full(src, dest, password):
+            with open(dest, "wb") as out:
+                out.write(b"half")
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(privacy, "encrypt_file", full)
+        with pytest.raises(StorageError):
+            db.backup(usb / "kopia.lopbak", PW)
+        assert sorted(p.name for p in usb.iterdir()) == ["kopia.lopbak"] and dest.read_bytes() == good
+        with pytest.raises(StorageError):
+            db.backup(usb / "ny.lopbak", PW)
+        assert sorted(p.name for p in usb.iterdir()) == ["kopia.lopbak"]
+        assert not list(root.glob("*.plain.zip"))
+        assert [os.path.basename(f["path"]) for f in db.saved_files(None)] == ["kopia.lopbak"]

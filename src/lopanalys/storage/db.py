@@ -1479,14 +1479,19 @@ class Database:
             # in the data folder, never where the backup goes: a plain copy removed from a USB stick can
             # be read back, and one in a folder synced to the cloud is already uploaded
             plain = self.data_root / f"{self.path.name}.backup.plain.zip"
+            # encrypted beside the destination and moved into place when whole: a failure (a full stick)
+            # leaves neither a cut-off backup nor a damaged one over the good backup of the same name
+            part = dest_zip.with_name(dest_zip.name + ".part")
             try:
                 self.backup(plain)
-                privacy.encrypt_file(plain, dest_zip, password)
+                privacy.encrypt_file(plain, part, password)
+                part.replace(dest_zip)
             except OSError as e:
                 raise StorageError(t("storage.error.backup", err=str(e))) from e
             finally:
                 plain.unlink(missing_ok=True)
-            self._forget_path("backup", plain)
+                part.unlink(missing_ok=True)
+                self._forget_path("backup", plain)
             self.add_saved_file("backup", dest_zip)
             return dest_zip
         tmp = dest_zip.with_name(dest_zip.name + ".tmp.sqlite")
