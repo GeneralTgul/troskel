@@ -385,10 +385,12 @@ class NewTestView(QWidget):
         return self.sport in WEIGHT_SPORTS and self.athlete is not None and not self.athlete.weight_kg
 
     def ask_weight(self) -> float | None:
-        """Ask for today's body weight in kg (None: the coach closed the box)."""
+        """Ask for today's body weight in kg (None: the coach closed the box, or typed no weight).
+        The box starts at 0 and not at a likely weight: OK on the untouched box must not save a
+        number nobody measured as the athlete's weight."""
         from PySide6.QtWidgets import QInputDialog
-        v, ok = QInputDialog.getDouble(self, t("ui.wiz.weight_title"), t("ui.wiz.weight_ask"), 70.0, 30.0, 250.0, 1)
-        return float(v) if ok else None
+        v, ok = QInputDialog.getDouble(self, t("ui.wiz.weight_title"), t("ui.wiz.weight_ask"), 0.0, 0.0, 250.0, 1)
+        return float(v) if ok and v >= 30.0 else None
 
     def _ensure_weight(self) -> bool:
         """W/kg needs the weight: ask once when it is missing, and save it on the athlete."""

@@ -167,6 +167,31 @@ def test_body_weight_is_asked_for_before_a_bike_test(qapp, qtbot, monkeypatch):
         c.shutdown()
 
 
+def test_ok_on_the_untouched_weight_box_saves_no_weight(qapp, qtbot, monkeypatch):
+    """Before 2026-11-23 the box started at 70,0 kg, so OK without typing saved 70 kg as the athlete's
+    weight (and the W/kg of the report were counted on it)."""
+    from PySide6.QtWidgets import QInputDialog
+
+    from lopanalys.ui.views.new_test import NewTestView
+    monkeypatch.setattr(services, "discover_sources", lambda *a, **k: [])
+    c = AppContext(demo=False)
+    try:
+        a = c.store.save_athlete(Athlete(None, "Ny", "Cyklist", max_hr=188))
+        nt = NewTestView(c)
+        nt.athlete = a
+        nt.go(1)
+        nt.set_sport("bike")
+        monkeypatch.setattr(QInputDialog, "getDouble", staticmethod(lambda parent, title, text, value, *a, **k: (value, True)))
+        nt._next()                                 # OK on what the box showed when it opened
+        assert nt.stack.currentIndex() == 1 and nt.hint.text() == t("ui.wiz.need_weight")
+        assert c.store.athlete(a.id).weight_kg is None
+        monkeypatch.setattr(QInputDialog, "getDouble", staticmethod(lambda *a, **k: (81.5, True)))
+        nt._next()
+        assert nt.stack.currentIndex() == 2 and c.store.athlete(a.id).weight_kg == 81.5
+    finally:
+        c.shutdown()
+
+
 def test_demo_bike_test_runs_live_with_watt_and_cadence(demo_window, qtbot):
     w = demo_window
     nt = w.new_test
