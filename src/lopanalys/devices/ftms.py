@@ -437,13 +437,24 @@ class FtmsTreadmill(SupervisedConnection):
             await maybe_await(client.disconnect())
 
     async def _read_ranges(self) -> None:
+        # A range the machine reports as 0/0/0, or with the minimum above the maximum, is not a range:
+        # every target would be clamped to it (a belt that never moves). The defaults stay then.
         try:
-            self._speed_range = parse_speed_range(await self._client.read_gatt_char(SUPPORTED_SPEED_RANGE))
+            rng = parse_speed_range(await self._client.read_gatt_char(SUPPORTED_SPEED_RANGE))
+            if rng.maximum > rng.minimum and rng.maximum > 0:
+                self._speed_range = rng
+            else:
+                log.warning("%s: Supported Speed Range %s-%s km/h is not usable, using defaults", self._log_id,
+                            rng.minimum, rng.maximum)
         except Exception:  # noqa: BLE001 - optional; keep defaults
             log.info("%s: no Supported Speed Range, using defaults", self._log_id)
         try:
-            self._incline_range = parse_inclination_range(
-                await self._client.read_gatt_char(SUPPORTED_INCLINATION_RANGE))
+            rng = parse_inclination_range(await self._client.read_gatt_char(SUPPORTED_INCLINATION_RANGE))
+            if rng.maximum >= rng.minimum:          # equal: a belt that cannot tilt
+                self._incline_range = rng
+            else:
+                log.warning("%s: Supported Inclination Range %s-%s %% is not usable, using defaults", self._log_id,
+                            rng.minimum, rng.maximum)
         except Exception:  # noqa: BLE001
             log.info("%s: no Supported Inclination Range, using defaults", self._log_id)
 

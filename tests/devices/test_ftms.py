@@ -283,3 +283,32 @@ def test_stop_while_the_link_is_down_is_sent_on_the_reconnect():
         assert ble.cp_writes()[before:].count(b"\x08\x01") == 1
     finally:
         tm.disconnect()
+
+
+@pytest.mark.parametrize("speed", [(0, 0, 0), (1800, 100, 10)])
+def test_a_degenerate_speed_range_falls_back_to_the_defaults(speed):
+    """A machine that reports 0/0/0 (or min above max) as its Supported Speed Range clamped every
+    target to 0 km/h before 2026-11-23: the belt never moved."""
+    ble = FakeBle(reads={SUPPORTED_SPEED_RANGE: struct.pack("<HHH", *speed),
+                         SUPPORTED_INCLINATION_RANGE: struct.pack("<hhH", 50, -50, 5)})
+    tm = FtmsTreadmill(Bus(), client_cls=ble.client_cls, keepalive_s=0)
+    try:
+        tm.connect(RECOIL)
+        assert (tm.min_speed_kmh, tm.max_speed_kmh) == (ftms.DEFAULT_MIN_SPEED, ftms.DEFAULT_MAX_SPEED)
+        assert (tm.min_incline_pct, tm.max_incline_pct) == (ftms.DEFAULT_MIN_INCLINE, ftms.DEFAULT_MAX_INCLINE)
+        tm.set_target(12.0, 1.0)
+        ble.wait_for(lambda: len(ble.cp_writes()) >= 3)
+        assert ble.cp_writes()[1:3] == [struct.pack("<BH", 2, 1200), struct.pack("<Bh", 3, 10)]
+    finally:
+        tm.disconnect()
+
+
+def test_a_treadmill_without_incline_keeps_its_flat_range():
+    ble = FakeBle(reads={SUPPORTED_SPEED_RANGE: struct.pack("<HHH", 100, 1800, 10),
+                         SUPPORTED_INCLINATION_RANGE: struct.pack("<hhH", 0, 0, 0)})
+    tm = FtmsTreadmill(Bus(), client_cls=ble.client_cls, keepalive_s=0)
+    try:
+        tm.connect(RECOIL)
+        assert (tm.min_incline_pct, tm.max_incline_pct) == (0.0, 0.0)      # 0/0/0 is a belt that cannot tilt
+    finally:
+        tm.disconnect()

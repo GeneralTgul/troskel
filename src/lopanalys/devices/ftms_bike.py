@@ -330,9 +330,13 @@ class FtmsBike(FtmsTreadmill):
         except Exception:  # noqa: BLE001 - optional
             log.info("%s: no Fitness Machine Feature", self._log_id)
         try:
-            self._power_range = parse_power_range(await self._client.read_gatt_char(SUPPORTED_POWER_RANGE))
-            log.info("%s: power range %.0f-%.0f W", self._log_id, self._power_range.minimum,
-                     self._power_range.maximum)
+            rng = parse_power_range(await self._client.read_gatt_char(SUPPORTED_POWER_RANGE))
+            if rng.maximum > rng.minimum and rng.maximum > 0:
+                self._power_range = rng
+                log.info("%s: power range %.0f-%.0f W", self._log_id, rng.minimum, rng.maximum)
+            else:       # 0/0/0 or min above max: every target would be clamped to it; the defaults stay
+                log.warning("%s: Supported Power Range %.0f-%.0f W is not usable, using defaults", self._log_id,
+                            rng.minimum, rng.maximum)
         except Exception:  # noqa: BLE001
             log.info("%s: no Supported Power Range, using defaults", self._log_id)
 

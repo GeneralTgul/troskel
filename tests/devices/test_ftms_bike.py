@@ -199,3 +199,15 @@ def test_reconnect_after_stop_keeps_the_trainer_released(rig):
     assert ftms_bike.cmd_set_target_power(200) not in ble.cp_writes()[before:]
     bike.set_target(210)                                                         # the next stage
     ble.wait_for(lambda: ftms_bike.cmd_set_target_power(210) in ble.cp_writes()[before:])
+
+
+def test_a_degenerate_power_range_falls_back_to_the_defaults():
+    """A trainer that reports 0/0/0 as its Supported Power Range clamped every target to 0 W."""
+    ble = FakeBle(reads=dict(READS, **{SUPPORTED_POWER_RANGE: struct.pack("<hhH", 0, 0, 0)}))
+    bike = FtmsBike(Bus(), client_cls=ble.client_cls, backoff_s=(0.02,))
+    try:
+        bike.connect(NEO)
+        assert (bike.min_speed_kmh, bike.max_speed_kmh) == (ftms_bike.DEFAULT_MIN_POWER, ftms_bike.DEFAULT_MAX_POWER)
+        assert bike.clamp_power(180.0) == 180.0
+    finally:
+        bike.disconnect()
