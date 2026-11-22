@@ -128,6 +128,7 @@ class QzTreadmill(SupervisedConnection):
         self._state: TreadmillState | None = None
         self._target_speed: float | None = None
         self._target_incline: float | None = None
+        self._stopped = False     # paused by the program: no speed goes out until a new target or start
         self._waiters: dict[str, asyncio.Future[Any]] = {}
         self._apply_lock: asyncio.Lock | None = None   # one set of targets at a time, the newest last
         self._device_connected: bool | None = None
@@ -157,14 +158,19 @@ class QzTreadmill(SupervisedConnection):
         speed, incline = round(speed, 2), round(incline, 1)
         with self._lock:
             self._target_speed, self._target_incline = speed, incline
+            self._stopped = False
         self._schedule(self._apply_targets(), "set_target")
 
     def start(self) -> None:
         """Press QZ's start. The Recoil may still need START on its panel."""
+        with self._lock:
+            self._stopped = False
         self._schedule(self._send_and_wait("start"), "start")
 
     def stop(self) -> None:
         """Pause in QZ (stops the belt). QZ's own stop is left to the user, since it ends QZ's session."""
+        with self._lock:
+            self._stopped = True
         self._schedule(self._send_and_wait("pause"), "pause")
 
     # --- heart rate passthrough --------------------------------------------------------------
@@ -307,7 +313,8 @@ class QzTreadmill(SupervisedConnection):
         async with self._apply_lock:
             with self._lock:
                 speed, incline = self._target_speed, self._target_incline
-            if speed is not None:
+                stopped = self._stopped
+            if speed is not None and not stopped:      # not to a belt the program paused (a reconnect)
                 reply = await self._send_and_wait("setspeed", {"value": speed})
                 if isinstance(reply, dict) and reply.get("value") is None:
                     self._log(t("devices.qz.rejected"))

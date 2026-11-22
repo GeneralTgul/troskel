@@ -241,3 +241,21 @@ def test_scan_filters_ftms(monkeypatch):
     found = tm.scan(timeout_s=0.1)
     assert [d.address for d in found] == ["CC", "AA"]
     assert scanner.calls[0]["return_adv"] is True
+
+
+def test_reconnect_after_stop_sends_no_speed(rig):
+    """The program stopped the belt (a lactate pause) and the link dropped: the stage speed went
+    out again on the reconnect, to a belt that stands still with the athlete on it."""
+    _bus, ble, tm, _col = rig
+    tm.connect(RECOIL)
+    tm.start()
+    tm.set_target(11.0, 2.0)
+    tm.stop()
+    ble.wait_for(lambda: b"\x08\x01" in ble.cp_writes())
+    before = len(ble.cp_writes())
+    ble.client.drop()
+    ble.wait_for(lambda: len(ble.clients) == 2 and tm.connected)
+    ble.wait_for(lambda: struct.pack("<Bh", 3, 20) in ble.cp_writes()[before:])   # the incline is kept
+    assert struct.pack("<BH", 2, 1100) not in ble.cp_writes()[before:]
+    tm.start()                                                                   # the pause is over
+    ble.wait_for(lambda: struct.pack("<BH", 2, 1100) in ble.cp_writes()[before:])

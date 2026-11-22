@@ -14,7 +14,7 @@ What it does:
     the panel's START), and repeats it if the belt has not taken it after ``target_settle_s``:
     a belt that stands still may ignore Set Target Speed (stage 1 ran at the panel speed),
   - logs every control point result code at INFO,
-  - reconnects with backoff, re-applies the last targets, and touches the link every
+  - reconnects with backoff, re-applies the last targets (no speed after ``stop()``), and touches the link every
     ``keepalive_s`` while the belt stands still so the machine does not fall asleep mid-test.
 
 The treadmill ramps speed and incline itself; this module never ramps.
@@ -257,6 +257,7 @@ class _Targets:
     speed_kmh: float | None = None
     incline_pct: float | None = None
     running_wanted: bool = False
+    stopped: bool = False     # the program stopped the belt: no speed goes out until a new target or start
 
 
 def require_ftms(client: Any) -> None:
@@ -352,6 +353,7 @@ class FtmsTreadmill(SupervisedConnection):
         with self._lock:
             self._targets.speed_kmh = speed
             self._targets.incline_pct = incline
+            self._targets.stopped = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=speed, target_incline_pct=incline)
         self._schedule(self._apply_targets(), "set_target")
@@ -360,16 +362,20 @@ class FtmsTreadmill(SupervisedConnection):
         """Ask the belt to start. Many treadmills (the Recoil too) ignore this: press START on the panel."""
         with self._lock:
             self._targets.running_wanted = True
+            self._targets.stopped = False
         self._schedule(self._start_async(), "start")
 
     def stop(self) -> None:
         """Stop the belt (FTMS Stop)."""
         with self._lock:
             self._targets.running_wanted = False
+            self._targets.stopped = True
         self._schedule(self._command(cmd_stop(), "stop"), "stop")
 
     def pause(self) -> None:
         """Pause the belt (FTMS Pause); ``start()`` resumes."""
+        with self._lock:
+            self._targets.stopped = True
         self._schedule(self._command(cmd_stop(pause=True), "pause"), "pause")
 
     # --- connection ------------------------------------------------------------------------
@@ -491,7 +497,9 @@ class FtmsTreadmill(SupervisedConnection):
             return
         with self._lock:
             speed, incline = self._targets.speed_kmh, self._targets.incline_pct
-        if speed is not None and speed > 0:
+            stopped = self._targets.stopped
+        # Not to a belt the program stopped (a reconnect during a lactate pause): the athlete stands on it.
+        if speed is not None and speed > 0 and not stopped:
             await self._command(cmd_set_target_speed(speed), "speed")
         if incline is not None:
             await self._command(cmd_set_target_inclination(incline), "incline")

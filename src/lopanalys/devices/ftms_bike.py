@@ -245,6 +245,7 @@ class FtmsBike(FtmsTreadmill):
             self._free = False
             self._targets.speed_kmh = power
             self._targets.incline_pct = 0.0
+            self._targets.stopped = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=power, free=False)
         self._schedule(self._apply_targets(), "set_target")
@@ -256,6 +257,7 @@ class FtmsBike(FtmsTreadmill):
             self._free = True
             self._grade = float(grade_pct)
             self._targets.speed_kmh = None
+            self._targets.stopped = False
             if self._state is not None:
                 self._state = replace(self._state, target_speed_kmh=None, free=True)
         self._schedule(self._apply_targets(), "set_free")
@@ -263,12 +265,14 @@ class FtmsBike(FtmsTreadmill):
     def start(self) -> None:
         with self._lock:
             self._targets.running_wanted = True
+            self._targets.stopped = False
         self._schedule(self._start_async(), "start")
 
     def stop(self) -> None:
         """Release the trainer (FTMS Stop): the wheel runs free."""
         with self._lock:
             self._targets.running_wanted = False
+            self._targets.stopped = True
         self._schedule(self._command(cmd_stop(), "stop"), "stop")
 
     # --- connection ------------------------------------------------------------------------
@@ -340,6 +344,9 @@ class FtmsBike(FtmsTreadmill):
             return
         with self._lock:
             power, free, grade = self._targets.speed_kmh, self._free, self._grade
+            stopped = self._targets.stopped
+        if stopped:          # released by the program: a reconnect does not put the load back
+            return
         if free:
             await self._command(cmd_set_simulation(grade), "simulation")
         elif power is not None and power > 0:

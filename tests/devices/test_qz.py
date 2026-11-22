@@ -247,3 +247,24 @@ def test_two_targets_in_a_row_end_at_the_last_one(qz):
         assert (qz.speed, qz.incline) == (12.0, 2.0)
     finally:
         tm.disconnect()
+
+
+def test_reconnect_after_stop_sends_no_speed(qz):
+    """The belt was paused by the program and QZ dropped the socket: the speed went out again."""
+    tm = QzTreadmill(Bus(), port=qz.port, backoff_s=(0.05,))
+    try:
+        tm.connect()
+        tm.set_target(9.0, 1.0)
+        wait_for(lambda: (qz.speed, qz.incline) == (9.0, 1.0))
+        tm.stop()
+        wait_for(lambda: qz.paused)
+        before = len(qz.received)
+        qz.kick_clients()
+        wait_for(lambda: any(m["msg"] == "setresistance" for m in qz.received[before:]), timeout=5)
+        wait_for(lambda: tm.connected, timeout=5)
+        assert not any(m["msg"] == "setspeed" for m in qz.received[before:])
+        tm.start()
+        tm.set_target(9.0, 1.0)                                                  # the pause is over
+        wait_for(lambda: any(m["msg"] == "setspeed" for m in qz.received[before:]))
+    finally:
+        tm.disconnect()

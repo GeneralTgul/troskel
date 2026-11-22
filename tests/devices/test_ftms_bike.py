@@ -183,3 +183,19 @@ def test_scan_tells_trainers_from_treadmills():
         assert [d.address for d in m.scan_ergometers("run")] == ["B", "C"]
     finally:
         m.close()
+
+
+def test_reconnect_after_stop_keeps_the_trainer_released(rig):
+    """The trainer was released (stop) and the link dropped: the power target went out again."""
+    _bus, ble, bike, _col = rig
+    bike.connect(NEO)
+    bike.start()
+    bike.set_target(200)
+    bike.stop()
+    ble.wait_for(lambda: b"\x08\x01" in ble.cp_writes())
+    before = len(ble.cp_writes())
+    ble.client.drop()
+    ble.wait_for(lambda: len(ble.clients) == 2 and bike.connected)
+    assert ftms_bike.cmd_set_target_power(200) not in ble.cp_writes()[before:]
+    bike.set_target(210)                                                         # the next stage
+    ble.wait_for(lambda: ftms_bike.cmd_set_target_power(210) in ble.cp_writes()[before:])
