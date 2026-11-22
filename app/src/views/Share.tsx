@@ -2,8 +2,8 @@ import { useState } from "preact/hooks";
 import { t } from "../i18n";
 
 interface Props {
-  /** Saves the `.troskel` file (share.athleteFile). */
-  onFile?: () => void;
+  /** Saves the `.troskel` file (share.athleteFile); false when it was not saved. */
+  onFile?: () => Promise<boolean>;
   /** Copies the link (share.athleteLink); false when the phone would not let the app copy. */
   onCopy: () => Promise<boolean>;
 }
@@ -23,7 +23,7 @@ export function Share({ onFile, onCopy }: Props) {
         <span>{t("ui.share.consent")}</span>
       </label>
       {onFile ? (
-        <button class="secondary wide" disabled={!ok} onClick={() => { onFile(); setMsg(t("ui.share.saved")); }}>
+        <button class="secondary wide" disabled={!ok} onClick={async () => setMsg(t((await onFile()) ? "ui.share.saved" : "ui.share.not_saved"))}>
           {t("ui.share.file")}
         </button>
       ) : null}

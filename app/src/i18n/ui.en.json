@@ -195,6 +195,7 @@
  "ui.share.copy": "Copy the link",
  "ui.share.saved": "The file is saved. Send it to your coach.",
  "ui.share.copied": "The link is copied. Paste it in a message to your coach.",
+ "ui.share.not_saved": "The file was not saved. Try again, or copy the link instead.",
  "ui.share.copy_failed": "The link could not be copied on this device. Save it as a file instead.",
  "ui.about.privacy_title": "Privacy",
  "ui.about.privacy": "The app sends no data anywhere. The plan, your times and what you have ticked off are kept on this device only. The link from your coach carries the plan itself, after the #, and that part is never sent to a server.",

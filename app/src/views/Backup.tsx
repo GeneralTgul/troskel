@@ -8,8 +8,8 @@ export interface BackupProps {
   state: StorageState | null;
   /** The day of the last copy. */
   copied?: string;
-  /** Saves the copy as a `.troskel` file; missing where the app cannot save files. */
-  file?: () => void;
+  /** Saves the copy as a `.troskel` file; missing where the app cannot save files, false when it was not saved. */
+  file?: () => Promise<boolean>;
   /** Copies the link; false when the phone would not let the app copy. */
   copy: () => Promise<boolean>;
 }
@@ -24,7 +24,7 @@ export function Backup({ state, copied, file, copy }: BackupProps) {
       <p class="small">{t("ui.copy.what")}</p>
       {state ? <p class={state === "tab" || state === "home" ? "notice small" : "muted small"}>{t(`ui.copy.state.${state}`)}</p> : null}
       {file ? (
-        <button class="secondary wide" onClick={() => { file(); setMsg(t("ui.copy.saved")); }}>{t("ui.copy.file")}</button>
+        <button class="secondary wide" onClick={async () => setMsg(t((await file()) ? "ui.copy.saved" : "ui.share.not_saved"))}>{t("ui.copy.file")}</button>
       ) : null}
       <button class="secondary wide" onClick={async () => setMsg(t((await copy()) ? "ui.copy.copied" : "ui.share.copy_failed"))}>
         {t("ui.copy.copy")}

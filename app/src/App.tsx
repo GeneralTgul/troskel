@@ -48,7 +48,8 @@ export interface AppProps {
   /** A link the app was opened with (location.href), read once. */
   incoming?: string;
   onIncomingRead?: () => void;
-  download?: (name: string, text: string, type: string) => void;
+  /** Saves a file (model/save.ts); false when it was not saved (the share sheet closed in the app store builds). */
+  download?: (name: string, text: string, type: string) => void | boolean | Promise<boolean | void>;
   hasCamera?: boolean;
   /** The wall mode's screen lock (wall.keepAwake); a stand-in in the tests. */
   keepAwake?: () => () => void;
@@ -307,14 +308,14 @@ export function App(props: AppProps) {
   };
 
   const calendar = stored && props.download
-    ? () => props.download!("troskel.ics", toIcs(stored, { from: today }), "text/calendar")
+    ? () => void props.download!("troskel.ics", toIcs(stored, { from: today }), "text/calendar")
     : undefined;
 
   // The plan to the coach (#781): the plan as the phone has it, what is ticked off and the sessions outside it.
   const toCoach = () => athletePayload(stored!, log, auto, pending, today);
   const share = stored && !demo ? {
     file: props.download
-      ? () => { const p = toCoach(); props.download!(athleteFileName(p), athleteFile(p), "application/json"); }
+      ? async () => { const p = toCoach(); return (await props.download!(athleteFileName(p), athleteFile(p), "application/json")) !== false; }
       : undefined,
     copy: async () => {
       try {
@@ -335,7 +336,12 @@ export function App(props: AppProps) {
     state: storage,
     copied,
     file: props.download
-      ? () => { props.download!(copyFileName(today), athleteFile(toCoach()), "application/json"); markCopied(); }
+      ? async () => {
+        // The day of the copy is remembered only when there is a copy: the share sheet can be closed without one.
+        const ok = (await props.download!(copyFileName(today), athleteFile(toCoach()), "application/json")) !== false;
+        if (ok) markCopied();
+        return ok;
+      }
       : undefined,
     copy: async () => {
       try {

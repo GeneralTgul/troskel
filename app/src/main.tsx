@@ -3,19 +3,9 @@ import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
 import { storageState } from "./model/backup";
 import { healthConnectPlugin } from "./model/healthconnect";
+import { saveFile } from "./model/save";
 import { openStore } from "./model/storage";
 import "./styles.css";
-
-function download(name: string, text: string, type: string) {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 // ?view=week opens a view directly (screenshots, a shortcut on the home screen).
 const view = new URLSearchParams(location.search).get("view") as Tab | null;
@@ -31,7 +21,8 @@ Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store
     incoming={location.href}
     // The plan is now on the device: take it out of the address bar and the history.
     onIncomingRead={() => history.replaceState(null, "", location.pathname + location.search)}
-    download={download}
+    // A download in the browser, the phone's share sheet in the app store builds (model/save.ts).
+    download={saveFile()}
     hasCamera={!!navigator.mediaDevices?.getUserMedia}
     healthConnect={healthConnect}
     storageState={() => storageState()}

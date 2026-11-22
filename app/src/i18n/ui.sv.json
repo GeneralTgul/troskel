@@ -195,6 +195,7 @@
  "ui.share.copy": "Kopiera länken",
  "ui.share.saved": "Filen är sparad. Skicka den till din coach.",
  "ui.share.copied": "Länken är kopierad. Klistra in den i ett meddelande till din coach.",
+ "ui.share.not_saved": "Filen sparades inte. Försök igen, eller kopiera länken i stället.",
  "ui.share.copy_failed": "Länken gick inte att kopiera på den här enheten. Spara som fil i stället.",
  "ui.about.privacy_title": "Integritet",
  "ui.about.privacy": "Appen skickar inga data någonstans. Schemat, dina tider och det du bockat av sparas bara på den här enheten. Länken från din coach bär schemat i sig själv, efter #, och den delen skickas aldrig till någon server.",

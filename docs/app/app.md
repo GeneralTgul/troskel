@@ -6,6 +6,7 @@
 ## Innehåll
 
 - [Vad appen gör](#vad-appen-gör)
+  - [Spara en fil](#spara-en-fil)
 - [Hur schemat kommer till appen](#hur-schemat-kommer-till-appen)
   - [Från coach till idrottare](#från-coach-till-idrottare)
   - [Från idrottare till coach](#från-idrottare-till-coach)
@@ -49,6 +50,15 @@ Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Från 900 punkters bredd står loppen och veckan i siffror i en högerkolumn bredvid veckan. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
 *Lägg passen i kalendern* (under *Veckan* och *Schemat*) laddar ner en kalenderfil med passen från i dag. Filen är samma som den Tröskel gör, och passen har samma nycklar, så att en ny fil uppdaterar passen i stället för att lägga in dem två gånger.
+
+### Spara en fil
+
+Appen gör tre filer: kalenderfilen, [kopian](#en-kopia-av-schemat) och [schemat till coachen](#från-idrottare-till-coach). `app/src/model/save.ts` sparar dem på två sätt:
+
+- **I webbläsaren och på hemskärmen** laddas filen ner, som en länk med `download` till en blob.
+- **I apparna från butikerna och i APK:n** skrivs filen i appens cache (`@capacitor/filesystem`) och lämnas till telefonens delningsruta (`@capacitor/share`), där idrottaren sparar den i Filer eller skickar den vidare. En webbvy i en app har inga nedladdningar: knappen gjorde förut ingenting där, och appen sa ändå att filen var sparad.
+
+Stängs delningsrutan utan att filen sparats säger appen *Filen sparades inte*, och dagen för den senaste kopian ändras inte. I en riktig telefon är det inte provat ([PROV.md](../PROV.md#appen-i-telefonen)).
 
 *Visa ett exempel* visar demolöparens schema, flyttat så att dess andra vecka är den här veckan.
 

@@ -13,6 +13,7 @@ import { checkLog } from "../src/model/log";
 import { emptyForm, planFromForm, renewOwn } from "../src/model/request";
 import { athleteFile, athleteLink, athletePayload } from "../src/model/share";
 import { memoryStore, type PendingTimes } from "../src/model/storage";
+import { browserSave, nativeSave, safeName, saveFile, type NativeIo } from "../src/model/save";
 import { checkTimes, MAX_MINUTES, slotsFromDays } from "../src/model/times";
 import type { StoredPlan } from "../src/model/types";
 import { demoPlan, demoText } from "./helpers";
@@ -46,6 +47,8 @@ const click = async (el: Element | null | undefined) => {
   expect(el).toBeTruthy();
   await act(async () => { (el as HTMLElement).click(); });
 };
+/** Lets what waits on a promise (a file being saved) finish and draw. */
+const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 const byText = (sel: string, text: string) =>
   [...root.querySelectorAll(sel)].find((e) => e.textContent?.includes(text)) ?? null;
 const input = async (el: HTMLInputElement, value: string) => {
@@ -258,5 +261,48 @@ describe("Ta bort all data på enheten", () => {
     expect(store.unavailable()).toEqual([]);
     expect(store.settings().copied).toBeUndefined();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("saving a file in the app store builds", () => {
+  // A web view has no downloads: the button did nothing there, and the app said the file was saved.
+  it("writes the file in the app's cache and hands it to the phone's share sheet", async () => {
+    const seen: string[] = [];
+    const io: NativeIo = {
+      write: async (name, text) => { seen.push(`write ${name} ${text.length}`); return `file:///cache/${name}`; },
+      share: async (name, uri) => { seen.push(`share ${name} ${uri}`); },
+    };
+    expect(await nativeSave(io)("troskel-kopia-2026-11-25.troskel", "{}", "application/json")).toBe(true);
+    expect(seen).toEqual(["write troskel-kopia-2026-11-25.troskel 2", "share troskel-kopia-2026-11-25.troskel file:///cache/troskel-kopia-2026-11-25.troskel"]);
+    expect(safeName("../../etc/x y.ics")).toBe("etc-x-y.ics");
+    expect(saveFile(false)).toBe(browserSave);
+    expect(saveFile(true)).not.toBe(browserSave);
+  });
+
+  it("says so when the share sheet was closed, and does not count a copy that was never saved", async () => {
+    const io: NativeIo = { write: async () => "file:///cache/x", share: async () => { throw new Error("Share canceled"); } };
+    const store = memoryStore();
+    store.setPlan(demoPlan());
+    await mount({ store, tab: "about", download: nativeSave(io) });
+    await click(byText(".backup button", "Spara en kopia"));
+    await settle();
+    expect(root.querySelector(".backup [role=status]")!.textContent).toContain("sparades inte");
+    expect(store.settings().copied).toBeUndefined();
+
+    await click(root.querySelector(".share input[type=checkbox]"));
+    await click(byText(".share button", "Spara som fil"));
+    await settle();
+    expect(root.querySelector(".share [role=status]")!.textContent).toContain("sparades inte");
+  });
+
+  it("remembers the day of the copy once the file is saved", async () => {
+    const io: NativeIo = { write: async () => "file:///cache/x", share: async () => {} };
+    const store = memoryStore();
+    store.setPlan(demoPlan());
+    await mount({ store, tab: "about", download: nativeSave(io) });
+    await click(byText(".backup button", "Spara en kopia"));
+    await settle();
+    expect(root.querySelector(".backup [role=status]")!.textContent).toContain("Kopian är sparad");
+    expect(store.settings().copied).toBe("2026-11-25");
   });
 });

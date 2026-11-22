@@ -22,7 +22,7 @@ interface Props {
   /** Health Connect, only in the Android app: `on` once the athlete let the app read it. */
   healthConnect?: { on: boolean; read: () => void; settings: () => void };
   /** Send the plan to the coach (#781): missing without a plan of the athlete's own (none, or the example). */
-  share?: { file?: () => void; copy: () => Promise<boolean> };
+  share?: { file?: () => Promise<boolean>; copy: () => Promise<boolean> };
   /** The athlete's own copy (#790): missing without a plan of the athlete's own. */
   backup?: BackupProps;
 }
