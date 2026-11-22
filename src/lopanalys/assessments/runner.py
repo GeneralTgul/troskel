@@ -417,7 +417,7 @@ class TestRunner:
         """Start the final sprint of an open-ended ramp (if the protocol allows one)."""
         with self._lock:
             p = self.protocol
-            if (p.final_sprint_s <= 0 or self._phase != Phase.RUNNING or self._cur.is_warmup
+            if (p.final_sprint_s <= 0 or self._phase != Phase.RUNNING or self._paused or self._cur.is_warmup
                     or self._sprint_index is not None):
                 return False
             self._sprint_ramp_s, self._sprint_reason = self._ramp_now_s(), "manual"

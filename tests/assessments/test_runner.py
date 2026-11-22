@@ -267,3 +267,20 @@ def test_time_scale_runs_faster():
         time.sleep(0.02)
     r.close()
     assert r.phase == Phase.FINISHED and time.perf_counter() - t0 < 1.5
+
+
+def test_final_sprint_while_paused_does_not_start_the_belt():
+    # The belt stands still in a pause. "Slutspurt" then started it at the sprint speed while the
+    # test still said paused, and the stage clock stood still.
+    p = library.max_hr_ramp(12.0, warmup_s=0, step_s=60, final_sprint_s=30, final_sprint_kmh=2.0)
+    r, clock, tm, states, cues = make(p)
+    r.start()
+    run_until(r, clock, lambda: r.phase == Phase.RUNNING)
+    run(r, clock, 20)
+    r.pause()
+    assert not tm.running
+    assert not r.final_sprint()
+    assert not tm.running and r.state.paused and r.state.stage_index == 0
+    r.resume()
+    run_until(r, clock, lambda: r.phase == Phase.RUNNING)
+    assert r.final_sprint() and tm.speed == 14.0
