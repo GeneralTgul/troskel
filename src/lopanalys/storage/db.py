@@ -1566,15 +1566,23 @@ class Database:
             names = set(z.namelist())
             if "manifest.json" not in names or DB_FILENAME not in names:
                 raise StorageError(t("storage.error.bad_backup", err="manifest"))
-            m = json.loads(z.read("manifest.json"))
-            if m.get("format") != "lopanalys-backup":
-                raise StorageError(t("storage.error.bad_backup", err="format"))
-            if int(m.get("schema_version", 0)) > SCHEMA_VERSION:
+            try:
+                m = json.loads(z.read("manifest.json"))
+                if not isinstance(m, dict) or m.get("format") != "lopanalys-backup":
+                    raise StorageError(t("storage.error.bad_backup", err="format"))
+                newer = int(m.get("schema_version", 0)) > SCHEMA_VERSION
+            except (ValueError, TypeError, zipfile.BadZipFile, zlib.error, EOFError) as e:   # a damaged zip
+                raise StorageError(t("storage.error.bad_backup", err="manifest")) from e
+            if newer:
                 raise StorageError(t("storage.error.newer_schema", found=m.get("schema_version"), supported=SCHEMA_VERSION))
             db.parent.mkdir(parents=True, exist_ok=True)
             staged = db.with_name(db.name + ".restore")
-            with z.open(DB_FILENAME) as src, open(staged, "wb") as out:
-                shutil.copyfileobj(src, out)
+            try:
+                with z.open(DB_FILENAME) as src, open(staged, "wb") as out:
+                    shutil.copyfileobj(src, out)
+            except (zipfile.BadZipFile, zlib.error, EOFError) as e:      # damaged: nothing is left behind
+                staged.unlink(missing_ok=True)
+                raise StorageError(t("storage.error.bad_backup", err=str(e))) from e
             try:
                 con = sqlite3.connect(str(staged))
                 try:
@@ -1605,6 +1613,10 @@ class Database:
                 if not target.is_relative_to(root):     # zip-slip guard
                     continue
                 target.parent.mkdir(parents=True, exist_ok=True)
-                with z.open(name) as src, open(target, "wb") as out:
-                    shutil.copyfileobj(src, out)
+                try:
+                    with z.open(name) as src, open(target, "wb") as out:
+                        shutil.copyfileobj(src, out)
+                except (zipfile.BadZipFile, zlib.error, EOFError):   # the database is in place: go on
+                    target.unlink(missing_ok=True)
+                    log.warning("a damaged key frame in the backup was left out")
         return kept

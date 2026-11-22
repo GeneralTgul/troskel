@@ -6,7 +6,7 @@ import zipfile
 import pytest
 
 from lopanalys.storage import privacy
-from lopanalys.storage.db import Database, StorageError
+from lopanalys.storage.db import DB_FILENAME, Database, StorageError
 
 from . import main_db
 
@@ -124,3 +124,37 @@ def test_move_data_folder_is_a_real_move(tmp_path):
         assert os.path.isfile(moved.saved_files(2)[0]["path"])
         assert moved.get_setting("branding.logo") == str(dest / "branding" / "logo.png")
     assert privacy.finish_move(root, dest) == 0
+
+
+def test_a_damaged_plain_backup_is_refused_with_a_message_and_leaves_nothing_behind(tmp_path):
+    """A plain zip (an old backup) with a damaged database, manifest or key frame raised zlib.error or
+    JSONDecodeError past StorageError, and left ``lopanalys.sqlite.restore`` in the data folder."""
+    root, _ = main_db.build(tmp_path)
+    with Database(root / "lopanalys.sqlite") as db:
+        good = db.backup(tmp_path / "kopia.zip")
+        names = [a.name for a in db.list_athletes()]
+    raw = bytearray(good.read_bytes())
+    raw[raw.find(DB_FILENAME.encode()) + 200] ^= 0xFF           # inside the compressed database
+    bad_db = tmp_path / "skadad.zip"
+    bad_db.write_bytes(raw)
+    bad_manifest = tmp_path / "manifest.zip"
+    with zipfile.ZipFile(good) as zi, zipfile.ZipFile(bad_manifest, "w") as zo:
+        zo.writestr("manifest.json", "{not json")
+        zo.writestr(DB_FILENAME, zi.read(DB_FILENAME))
+    for bad in (bad_db, bad_manifest):
+        with pytest.raises(StorageError, match="säkerhetskopia"):
+            Database.restore_backup(bad, root / "lopanalys.sqlite")
+        assert not list(root.glob("*.restore*")) and not list(root.glob("*before-restore*"))
+        with Database(root / "lopanalys.sqlite") as db:
+            assert [a.name for a in db.list_athletes()] == names      # the data in use is untouched
+    # a damaged key frame does not stop the restore: the database is what matters
+    kf = next(n for n in zipfile.ZipFile(good).namelist() if n.startswith("keyframes/"))
+    raw = bytearray(good.read_bytes())
+    at = raw.find(kf.encode())
+    raw[at + len(kf) + 20] ^= 0xFF
+    bad_kf = tmp_path / "bild.zip"
+    bad_kf.write_bytes(raw)
+    other = tmp_path / "pc2" / "lopanalys.sqlite"
+    Database.restore_backup(bad_kf, other)
+    with Database(other) as db:
+        assert [a.name for a in db.list_athletes()] == names
