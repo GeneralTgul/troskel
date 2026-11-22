@@ -10,6 +10,7 @@ import { mergeLog, readCopyText } from "../src/model/backup";
 import { escape, toIcs } from "../src/model/ics";
 import { decodeLink, encodeData } from "../src/model/link";
 import { checkLog } from "../src/model/log";
+import { qrDetector, qrScanner } from "../src/model/qr";
 import { emptyForm, planFromForm, renewOwn } from "../src/model/request";
 import { athleteFile, athleteLink, athletePayload } from "../src/model/share";
 import { memoryStore, type PendingTimes } from "../src/model/storage";
@@ -38,7 +39,8 @@ async function mount(props: Partial<Parameters<typeof App>[0]> & { plan?: Stored
   document.body.append(root);
   await act(async () => {
     render(<App store={store} engine={props.engine ?? stub} now={() => now} timeZone={TZ} tab={props.tab}
-      loadDemo={async () => demoText()} incoming={props.incoming} download={props.download} />, root);
+      loadDemo={async () => demoText()} incoming={props.incoming} download={props.download}
+      keepAwake={props.keepAwake} />, root);
   });
   return store;
 }
@@ -304,5 +306,47 @@ describe("saving a file in the app store builds", () => {
     await settle();
     expect(root.querySelector(".backup [role=status]")!.textContent).toContain("Kopian är sparad");
     expect(store.settings().copied).toBe("2026-11-25");
+  });
+});
+
+describe("reading a QR code", () => {
+  const frame = { source: {} as CanvasImageSource, pixels: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }) };
+  const jsQr = vi.fn(() => ({ data: "from jsQR" }));
+  class Works {
+    static getSupportedFormats = async () => ["qr_code", "ean_13"];
+    detect = async () => [{ rawValue: "from the browser" }];
+  }
+  class NoQr extends Works { static getSupportedFormats = async () => ["ean_13"]; }
+  class Broken extends Works { detect = async (): Promise<{ rawValue: string }[]> => { throw new Error("NotSupportedError"); }; }
+
+  it("uses the browser's detector only when it reads QR codes", async () => {
+    expect(await qrDetector(undefined)).toBeNull();
+    expect(await qrDetector(NoQr)).toBeNull(); // Android without the Play services module
+    expect(await qrDetector(Works)).toBeInstanceOf(Works);
+    expect(await qrScanner(await qrDetector(Works), async () => jsQr)(frame)).toBe("from the browser");
+    expect(await qrScanner(null, async () => jsQr)(frame)).toBe("from jsQR");
+  });
+
+  it("hands over to jsQR when the browser's detector fails, instead of never finding the code", async () => {
+    const load = vi.fn(async () => jsQr);
+    const scan = qrScanner(new Broken(), load);
+    expect(await scan(frame)).toBe("from jsQR");
+    expect(await scan(frame)).toBe("from jsQR");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the wall mode", () => {
+  it("leaves a form that was left open and goes back to today", async () => {
+    vi.useFakeTimers();
+    const store = memoryStore();
+    store.setPlan(demoPlan());
+    store.setSettings({ wall: true });
+    await mount({ store, tab: "about", keepAwake: () => () => {} });
+    await click(byText(".about button", "Gör ett schema själv"));
+    expect(root.querySelector(".request")).not.toBeNull();
+    await act(async () => { vi.advanceTimersByTime(3 * 60_000); });
+    expect(root.querySelector(".request")).toBeNull();
+    expect(root.querySelector(".today")).not.toBeNull();
   });
 });

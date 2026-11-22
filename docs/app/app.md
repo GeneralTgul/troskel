@@ -86,7 +86,7 @@ Tröskel bygger schemat ur underlaget innan länken görs och jämför det med d
 
 Samma data går också
 
-- som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Även ett långt schema med flera idrotter ryms i en QR-kod.
+- som QR-kod, som appen läser med kameran (*Läs en QR-kod*). Avkodningen sker i telefonen. Appen använder webbläsarens egen läsare (`BarcodeDetector`) bara när den säger sig läsa QR-koder, och annars jsQR som följer med appen (`app/src/model/qr.ts`). Misslyckas webbläsarens läsare, som på en Android-enhet utan Google Play-tjänsternas modul, tar jsQR över. Även ett långt schema med flera idrotter ryms i en QR-kod.
 - som fil, `<namn>.troskel`, som alltid har hela schemat i läsbar form (format 1, *Öppna en fil*).
 
 Hela schemat är det sparade schemat ur `plan/codec.py` (begäran och planen), idrottarens namn och varje zons puls och fart (watt för cykel och SkiErg, `power_low_w` och `power_high_w`). Målen för ett test räknas i Tröskel, och efter ett nytt test skickar coachen en ny länk. Bara för idrottarens [egna värden](#egna-värden) räknar appen fram målen själv. Typerna står i `app/src/model/types.ts` och `app/src/model/short.ts`, och Python-sidan är `lopanalys.plan.link` (`stored_plan`, `short_plan`, `expand`, `plan_link`, `plan_file`, `read_link`). Vitest bygger schemat ur den korta länken för varje fixtur och jämför med Pythons sparade schema (`app/test/link.test.ts`).

@@ -261,6 +261,8 @@ export function App(props: AppProps) {
       setTab("today");
       setWelcome(false);
       setQr(false);
+      setRequest(null);
+      setValues(false);
       setHome((h) => h + 1);
     });
     const poke = () => timer.poke();
