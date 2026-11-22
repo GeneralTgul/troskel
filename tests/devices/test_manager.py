@@ -75,6 +75,24 @@ def test_ftms_refused_while_qz_runs():
     assert ble.clients == []
 
 
+def test_a_refused_ftms_connect_keeps_the_device_that_was_connected():
+    """QZ runs, so Bluetooth is refused: the treadmill (or trainer) that was connected and working stays."""
+    m, _ble, _store = manager(qz=True)
+    try:
+        old = m.connect_treadmill("manual")
+        with pytest.raises(DeviceError):
+            m.connect_treadmill("ftms")
+        assert m.treadmill is old and m.treadmill_mode == "manual"
+        assert m.status("treadmill").state == ConnState.CONNECTED
+        bike = m.connect_ergometer("bike", "manual")
+        with pytest.raises(DeviceError) as exc:
+            m.connect_ergometer("bike", "ftms")
+        assert str(exc.value) == t("devices.bike.close_apps")
+        assert m.ergometer is bike and m.treadmill_mode == "manual"
+    finally:
+        m.disconnect_all()
+
+
 def test_no_treadmill_found():
     m = DeviceManager(Bus(), scanner_cls=make_scanner([]), qz_check=lambda: False)
     with pytest.raises(DeviceError) as exc:

@@ -159,14 +159,14 @@ class DeviceManager:
             if old is not None and mode == self._treadmill_mode and _same(old, device) and _is_up(old):
                 log.info("treadmill (%s): already connected, keeping the connection", mode)
                 return old
+            if mode == "ftms" and self.qz_running():     # refused before the old one is dropped: it stays
+                raise DeviceError(t("devices.ftms.qz_has_it"))
             if old is not None:
                 log.info("treadmill (%s): disconnecting before a new %s connection", self._treadmill_mode, mode)
             self.disconnect_treadmill()
             tm: Any
             log.info("treadmill (%s): connecting", mode)
             if mode == "ftms":
-                if self.qz_running():
-                    raise DeviceError(t("devices.ftms.qz_has_it"))
                 device = device or self.last_device("treadmill") or self._first(self.scan_treadmills(),
                                                                                  "treadmill")
                 if isinstance(old, FtmsTreadmill):
@@ -218,12 +218,12 @@ class DeviceManager:
                     and _same(old, device) and _is_up(old)):
                 log.info("%s (%s): already connected, keeping the connection", kind, mode)
                 return old
+            if mode == "ftms" and self.qz_running():     # refused before the old one is dropped: it stays
+                raise DeviceError(t("devices.bike.close_apps"))
             self.disconnect_treadmill()
             log.info("%s (%s): connecting", kind, mode)
             erg: Any
             if mode in ("ftms", "pm5"):
-                if mode == "ftms" and self.qz_running():
-                    raise DeviceError(t("devices.bike.close_apps"))
                 device = device or self.last_device(kind) or self._first(self.scan_ergometers(sp), kind)
                 if isinstance(old, (FtmsTreadmill, Pm5Ergometer)):
                     self._settle()
