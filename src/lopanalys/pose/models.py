@@ -199,6 +199,9 @@ def download(variant: str, dest: Path, progress_cb: ProgressCb | None = None, ti
                     done += len(chunk)
                     if progress_cb:
                         _report_bytes(progress_cb, done, total)
+            if total and done != total:      # the connection closed early: the reader just ends
+                last_err = f"incomplete download ({done} of {total} bytes)"
+                continue
             if not _sane(tmp, variant):
                 last_err = "file too small"
                 continue

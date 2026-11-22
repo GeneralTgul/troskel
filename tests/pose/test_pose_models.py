@@ -187,3 +187,22 @@ def test_live_without_model_reports_instead_of_crashing(monkeypatch):
     time.sleep(0.5)
     la.stop()
     assert la.error and "pose_landmarker_full.task" in la.error
+
+
+def test_a_download_cut_short_is_not_kept_as_the_model(monkeypatch):
+    """The connection closed with 2.5 of 3 MB fetched: the reader just ends, the file was large enough
+    to pass, and its own checksum was written beside it, so the damaged model was trusted from then on
+    and never fetched again."""
+    monkeypatch.delenv("LOPANALYS_NO_DOWNLOAD", raising=False)   # the network is faked here
+    monkeypatch.setattr(models, "bundled_dirs", lambda: [])
+    data = fake_task()
+
+    class Cut(FakeResp):
+        def __init__(self) -> None:
+            super().__init__(data[:2_500_000])
+            self.headers = {"Content-Length": str(len(data))}
+
+    monkeypatch.setattr(models.urllib.request, "urlopen", lambda req, timeout: Cut())
+    with pytest.raises(models.ModelError):
+        models.ensure_model("lite")
+    assert not models.is_downloaded("lite") and not list(paths.models_dir().glob("pose_landmarker_lite*"))
