@@ -81,3 +81,16 @@ def test_save_png_non_ascii(tmp_path):
     path = annotate.save_png(np.zeros((10, 10, 3), np.uint8), tmp_path / "löpare åäö" / "bild.png")
     assert (tmp_path / "löpare åäö" / "bild.png").stat().st_size > 0
     assert path.endswith("bild.png")
+
+
+def test_crop_box_with_a_nose_that_has_no_position():
+    """The nose was taken into the crop on its visibility alone. A nose without a position (removed as
+    a spike at the edge of the clip) made the box NaN and ``int()`` raise, outside the guard that keeps
+    one bad drawing from losing the analysis."""
+    poses, _ = generate(RunnerParams(fps=60, duration_s=0.2, width=960, height=540))
+    pose = poses[3]
+    want = annotate.crop_box([pose])
+    pose.xy[0] = np.nan                                        # visibility stays 0.95
+    box = annotate.crop_box([pose])
+    assert all(isinstance(v, int) for v in box) and box[2] > box[0] and box[3] > box[1]
+    assert abs(box[3] - want[3]) <= 8                          # the feet are about where they were

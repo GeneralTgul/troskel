@@ -100,8 +100,9 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.Im
 
 def _vis_points(pose: Pose, min_vis: float = 0.2) -> np.ndarray:
     ok = (pose.visibility >= min_vis) & ~np.isnan(pose.xy).any(axis=1)
+    nose = bool(ok[0])
     ok[:11] = False            # face points are not needed for the frame
-    ok[0] = pose.visibility[0] >= min_vis
+    ok[0] = nose               # but the nose is: the top of the head
     return pose.xy[ok]
 
 
