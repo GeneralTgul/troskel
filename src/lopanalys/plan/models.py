@@ -186,6 +186,7 @@ class PlanRequest:
     second_long: bool = False                  # a long, easy workout in the first supporting sport the day after
                                                # the long run, every week with a long run
     easy_weeks: tuple[date, ...] = ()          # weeks the coach makes easy (any day of the week): a holiday, a trip
+    max_weekly_minutes: int = 0                # the most endurance minutes a week; 0: what the slots hold
 
     @property
     def quality_count(self) -> int:

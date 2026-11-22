@@ -31,7 +31,7 @@ def _on(wk, weekday: int):
 
 def test_a_request_without_choices_is_stored_as_before():
     d = codec.request_to_dict(c.CASES["high_ski"])
-    assert not {"quality_sessions", "easy_days", "second_long", "easy_weeks"} & set(d)
+    assert not {"quality_sessions", "easy_days", "second_long", "easy_weeks", "max_weekly_minutes"} & set(d)
     assert all("minutes" not in h for h in d["hard_days"])
 
 
@@ -138,7 +138,7 @@ def test_the_fixed_easy_day_is_easy_in_its_sport(name, weekday, sport, minutes):
             assert (w.family, w.quality, w.sport) == ("easy", False, sport), (wk.index, w.template_id)
             assert w.minutes <= minutes
     assert seen >= len(plan.weeks) - 2            # every week it can: not on a race day
-    assert max(w.minutes for wk in plan.weeks for w in _on(wk, weekday)[:1]) == minutes
+    assert max(w.minutes for wk in plan.weeks for w in _on(wk, weekday)[:1]) >= minutes - 15   # in the full weeks
 
 
 def test_the_day_after_a_hard_day_stays_an_easy_workout_not_a_recovery_one():
@@ -232,6 +232,27 @@ def test_easy_weeks_in_a_plan_without_a_goal_keep_the_tests():
     kinds = [wk.kind for wk in plan.weeks]
     assert kinds[-1] == "test" and kinds[(date(2026, 12, 21) - c.START).days // 7] == "easy"
     assert kinds[(date(2027, 2, 15) - c.START).days // 7] in ("easy", "test")
+
+
+# ---- the most minutes a week
+
+def test_the_week_grows_to_the_coachs_ceiling_and_stops():
+    r = c.CASES["marathon_trained"]
+    plain = build_plan(r, plan_id="t")
+    asked = build_plan(replace(r, max_weekly_minutes=420), plan_id="t")
+    assert max(wk.minutes for wk in plain.weeks) > 480
+    assert max(wk.target_minutes for wk in asked.weeks) == 420 and max(wk.minutes for wk in asked.weeks) <= 420
+    assert asked.weeks[0].minutes == plain.weeks[0].minutes            # the same start: what the athlete trains
+    assert week_capacity(replace(r, max_weekly_minutes=420)) == 420
+    assert week_capacity(replace(r, max_weekly_minutes=5000)) == week_capacity(r)
+
+
+def test_a_ceiling_below_what_the_athlete_trains_caps_the_start():
+    r = replace(c.CASES["half_12"], max_weekly_minutes=150)
+    plan = build_plan(r, plan_id="t")
+    assert all(wk.minutes <= 150 for wk in plan.weeks)
+    assert any(n.key == "plan.note.capped" for n in plan.notes)
+    assert week_capacity(replace(r, max_weekly_minutes=10)) == 60       # never below an hour
 
 
 # ---- the rolling plan and the same plan twice

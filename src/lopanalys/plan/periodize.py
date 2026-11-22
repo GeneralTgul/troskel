@@ -25,6 +25,8 @@ The rules (docs/TRANINGSPLAN.md, "Planmotorn"):
     nearest, then the later, and none when the run of load weeks would be more than one longer than the level's.
     The first week, a test week without a goal and the taper are never changed, and a
     retest is placed after the move, among the easy weeks as they then lie.
+  - The coach's ceiling for the week (``PlanRequest.max_weekly_minutes``): the weekly volume never passes it, and
+    grows towards it instead of towards what the slots hold (``week_capacity``).
 """
 from __future__ import annotations
 
@@ -60,6 +62,7 @@ RACE_KMH = {"run": 11.0, "bike": 28.0, "skierg": 15.0, "ski": 15.0, "swim": 3.5}
 LONG_RACE_FROM = 240
 LONG_RACE_SHARE = 0.75
 LONG_CAP_MAX = 270
+MIN_WEEK = 60                 # the coach's ceiling for the week (PlanRequest.max_weekly_minutes) is never below this
 
 
 @dataclass(frozen=True)
@@ -210,7 +213,8 @@ def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     """The minutes a week can really hold: the level's number of sessions in the longest core slots (and the
     second slots of the days, ``second_slots``), the long run within the plan's longest long run (``long_cap``) and
     every other run within the level's easy run (``Level.easy_max``), or the length the coach gave the day's group
-    session when that is longer (``fixed_minutes``)."""
+    session when that is longer (``fixed_minutes``). Over every sport (``sport`` None) it is at most the coach's
+    ceiling for the week (``PlanRequest.max_weekly_minutes``): the volume then grows towards that and stops there."""
     level = LEVEL[request.level]
     slots = core_slots(request, sport)
     if not slots:
@@ -221,7 +225,10 @@ def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     fixed = fixed_minutes(request)
     held = sorted([min(s.max_minutes, cap) if s is long else min(s.max_minutes, max(easy_max, fixed.get(s.weekday, 0)))
                    for s in slots] + [min(s.max_minutes, easy_max) for s in seconds], reverse=True)
-    return sum(held[:level.max_sessions])
+    total = sum(held[:level.max_sessions])
+    if sport is None and request.max_weekly_minutes > 0:      # the coach's ceiling for the week
+        total = min(total, max(MIN_WEEK, request.max_weekly_minutes))
+    return total
 
 
 def first_week_minutes(request: PlanRequest, sport: str | None = None) -> tuple[int, str]:

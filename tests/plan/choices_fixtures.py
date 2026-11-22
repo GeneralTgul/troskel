@@ -1,5 +1,5 @@
 """Writes app/test/fixtures/choices.json.gz: the coach's choices (PlanRequest.quality_sessions, easy_days,
-second_long, easy_weeks and a fixed day's minutes) for the app's engine, checked by app/test/engine_choices.test.ts.
+second_long, easy_weeks, max_weekly_minutes and a fixed day's minutes) for the app's engine, checked by app/test/engine_choices.test.ts.
 
     python -m tests.plan.choices_fixtures            # write it
     python -m tests.plan.choices_fixtures --check    # exit 1 when it is out of date (tests/plan/test_choices.py)
@@ -54,6 +54,10 @@ def requests() -> list[tuple[str, Any, date | None]]:
         ("easy-weeks-beginner", replace(c.CASES["beginner_26"], easy_weeks=(date(2026, 12, 21), date(2027, 2, 15))), None),
         ("easy-weeks-first-and-last", c.request(weeks=12, easy_weeks=(c.START, date(2027, 2, 1), date(2028, 1, 1))), None),
         ("easy-weeks-milestone", replace(c.CASES["half_b_recovery"], easy_weeks=(date(2027, 1, 11),)), None),
+        ("most-minutes-only", replace(c.CASES["marathon_trained"], max_weekly_minutes=420), None),
+        ("most-minutes-below-now", replace(half, max_weekly_minutes=150), None),
+        ("most-minutes-tiny", replace(half, max_weekly_minutes=10, recent_weekly_minutes=None), None),
+        ("most-minutes-above-the-slots", replace(half, max_weekly_minutes=5000), None),
     ]
     return out
 

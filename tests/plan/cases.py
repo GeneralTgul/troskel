@@ -28,11 +28,11 @@ STRENGTH_SLOTS = (Slot(0, 45, ("strength",), time(7)), Slot(2, 45, ("strength",)
 
 def request(slots=FIVE, *, goals=(), weeks=None, level="recreational", recent=200, capacity=(TESTED,),
             start=START, roles=(), strength=0, hard=(), quality=0, easy=(), second_long=False,
-            easy_weeks=()) -> PlanRequest:
+            easy_weeks=(), most=0) -> PlanRequest:
     return PlanRequest("Exempel Löpare", start, slots, capacity, goals=tuple(goals), duration_weeks=weeks,
                        level=level, recent_weekly_minutes=recent, roles=tuple(roles), strength_sessions=strength,
                        hard_days=tuple(hard), quality_sessions=quality, easy_days=tuple(easy), second_long=second_long,
-                       easy_weeks=tuple(easy_weeks))
+                       easy_weeks=tuple(easy_weeks), max_weekly_minutes=most)
 
 
 def for_sports(slots, *sports: str) -> tuple:
@@ -106,7 +106,7 @@ CASES = {
     "high_ski_choices": request(HIGH, goals=(LONG_SKI,), level="high", recent=660, roles=SKI4, strength=3,
                                 capacity=(TESTED, SKIERG_TEST), hard=(HardDay(3, "ski", 105), HardDay(0, RUNNING)),
                                 quality=2, easy=(HardDay(1, "ski", 105),), second_long=True,
-                                easy_weeks=(date(2026, 12, 21),)),
+                                easy_weeks=(date(2026, 12, 21),), most=690),
     "high_ski_choices_low": request(HIGH, goals=(LONG_SKI,), level="high", recent=400, roles=SKI4, strength=3,
                                     capacity=(TESTED, SKIERG_TEST), hard=(HardDay(3, "ski", 105), HardDay(0, RUNNING)),
                                     quality=2, easy=(HardDay(1, "ski", 105),), second_long=True,

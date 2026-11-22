@@ -32,6 +32,7 @@ describe("the coach's choices against Python", () => {
     expect(all.some((r) => r.easy_days?.length)).toBe(true);
     expect(all.some((r) => r.second_long)).toBe(true);
     expect(all.some((r) => r.easy_weeks?.length)).toBe(true);
+    expect(all.some((r) => r.max_weekly_minutes)).toBe(true);
     expect(all.some((r) => r.hard_days?.some((h) => h.minutes))).toBe(true);
   });
 

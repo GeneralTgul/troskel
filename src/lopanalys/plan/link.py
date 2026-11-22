@@ -44,9 +44,9 @@ SHORT_FORMAT = 2              # the request instead of the workouts: the app bui
 FILE_SUFFIX = ".troskel"
 # The coach's choices in the request that the app's reader of the short link (app/src/model/short.ts) does not
 # unpack yet: a plan with one of them is sent whole (format 1), which the app reads as it is. The app's engine has
-# the rules (app/src/engine), so this goes when short.ts reads the keys ``q``, ``ed``, ``sl``, ``ew`` and a fixed
+# the rules (app/src/engine), so this goes when short.ts reads the keys ``q``, ``ed``, ``sl``, ``ew``, ``mx`` and a fixed
 # day's minutes (``pack_request``).
-APP_LACKS = ("quality_sessions", "easy_days", "second_long", "easy_weeks")
+APP_LACKS = ("quality_sessions", "easy_days", "second_long", "easy_weeks", "max_weekly_minutes")
 _TARGET_FIELDS = ("hr_low", "hr_high", "speed_low_kmh", "speed_high_kmh", "estimated", "speed_low_approx",
                   "speed_high_approx", "speed_from_hr")
 
@@ -180,6 +180,8 @@ def pack_request(r: dict[str, Any]) -> dict[str, Any]:
         out["sl"] = 1
     if r.get("easy_weeks"):
         out["ew"] = list(r["easy_weeks"])
+    if r.get("max_weekly_minutes"):
+        out["mx"] = r["max_weekly_minutes"]
     return out
 
 
@@ -217,6 +219,8 @@ def unpack_request(d: dict[str, Any]) -> dict[str, Any]:
         out["second_long"] = True
     if d.get("ew"):
         out["easy_weeks"] = list(d["ew"])
+    if d.get("mx"):
+        out["max_weekly_minutes"] = d["mx"]
     return out
 
 

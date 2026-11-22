@@ -32,8 +32,8 @@ export const MAX_QUALITY = 3;
 /** A fixed hard or easy day (models.HardDay): `minutes` is the group session's length, 0 or none for the template's. */
 export interface FixedDay { weekday: number; sport?: string; minutes?: number }
 /**
- * The coach's choices in the request (models.PlanRequest: quality_sessions, easy_days, second_long, easy_weeks, and
- * a fixed hard day's minutes), all off by default. The stored request's type (model/types.ts) does not name them
+ * The coach's choices in the request (models.PlanRequest: quality_sessions, easy_days, second_long, easy_weeks,
+ * max_weekly_minutes and a fixed hard day's minutes), all off by default. The stored request's type (model/types.ts) does not name them
  * yet: the engine reads them through `choices`, and `normRequest` keeps them.
  */
 export interface Choices {
@@ -41,6 +41,7 @@ export interface Choices {
   easy_days?: FixedDay[];
   second_long?: boolean;
   easy_weeks?: string[];
+  max_weekly_minutes?: number;
   hard_days?: FixedDay[];
 }
 export const choices = (r: StoredRequest) => r as Omit<StoredRequest, "hard_days"> & Choices;
@@ -150,6 +151,7 @@ export function normRequest(r: StoredRequest): StoredRequest {
   if (c.easy_days?.length) o.easy_days = c.easy_days.map(normDay);
   if (c.second_long) o.second_long = true;
   if (c.easy_weeks?.length) o.easy_weeks = [...c.easy_weeks];
+  if (c.max_weekly_minutes) o.max_weekly_minutes = c.max_weekly_minutes;
   return out;
 }
 

@@ -19,8 +19,8 @@ a swimming test is stored as before, and a plan saved before reads back with non
 The fixed hard days (``PlanRequest.hard_days``, engine version 9) are stored the same way, under ``hard_days`` as
 ``{"weekday": 3, "sport": "ski"}`` (the sport left out when the engine picks it), only when there are any.
 
-The coach's choices (``quality_sessions``, ``easy_days``, ``second_long``, ``easy_weeks`` and a fixed day's
-``minutes``) are stored the same way: each only when it is set, so a request without them is stored as before.
+The coach's choices (``quality_sessions``, ``easy_days``, ``second_long``, ``easy_weeks``, ``max_weekly_minutes``
+and a fixed day's ``minutes``) are stored the same way: each only when it is set, so a request without them is stored as before.
 
 The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
 ``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any. The day of the next
@@ -122,6 +122,8 @@ def request_to_dict(r: PlanRequest) -> dict[str, Any]:
         d["second_long"] = True
     if r.easy_weeks:
         d["easy_weeks"] = [_d(x) for x in r.easy_weeks]
+    if r.max_weekly_minutes:
+        d["max_weekly_minutes"] = r.max_weekly_minutes
     return d
 
 
@@ -147,7 +149,8 @@ def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
                        tuple(_day_from_dict(h) for h in d.get("hard_days", [])),
                        d.get("quality_sessions", 0), tuple(_day_from_dict(h) for h in d.get("easy_days", [])),
                        bool(d.get("second_long", False)),
-                       tuple(date.fromisoformat(x) for x in d.get("easy_weeks", [])))
+                       tuple(date.fromisoformat(x) for x in d.get("easy_weeks", [])),
+                       d.get("max_weekly_minutes", 0))
 
 
 def _workout_to_dict(w: Workout) -> dict[str, Any]:

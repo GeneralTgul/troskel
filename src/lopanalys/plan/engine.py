@@ -70,6 +70,8 @@ The rules (docs/TRANINGSPLAN.md):
       of the week, and in an easy or a test week three quarters of the last load week's, at least 60 minutes
       (else the day is as before). The day is then no hard day, the day after it
       counts as the day after a long run, and the smaller long workout every other week is not used.
+    * The most minutes a week (PlanRequest.max_weekly_minutes): the weekly time grows towards it and stops there
+      (periodize.week_capacity), where it else grows towards what the slots hold.
   - The rolling plan: given the day it is built (``today``), only the weeks up to the detail horizon
     (the week of that day and the three after it) keep their workouts. The weeks after are sketches:
     block, kind, time and number of sessions (Week.sketch). plan.rolling.roll_forward details them

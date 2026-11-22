@@ -28,6 +28,8 @@ export const RACE_KMH: Record<string, number> = { run: 11.0, bike: 28.0, skierg:
 export const LONG_RACE_FROM = 240;
 export const LONG_RACE_SHARE = 0.75;
 export const LONG_CAP_MAX = 270;
+/** The coach's ceiling for the week (max_weekly_minutes) is never below this (periodize.MIN_WEEK). */
+export const MIN_WEEK = 60;
 
 /** periodize.recovery_days: the easy days after an A or B race (0: the two easy days every such race has). */
 export function recoveryDays(g: StoredGoal): number {
@@ -170,7 +172,10 @@ export function weekCapacity(r: StoredRequest, sport: string | null = null): num
       : Math.min(s.max_minutes, Math.max(easyMax, fixed.get(s.weekday) ?? 0)))),
     ...seconds.map((s) => Math.min(s.max_minutes, easyMax)),
   ].sort((a, b) => b - a);
-  return held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
+  let total = held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
+  const most = choices(r).max_weekly_minutes ?? 0; // the coach's ceiling for the week
+  if (sport === null && most > 0) total = Math.min(total, Math.max(MIN_WEEK, most));
+  return total;
 }
 
 export function firstWeekMinutes(r: StoredRequest, sport: string | null = null): [number, string] {
