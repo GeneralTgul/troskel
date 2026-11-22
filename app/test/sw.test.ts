@@ -38,3 +38,36 @@ it("answers the app's files from the cache without a network, whatever the serve
   expect(await answer!).toBe(hit);
   expect(calls[0].opts).toMatchObject({ ignoreSearch: true, ignoreVary: true });
 });
+
+it("opens the app from the cache at once, without waiting for a network that never answers (#844)", async () => {
+  const handlers: Record<string, Handler> = {};
+  const shell = new Response("the app");
+  const privacy = new Response("privacy");
+  const asked: string[] = [];
+  const self = {
+    registration: { scope: "https://x.test/troskel/app/" },
+    addEventListener: (type: string, h: Handler) => { handlers[type] = h; },
+  };
+  const caches = {
+    match: async (req: Request | string) => {
+      const url = typeof req === "string" ? req : req.url;
+      return url === "https://x.test/troskel/app/" ? shell : url.endsWith("/privacy.html") ? privacy : undefined;
+    },
+  };
+  // A weak connection: the request neither answers nor fails.
+  const fetch = (req: Request) => { asked.push(req.url); return new Promise<Response>(() => {}); };
+  const src = readFileSync(resolve(process.cwd(), "src/sw.js"), "utf-8")
+    .replace("__VERSION__", "test").replace("__FILES__", "[]");
+  new Function("self", "caches", "fetch", src)(self, caches, fetch);
+
+  const open = (url: string) => {
+    let answer: Promise<Response> | null = null;
+    const request = { url, method: "GET", mode: "navigate" } as unknown as Request;
+    handlers.fetch({ request, respondWith: (r) => { answer = r; } });
+    return Promise.race([answer!, new Promise<string>((r) => setTimeout(() => r("waited for the network"), 50))]);
+  };
+  expect(await open("https://x.test/troskel/app/?view=week")).toBe(shell);
+  expect(await open("https://x.test/troskel/app/index.html")).toBe(shell);   // not kept under that name: the app itself
+  expect(await open("https://x.test/troskel/app/privacy.html")).toBe(privacy);
+  expect(asked).toEqual([]);
+});

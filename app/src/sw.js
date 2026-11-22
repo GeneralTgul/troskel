@@ -25,8 +25,16 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || !req.url.startsWith(self.registration.scope)) return;
   if (req.mode === "navigate") {
-    // The link carries the plan after #, which never reaches here: every page is the app itself.
-    event.respondWith(fetch(req).catch(() => caches.match(new URL("./", self.registration.scope).href)));
+    // The page from the cache first: the kept page of that address (the privacy page), otherwise the app itself (the
+    // link carries the plan after #, which never reaches here). The network was asked first before, and on a weak
+    // connection (a gym in a basement) the app then stood on a white page until the request gave up, with every file
+    // in the cache. A new version comes with a new sw.js, which the browser looks for at each visit.
+    const shell = new URL("./", self.registration.scope).href;
+    event.respondWith(
+      caches.match(req, { ignoreSearch: true, ignoreVary: true })
+        .then((hit) => hit || caches.match(shell, { ignoreVary: true }))
+        .then((hit) => hit || fetch(req)),
+    );
     return;
   }
   // ignoreVary: a module script asks with an Origin header that the cached copy was not fetched with, and a server

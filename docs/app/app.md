@@ -389,7 +389,7 @@ npm run preview        # den byggda appen på http://localhost:4173/troskel/app/
 
 `TROSKEL_BASE=./ npm run build` bygger för appbutikerna, där appen inte ligger under `/troskel/app/`. `?view=week` (eller `today`, `plan`, `times`, `about`) i adressen öppnar en vy direkt, vilket är bra för skärmbilder.
 
-Efter första besöket fungerar appen utan nät: service workern (`app/src/sw.js`) sparar alla appens filer. Bygget skriver in listan över filerna och en ny version varje gång något ändras.
+Efter första besöket fungerar appen utan nät: service workern (`app/src/sw.js`) sparar alla appens filer. Bygget skriver in listan över filerna och en ny version varje gång något ändras. Sidan själv kommer ur cachen först, också med nät: på en svag uppkoppling (ett gym i en källare) väntade appen förut på en vit sida tills nätet gav upp, fast alla filer fanns sparade. En ny version hämtas i bakgrunden när appen öppnas, och syns nästa gång den öppnas.
 
 Exempelschemat, provens fixturer och planens texter kommer från Python:
 
