@@ -251,3 +251,32 @@ def test_results_changes_are_saved(qapp, qtbot):
     _until(qtbot, lambda: not rv._autosave.isActive(), timeout=3000)   # saved by itself shortly after
     assert ctx.store.db.get_session(sid).result["lt2_method"] == rv.method.currentData()
     ctx.shutdown()
+
+
+def test_a_continue_left_too_long_does_not_take_over_the_next_test(qapp, qtbot, monkeypatch):
+    """*Fortsätt från steg N* opens the guide and waits for its start. Before 2026-11-22 it waited without
+    an end: left there, the athlete's next test (any test, any time later while the program was open) was
+    run as the old test's protocol and saved into the old test."""
+    ctx = _ctx()
+    a = _athlete(ctx)
+    ctl = LiveController(ctx, _lactate_plan(a))
+    assert ctl.start()
+    _until(qtbot, lambda: len(ctl.runner.records) >= 1)
+    sid = ctl.session.id
+    _until(qtbot, lambda: len(ctx.store.records(sid)) >= 1)
+    _crash(ctl)
+
+    from lopanalys.ui.main_window import MainWindow
+    ctx2 = _ctx()
+    w = MainWindow(ctx2)
+    _until(qtbot, lambda: w.stack.currentWidget() is w.results)
+    w.results.resume_btn.click()                              # the guide opens; the coach does not start
+    assert w._pending_resume is not None
+    monkeypatch.setattr(recovery, "RESUME_WITHIN_S", -1e9)    # ... and more than 20 minutes pass
+    a2 = ctx2.store.athlete(a.id)
+    new = LiveController(ctx2, Plan(a2, "max_hr", library.max_hr_ramp(12.0, warmup_s=0), None, treadmill_mode="sim"))
+    w.launch_test(new)
+    assert new._resume is None and new.session.id != sid
+    assert new.plan.protocol.kind == "max_hr"
+    assert w._pending_resume is None
+    w.close()

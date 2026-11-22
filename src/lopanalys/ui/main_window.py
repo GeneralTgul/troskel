@@ -353,7 +353,19 @@ class MainWindow(QMainWindow):
             return
         r, self._pending_resume = self._pending_resume, None
         if r is not None and ctl.plan.athlete.id == r.session.athlete_id:
-            ctl.resume_from(r)
+            # Asked again now: the guide may have been left open, and a test that can no longer be
+            # continued (20 minutes, or already continued) must not take over the test that starts here.
+            from lopanalys.ui import recovery
+            try:
+                saved = self.ctx.store.session(r.session.id) if r.session.id is not None else None
+                r = recovery.resume_info(self.ctx.store, saved) if saved is not None else None
+            except Exception:
+                log.exception("resume check failed")
+                r = None
+            if r is not None:
+                ctl.resume_from(r)
+            else:
+                QMessageBox.information(self, t("ui.recover.title"), t("ui.recover.no_resume"))
         if self.operator is not None:
             self._drop_operator()
         self.ctx.live = ctl
