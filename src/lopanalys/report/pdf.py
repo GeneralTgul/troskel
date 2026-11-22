@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, QEventLoop, QMarginsF, QSize, Qt, QTimer, QUrl
@@ -62,6 +63,21 @@ def _wait(loop: QEventLoop, timeout_ms: int) -> bool:
     return not timed_out["v"]
 
 
+def _wait_for(loop: QEventLoop, done, timeout_ms: int) -> bool:
+    """Run loop until done() is true. Returns False on timeout.
+
+    The loop is shared by every step of html_to_pdf, so it can be quit by something that belongs to
+    an earlier step (the answer to a font question that came late, a timer still running). Such a
+    wake-up is not the end of this step: the loop is entered again until done() or the timeout."""
+    deadline = time.monotonic() + timeout_ms / 1000.0
+    while not done():
+        left_ms = int((deadline - time.monotonic()) * 1000)
+        if left_ms <= 0:
+            return False
+        _wait(loop, left_ms)
+    return True
+
+
 def html_to_pdf(html: str, path: str | os.PathLike[str], *, timeout_ms: int = LOAD_TIMEOUT_MS) -> Path:
     """Render report HTML (from builder.render_html) to an A4 PDF at path, backgrounds included.
 
@@ -99,7 +115,7 @@ def html_to_pdf(html: str, path: str | os.PathLike[str], *, timeout_ms: int = LO
 
             page.loadFinished.connect(on_loaded)
             page.load(QUrl.fromLocalFile(str(src)))
-            if not _wait(loop, timeout_ms) or not state["loaded"]:
+            if not _wait_for(loop, lambda: state["loaded"] is not None, timeout_ms) or not state["loaded"]:
                 raise ReportError(t("report.error.load"))
 
             # Web fonts may still be decoding after loadFinished: poll document.fonts.status.
@@ -123,7 +139,7 @@ def html_to_pdf(html: str, path: str | os.PathLike[str], *, timeout_ms: int = LO
             layout = QPageLayout(QPageSize(QPageSize.PageSizeId.A4), QPageLayout.Orientation.Portrait,
                                  MARGINS_MM, QPageLayout.Unit.Millimeter)
             page.printToPdf(str(out), layout)
-            if not _wait(loop, timeout_ms) or not state["printed"]:
+            if not _wait_for(loop, lambda: state["printed"] is not None, timeout_ms) or not state["printed"]:
                 raise ReportError(t("report.error.pdf", path=str(out)))
         finally:
             _delete(page)
