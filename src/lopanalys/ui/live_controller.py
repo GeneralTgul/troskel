@@ -394,8 +394,13 @@ class LiveController(QObject):
         r = self._resume
         if r is not None:
             new = {x.index for x in recs + warm}
-            recs = [x for x in r.records if x.index not in new] + recs
-            warm = [x for x in r.warmup if x.index not in new] + warm
+            # the stages run before the cut: a value typed (or corrected) after the test was continued is theirs
+            old = [dataclasses.replace(x, lactate_mmol=self.lactate.get(x.index, x.lactate_mmol),
+                                       rpe=self.rpe.get(x.index, x.rpe))
+                   for x in r.records + r.warmup if x.index not in new]
+            warm_idx = {x.index for x in r.warmup}
+            recs = [x for x in old if x.index not in warm_idx] + recs
+            warm = [x for x in old if x.index in warm_idx] + warm
             smp = [x for x in r.samples if x.t_s < (smp[0].t_s if smp else 1e18)] + smp
         return recs, warm, smp
 
@@ -421,6 +426,7 @@ class LiveController(QObject):
         live = {"lactate": {str(k): v for k, v in self.lactate.items() if k not in done},
                 "rpe": {str(k): v for k, v in self.rpe.items() if k not in done}}
         s.result = dict(s.result or {})
+        self._note_runner_values()
         if live["lactate"] or live["rpe"]:
             s.result["live"] = live
         else:
@@ -517,6 +523,12 @@ class LiveController(QObject):
         if st is None:
             return 0
         pending = [i for i in getattr(st, "pending_lactate", []) if i not in self.lactate]
+        r = self._resume
+        if r is not None:       # a continued test: the runner does not know the stages run before the cut
+            stages = self.plan.protocol.stages
+            before = [x.index for x in r.warmup + r.records if x.index not in self.lactate
+                      and x.index < len(stages) and stages[x.index].sample_lactate]
+            pending = sorted(before) + pending
         if pending:
             return int(pending[0])
         if st.completed:
@@ -717,6 +729,9 @@ class LiveController(QObject):
         if counts != self._saved_counts:      # a stage was completed: write it now
             self._saved_counts = counts
             self._checkpoint(samples=True)
+        elif (getattr(rn, "exhaustion_t_s", None) is not None
+              and "exhaustion_t_s" not in (self.session.result or {})):
+            self._checkpoint()                # exhausted without a new stage: write that now too
 
     def _arm_film(self, stage_index: int) -> None:
         """Bike fit and double poling: the film starts with the first stage that is not warm-up."""
@@ -784,21 +799,7 @@ class LiveController(QObject):
                 s.result["second_offset_s"] = round(r2.first_t - r1.first_t, 4)
             log.info("two views: second film %s, starts %s s after the first", r2.path.name,
                      s.result.get("second_offset_s", "?"))
-        if self.exhaustion_t_s is not None:
-            s.result["exhaustion_t_s"] = self.exhaustion_t_s
-        stats = getattr(self.runner, "stage_stats", None)
-        if stats:      # a trainer or a SkiErg: target, measured mean and cadence per stage
-            merged = {int(x["index"]): x for x in s.result.get("stage_stats") or [] if x.get("index") is not None}
-            merged.update({int(x["index"]): x for x in stats})
-            s.result["stage_stats"] = [merged[k] for k in sorted(merged)]
-        belt = getattr(self.runner, "belt_stats", None)
-        if isinstance(belt, list) and belt:   # stages where the belt did not run as planned (set by hand)
-            merged = {int(x["index"]): x for x in s.result.get("belt_stats") or [] if x.get("index") is not None}
-            merged.update({int(x["index"]): x for x in belt})
-            s.result["belt_stats"] = [merged[k] for k in sorted(merged)]
-        drag = getattr(self.runner, "drag_factor", None)
-        if isinstance(drag, int) and ((s.result.get("drag_factor") or {}).get("source") != "manual"):
-            s.result["drag_factor"] = {"value": drag, "source": "pm5"}      # what the monitor measured
+        self._note_runner_values()
         outcome = TestOutcome(self.plan, s, records, samples,
                               [dict(self.stage_gait.get(k) or {}, **({"second": self.stage_gait2[k]}
                                                                       if k in self.stage_gait2 else {}))
@@ -813,6 +814,28 @@ class LiveController(QObject):
                 self.error.emit(t("ui.err.save_failed", detail=str(e)))
         if emit and not self._closing:
             self.finished.emit(outcome)
+
+    def _note_runner_values(self) -> None:
+        """What the runner noted beside the stages goes into ``session.result``: the time of exhaustion,
+        what the ergometer and the belt measured per stage, the drag factor. Called at every save, so a
+        test that is cut off (and one continued afterwards) keeps what was measured before the cut."""
+        s = self.session
+        exhaustion = getattr(self.runner, "exhaustion_t_s", None)
+        if exhaustion is not None:
+            s.result["exhaustion_t_s"] = exhaustion
+        stats = getattr(self.runner, "stage_stats", None)
+        if stats:      # a trainer or a SkiErg: target, measured mean and cadence per stage
+            merged = {int(x["index"]): x for x in s.result.get("stage_stats") or [] if x.get("index") is not None}
+            merged.update({int(x["index"]): x for x in stats})
+            s.result["stage_stats"] = [merged[k] for k in sorted(merged)]
+        belt = getattr(self.runner, "belt_stats", None)
+        if isinstance(belt, list) and belt:   # stages where the belt did not run as planned (set by hand)
+            merged = {int(x["index"]): x for x in s.result.get("belt_stats") or [] if x.get("index") is not None}
+            merged.update({int(x["index"]): x for x in belt})
+            s.result["belt_stats"] = [merged[k] for k in sorted(merged)]
+        drag = getattr(self.runner, "drag_factor", None)
+        if isinstance(drag, int) and ((s.result.get("drag_factor") or {}).get("source") != "manual"):
+            s.result["drag_factor"] = {"value": drag, "source": "pm5"}      # what the monitor measured
 
 
 def record_from_dict(d: dict[str, Any]) -> StepRecord:
