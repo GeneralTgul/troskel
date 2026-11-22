@@ -1,17 +1,19 @@
-"""Number and time formatting for the UI (Swedish style: decimal comma, m:ss)."""
+"""Number and time formatting for the UI (the language's decimal sign: comma in Swedish; m:ss)."""
 from __future__ import annotations
 
 import math
 from typing import Any
 
+from lopanalys.core.i18n import language
 from lopanalys.core.sport import profile
 
 
 def num(v: float | None, decimals: int = 1) -> str:
-    """Decimal comma, '–' for missing values."""
+    """The decimal sign of the language (comma in Swedish), '–' for missing values."""
     if v is None or (isinstance(v, float) and math.isnan(v)):
         return "–"
-    return f"{v:.{decimals}f}".replace(".", ",") if decimals else f"{v:.0f}"
+    s = f"{v:.{decimals}f}" if decimals else f"{v:.0f}"
+    return s.replace(".", ",") if language() == "sv" else s
 
 
 def pace(speed_kmh: float | None, sport: Any = None) -> str:
