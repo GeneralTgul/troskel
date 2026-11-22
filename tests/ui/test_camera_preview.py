@@ -177,3 +177,25 @@ def test_no_gopro_says_what_to_check(demo_window, qtbot, monkeypatch):
     nt._show_camera_hint([])                        # the Windows driver is said first when seen
     assert nt.cam_hint.text() == "Drivrutinen"
     nt._stop_preview()
+
+
+def test_check_page_says_when_the_camera_did_not_start(demo_window, qtbot, monkeypatch):
+    """Before 2026-11-22 the check page showed "Startar kameran …" for ever when the camera failed
+    there: the analyzer's error and the controller's error signal reached nobody before the test."""
+    from lopanalys.core.i18n import t
+    cam = FakeCamera()
+    nt, info, made = _to_camera_page(demo_window, qtbot, monkeypatch, cam, open_s=0.1, fail=True)
+    qtbot.waitUntil(lambda: nt.preview is not None and nt.preview.state == "failed", timeout=3000)
+    nt.go(4)
+    nt.go(5)                                       # Kontroll: the live analyzer opens the camera, which fails
+    assert nt.check_view.placeholder == t("ui.video.starting")
+    qtbot.waitUntil(lambda: nt.check_view.placeholder != t("ui.video.starting"), timeout=5000)
+    assert nt.check_view.placeholder.startswith(t("ui.wiz.preview_failed", detail=""))
+    nt.go(4)
+
+    def broken(_info):
+        raise RuntimeError("camera busy")
+    monkeypatch.setattr(services, "make_source", broken)
+    nt.go(5)                                       # the source cannot even be made: the controller says so
+    assert nt.check_view.placeholder == t("ui.err.camera_start", detail="camera busy")
+    nt.go(4)

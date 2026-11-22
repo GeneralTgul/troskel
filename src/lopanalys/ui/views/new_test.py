@@ -1620,6 +1620,9 @@ class NewTestView(QWidget):
             self._framing_timer.stop()
             return
         r = self.ctl.latest()
+        err = getattr(self.ctl.analyzer, "error", None)
+        if r is None and err:       # the camera (or the analysis) never started: say so instead of "Startar ..."
+            self._check_camera_failed(t("ui.wiz.preview_failed", detail=err))
         ok = pose_in_guide(getattr(r, "pose", None), self._guide_view(self.view)) if self.camera is not None else None
         if ok is None:
             txt, ic, col = t("ui.check.framing_unknown"), "alert", "watch"
@@ -1630,16 +1633,24 @@ class NewTestView(QWidget):
         self._framing_label.setText(txt)
         self._framing_icon.setPixmap(theme.pixmap(ic, col, 22))
 
+    def _check_camera_failed(self, text: str) -> None:
+        if self.check_view.placeholder != text:
+            self.check_view.placeholder = text
+            self.check_view.update()
+
     def _enter_check(self) -> None:
         self._fill_check()
         self.check_view.guide_view = self._guide_view(self.view)
-        self.ctl = LiveController(self.ctx, self.plan())
+        self.ctl = ctl = LiveController(self.ctx, self.plan())
+        # what the controller says before the test starts (the camera could not be started) is shown here;
+        # from the start of the test the operator page listens
+        ctl.error.connect(lambda m: self.ctl is ctl and self._check_camera_failed(m))
         sim = [] if self.ctx.demo else simulated.from_plan(self.mode if self.tm_connected else None,
                                                              self.hr_device if self.hr_connected else None)
         if sim:   # a practice run with a simulator: marked on the operator page, the results and the report
             self.ctl.session.result = dict(self.ctl.session.result or {}, simulated=sim)
-        self.ctl.open_camera()
         self.check_view.placeholder = t("ui.wiz.no_camera_chosen") if self.camera is None else t("ui.video.starting")
+        self.ctl.open_camera()
         self.check_view.attach(self.ctl.latest)
         two = self._second() is not None
         self.check_view2.setVisible(two)
