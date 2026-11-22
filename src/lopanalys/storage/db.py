@@ -1468,7 +1468,7 @@ class Database:
         """Zip with a consistent copy of the database (SQLite backup API) and the key-frame folder.
 
         With ``password`` the zip is encrypted (``storage.privacy.encrypt_file``: AES-256-GCM, key from
-        scrypt) and no plain copy is left behind. The program always gives a password; a plain zip is
+        scrypt) and no plain copy is left behind: the plain zip is made in the data folder and removed. The program always gives a password; a plain zip is
         only made by tests and tools. The backup is registered, so an erasure can list it."""
         dest_zip = Path(dest_zip)
         dest_zip.parent.mkdir(parents=True, exist_ok=True)
@@ -1476,7 +1476,9 @@ class Database:
             from lopanalys.storage import privacy
             if len(password) < privacy.MIN_PASSWORD:
                 raise StorageError(t("storage.error.password_short", n=privacy.MIN_PASSWORD))
-            plain = dest_zip.with_name(dest_zip.name + ".plain.zip")
+            # in the data folder, never where the backup goes: a plain copy removed from a USB stick can
+            # be read back, and one in a folder synced to the cloud is already uploaded
+            plain = self.data_root / f"{self.path.name}.backup.plain.zip"
             try:
                 self.backup(plain)
                 privacy.encrypt_file(plain, dest_zip, password)

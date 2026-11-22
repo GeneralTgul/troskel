@@ -158,3 +158,26 @@ def test_a_damaged_plain_backup_is_refused_with_a_message_and_leaves_nothing_beh
     Database.restore_backup(bad_kf, other)
     with Database(other) as db:
         assert [a.name for a in db.list_athletes()] == names
+
+
+def test_the_plain_copy_is_never_written_where_the_backup_goes(tmp_path, monkeypatch):
+    """The unencrypted zip was first written beside the backup (the USB stick, a folder synced to the
+    cloud) and removed after the encryption: there a removed file can be read back, or is already
+    uploaded. It is made in the data folder, where the register lies in plain anyway."""
+    root, _ = main_db.build(tmp_path)
+    usb = tmp_path / "usb"
+    seen = []
+    real = privacy.encrypt_file
+
+    def spy(src, dest, password):
+        seen.append((os.path.dirname(src), sorted(p.name for p in usb.iterdir())))
+        real(src, dest, password)
+
+    monkeypatch.setattr(privacy, "encrypt_file", spy)
+    with Database(root / "lopanalys.sqlite") as db:
+        dest = db.backup(usb / "kopia.lopbak", PW)
+        assert seen == [(str(root), [])]                       # nothing in plain on the stick, at any time
+        assert sorted(p.name for p in usb.iterdir()) == ["kopia.lopbak"]
+        assert not list(root.glob("*.plain.zip")) and not list(root.glob("*.tmp.sqlite"))
+        assert [os.path.basename(f["path"]) for f in db.saved_files(None)] == ["kopia.lopbak"]
+    Database.restore_backup(dest, tmp_path / "pc2" / "lopanalys.sqlite", password=PW)
