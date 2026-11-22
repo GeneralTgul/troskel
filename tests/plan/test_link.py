@@ -89,15 +89,45 @@ def _short_link(plan) -> tuple[str, dict]:
 def test_the_short_link_gives_the_same_plan(name):
     plan = build_plan(c.CASES[name], plan_id="p1", today=c.START)
     if link.app_lacks(codec.request_to_dict(plan.request)):
-        # A choice the app's short link does not read yet: the link holds the whole plan (link.APP_LACKS).
+        # The guard (link.APP_LACKS): a plan with a choice is sent whole until the app that reads format 3 is out.
         stored = link.stored_plan(plan)
         assert link.short_plan(stored) is None and link.link_payload(stored)["format"] == link.FORMAT
-        short = link._pack(stored)        # the short payload itself carries the choices and gives the plan back
-        assert link.expand(json.loads(json.dumps(short))) == json.loads(json.dumps(stored))
         return
     url, stored = _short_link(plan)
     payload = link.read_link(url)
-    assert payload["format"] == link.SHORT_FORMAT and "plan" not in payload and payload["v"] == link.ENGINE_VERSION
+    # The coach's choices give format 3, which an app from before them turns down (link.CHOICES_FORMAT).
+    chosen = link.has_choices(codec.request_to_dict(plan.request))
+    assert payload["format"] == (link.CHOICES_FORMAT if chosen else link.SHORT_FORMAT)
+    assert "plan" not in payload and payload["v"] == link.ENGINE_VERSION
+    assert link.expand(payload) == json.loads(json.dumps(stored))
+
+
+def test_the_coachs_choices_have_their_own_format():
+    """An app from before the choices reads format 2 and would drop them: each choice alone gives format 3."""
+    from dataclasses import replace
+    from datetime import date
+    from lopanalys.plan import HardDay
+    half = c.CASES["half_12"]
+    assert link.short_plan(link.stored_plan(build_plan(half, plan_id="p1")))["format"] == link.SHORT_FORMAT
+    wd = half.availability[0].weekday
+    for change in (dict(quality_sessions=1), dict(easy_days=(HardDay(wd),)), dict(second_long=True),
+                   dict(easy_weeks=(date(2027, 1, 20),)), dict(max_weekly_minutes=600),
+                   dict(hard_days=(HardDay(wd, minutes=half.availability[0].max_minutes),))):
+        stored = link.stored_plan(build_plan(replace(half, **change), plan_id="p1"))
+        short = link._pack(stored)             # what short_plan gives once the guard link.APP_LACKS is off
+        assert short["format"] == link.CHOICES_FORMAT, change
+        assert (link.short_plan(stored) is None) == link.APP_LACKS, change
+        assert link.expand(json.loads(json.dumps(short))) == json.loads(json.dumps(stored)), change
+
+
+def test_the_guard_off_gives_the_short_link_with_the_choices(monkeypatch):
+    """When the app that reads format 3 is out (link.APP_LACKS off), a plan with a choice gets the short link."""
+    from dataclasses import replace
+    monkeypatch.setattr(link, "APP_LACKS", False)
+    plan = build_plan(replace(c.CASES["half_12"], quality_sessions=1), plan_id="p1", today=c.START)
+    url, stored = _short_link(plan)
+    payload = link.read_link(url)
+    assert payload["format"] == link.CHOICES_FORMAT and "plan" not in payload
     assert link.expand(payload) == json.loads(json.dumps(stored))
 
 

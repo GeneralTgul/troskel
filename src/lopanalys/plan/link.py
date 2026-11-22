@@ -20,6 +20,12 @@ out. ``short_plan`` checks itself: it builds the plan from the short payload and
 stored plan (a workout with a status, weeks rolled on by older rules), and the link then holds the whole plan.
 The app reads both formats; with format 2 and another engine version it asks for an update instead of building
 another plan. The ``.troskel`` file always holds the whole plan (format 1).
+
+Format 3 is format 2 with the coach's choices in the request (``CHOICES``: the keys ``q``, ``ed``, ``sl``, ``ew``,
+``mx`` and a fixed day's minutes). It has its own number because an app from before the choices reads format 2 and
+would drop keys it does not know and build another plan, without a word; a format it does not know it turns down
+and asks for an update. The engine version stays, so the links of every plan without a choice are as before, in
+both directions (an older Tröskel with a newer app, and the other way round).
 """
 from __future__ import annotations
 
@@ -41,12 +47,16 @@ APP_URL = "https://generaltgul.github.io/troskel/app/"
 KIND = "troskel.plan"
 FORMAT = 1
 SHORT_FORMAT = 2              # the request instead of the workouts: the app builds the plan (short_plan)
+CHOICES_FORMAT = 3            # the same with the coach's choices in the request, which an older app cannot read
+SHORT_FORMATS = (SHORT_FORMAT, CHOICES_FORMAT)
 FILE_SUFFIX = ".troskel"
-# The coach's choices in the request that the app's reader of the short link (app/src/model/short.ts) does not
-# unpack yet: a plan with one of them is sent whole (format 1), which the app reads as it is. The app's engine has
-# the rules (app/src/engine), so this goes when short.ts reads the keys ``q``, ``ed``, ``sl``, ``ew``, ``mx`` and a fixed
-# day's minutes (``pack_request``).
-APP_LACKS = ("quality_sessions", "easy_days", "second_long", "easy_weeks", "max_weekly_minutes")
+# The coach's choices in the request: a short payload with one of them (or with a fixed day's minutes) is format 3
+# (``has_choices``), which the app reads from the version that unpacks them (app/src/model/short.ts).
+CHOICES = ("quality_sessions", "easy_days", "second_long", "easy_weeks", "max_weekly_minutes")
+# The guard: until the app that reads format 3 is out (in the stores and on GitHub Pages), a plan with a choice is
+# sent whole (format 1), which every app reads as it is; an installed older app would only ask for an update that
+# does not exist yet. Set to False when the new app is out, and the same plans get the short link (format 3).
+APP_LACKS = True
 _TARGET_FIELDS = ("hr_low", "hr_high", "speed_low_kmh", "speed_high_kmh", "estimated", "speed_low_approx",
                   "speed_high_approx", "speed_from_hr")
 
@@ -171,7 +181,7 @@ def pack_request(r: dict[str, Any]) -> dict[str, Any]:
             out[short] = r[k]
     if r.get("hard_days"):        # the fixed hard days: [weekday], [weekday, sport] or [weekday, sport, minutes]
         out["hd"] = [_pack_day(h) for h in r["hard_days"]]
-    # The coach's choices (APP_LACKS): each only when set.
+    # The coach's choices (CHOICES): each only when set.
     if r.get("quality_sessions"):
         out["q"] = r["quality_sessions"]
     if r.get("easy_days"):
@@ -255,7 +265,8 @@ def _default_created(start: str) -> str:
 
 def _pack(stored: dict[str, Any]) -> dict[str, Any]:
     plan, req = stored["plan"], stored["request"]
-    out: dict[str, Any] = {"kind": KIND, "format": SHORT_FORMAT, "v": ENGINE_VERSION, "id": plan["id"],
+    out: dict[str, Any] = {"kind": KIND, "format": CHOICES_FORMAT if has_choices(req) else SHORT_FORMAT,
+                           "v": ENGINE_VERSION, "id": plan["id"],
                            "r": pack_request(req)}
     if stored["athlete"]:
         out["n"] = stored["athlete"]
@@ -285,7 +296,7 @@ def _build(short: dict[str, Any], request: Any) -> dict[str, Any]:
 def expand(payload: dict[str, Any]) -> dict[str, Any]:
     """The whole payload (format 1) of a payload of either format. A short one is built with the engine, which
     must be the version that made it (ValueError otherwise, as the app asks for an update)."""
-    if payload.get("format") != SHORT_FORMAT:
+    if payload.get("format") not in SHORT_FORMATS:
         return payload
     if payload.get("v") != ENGINE_VERSION:
         raise ValueError("the plan was made with another engine version")
@@ -298,16 +309,22 @@ def expand(payload: dict[str, Any]) -> dict[str, Any]:
             "targets_log": [{"until": u, "sport": s, "targets": unpack_targets(ts)} for u, s, ts in payload.get("tl", [])]}
 
 
-def app_lacks(request: dict[str, Any]) -> bool:
-    """True for a request with a choice the app's short link cannot carry yet (``APP_LACKS``)."""
-    return (any(request.get(k) for k in APP_LACKS)
+def has_choices(request: dict[str, Any]) -> bool:
+    """True for a request with one of the coach's choices (``CHOICES``) or a fixed hard day with its own length:
+    its short payload is format 3, which an app from before the choices turns down instead of misreading."""
+    return (any(request.get(k) for k in CHOICES)
             or any(h.get("minutes") for h in request.get("hard_days") or []))
 
 
+def app_lacks(request: dict[str, Any]) -> bool:
+    """True while the guard ``APP_LACKS`` holds and the request has a choice (``has_choices``)."""
+    return APP_LACKS and has_choices(request)
+
+
 def short_plan(stored: dict[str, Any]) -> dict[str, Any] | None:
-    """The short payload (format 2) of a whole one from ``stored_plan``, or None when the engine would not build
-    the same plan from it (then the link holds the whole plan), or when the request holds a choice the app's
-    short link does not read yet (``app_lacks``)."""
+    """The short payload (format 2, or 3 with the coach's choices) of a whole one from ``stored_plan``, or None when
+    the engine would not build the same plan from it (then the link holds the whole plan), or when it holds a
+    choice and the app that reads format 3 is not out yet (``app_lacks``)."""
     if app_lacks(stored["request"]):
         return None
     try:
@@ -359,6 +376,7 @@ def plan_file(stored: dict[str, Any]) -> bytes:
     return json.dumps(stored, ensure_ascii=False, indent=1).encode("utf-8") + b"\n"
 
 
-__all__ = ["APP_LACKS", "APP_URL", "FILE_SUFFIX", "FORMAT", "KIND", "SHORT_FORMAT", "app_lacks", "decode", "encode", "expand", "link_payload",
+__all__ = ["APP_LACKS", "APP_URL", "app_lacks", "CHOICES", "CHOICES_FORMAT", "FILE_SUFFIX", "FORMAT", "KIND", "SHORT_FORMAT", "SHORT_FORMATS", "decode",
+           "encode", "expand", "has_choices", "link_payload",
            "pack_request", "pack_targets", "plan_file", "plan_link", "read_link", "short_plan", "stored_plan",
            "unpack_request", "unpack_targets", "zone_targets"]

@@ -1,5 +1,6 @@
 /**
- * The short payload (format 2, `lopanalys.plan.link.short_plan`): the plan's request instead of its workouts.
+ * The short payload (format 2, or 3 with the coach's choices, `lopanalys.plan.link.short_plan`): the plan's request
+ * instead of its workouts.
  * The app builds the plan with its own engine, the same rules as Tröskel's, so the plan is the one Tröskel saved
  * (test/link.test.ts checks every fixture). Keys are short and a default is left out; `x` holds the fields of the
  * plan the engine does not give back as they were saved (notes, the log of earlier tests, a status, the athlete's
@@ -13,6 +14,10 @@ import { FORMAT, KIND, type StoredCapacity, type StoredGoal, type StoredPlan, ty
   type ZoneTarget, type ZoneTargets } from "./types";
 
 export const SHORT_FORMAT = 2;
+/** Format 2 with the coach's choices in the request (`link.CHOICES_FORMAT`): an app from before them turns it down
+ * as too new instead of dropping the keys it does not know. */
+export const CHOICES_FORMAT = 3;
+export const SHORT_FORMATS: readonly number[] = [SHORT_FORMAT, CHOICES_FORMAT];
 
 type Row = (string | number | null | string[])[];
 
@@ -47,8 +52,15 @@ interface ShortRequest {
   l?: string;
   m?: number;
   st?: number;
-  /** The fixed hard days: [weekday] or [weekday, sport]. */
+  /** The fixed hard days: [weekday], [weekday, sport] or [weekday, sport, minutes]. */
   hd?: (number | string)[][];
+  /** The coach's choices (link.pack_request): quality sessions, the fixed easy days (as `hd`), the second long
+   * workout (1), the easy weeks (ISO dates) and the most minutes a week. */
+  q?: number;
+  ed?: (number | string)[][];
+  sl?: number;
+  ew?: string[];
+  mx?: number;
 }
 
 const ANCHORS = ["max_hr", "resting_hr", "lt1_hr", "lt2_hr", "lt1_speed_kmh", "lt2_speed_kmh"] as const;
@@ -85,8 +97,15 @@ export function unpackRequest(d: ShortRequest): StoredRequest {
     roles: (d.ro ?? []).map((x) => ({ sport: x[0] as string, role: at<string>(x, 1) ?? "main", share: at<number>(x, 2) ?? 0 })),
   };
   if (d.st) out.strength_sessions = d.st;
-  if (d.hd?.length)
-    out.hard_days = d.hd.map((h) => (h.length > 1 && h[1] ? { weekday: h[0] as number, sport: h[1] as string } : { weekday: h[0] as number }));
+  /** `link._unpack_day`: the sport and the minutes only when set. */
+  const day = (h: (number | string)[]) => ({ weekday: h[0] as number, ...(h.length > 1 && h[1] ? { sport: h[1] as string } : {}),
+    ...(h.length > 2 && h[2] ? { minutes: h[2] as number } : {}) });
+  if (d.hd?.length) out.hard_days = d.hd.map(day);
+  if (d.q) out.quality_sessions = d.q;
+  if (d.ed?.length) out.easy_days = d.ed.map(day);
+  if (d.sl) out.second_long = true;
+  if (d.ew?.length) out.easy_weeks = [...d.ew];
+  if (d.mx) out.max_weekly_minutes = d.mx;
   return out;
 }
 

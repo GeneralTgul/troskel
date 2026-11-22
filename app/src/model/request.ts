@@ -18,8 +18,11 @@
  * `due` says it is time (`rollForward`, Tröskel's *Förnya*). The workouts of the new weeks follow the request as it
  * is then (new own values, a new test), and the athlete's edits (`plan.edits`) are laid on them again.
  *
- * Not in the form (yet): a second time on a day, extra slots, fixed hard days and the shares of the sports; a form
- * filled in from a plan with them leaves them out.
+ * Not in the form (yet): a second time on a day, extra slots and the shares of the sports; a form filled in from a
+ * plan with them leaves them out. The coach's choices (fixed hard and easy days, quality sessions, the second long
+ * workout, easy weeks and the most minutes a week; docs/TRANINGSPLAN.md, *Coachens val*) have no fields either, but a
+ * form filled in from a plan with them carries them along (`kept`): a fixed day only while its day is on, an easy week
+ * only from the new start.
  */
 import { buildPlan, due, rollForward } from "../engine";
 import { BORROWS, LEVELS, RUNNING, normRequest, planRoles } from "../engine/models";
@@ -78,6 +81,34 @@ export interface RequestForm {
   capacity: StoredCapacity[];
   /** The athlete's own values per sport (model/values.ts); missing or {}: none. */
   values?: OwnValues;
+  /** The coach's choices of the plan the form was filled in from (`formFromPlan`), carried along as they were. */
+  kept?: KeptChoices;
+}
+
+/** The coach's choices in a request (link.CHOICES and the fixed hard days), which the form has no fields for. */
+export const KEPT_CHOICES = ["hard_days", "easy_days", "quality_sessions", "second_long", "easy_weeks",
+  "max_weekly_minutes"] as const;
+export type KeptChoices = Partial<Pick<StoredRequest, (typeof KEPT_CHOICES)[number]>>;
+
+function keptOf(r: StoredRequest): KeptChoices | undefined {
+  const out: KeptChoices = {};
+  for (const k of KEPT_CHOICES) if (r[k] != null && r[k] !== false && !(Array.isArray(r[k]) && !(r[k] as unknown[]).length))
+    (out as Record<string, unknown>)[k] = structuredClone(r[k]);
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** The kept choices that still fit the form: fixed days on a day that is on, easy weeks from the start. */
+function keptFor(k: KeptChoices | undefined, on: Set<number>, start: IsoDate): KeptChoices {
+  if (!k) return {};
+  const out: KeptChoices = { ...k };
+  for (const key of ["hard_days", "easy_days"] as const) {
+    const days = (k[key] ?? []).filter((h) => on.has(h.weekday));
+    if (days.length) out[key] = days; else delete out[key];
+  }
+  // An easy week before the start is gone (the engine only counts the ones from the start, periodize.ts).
+  const weeks = (k.easy_weeks ?? []).filter((d) => d >= start);
+  if (weeks.length) out.easy_weeks = weeks; else delete out.easy_weeks;
+  return out;
 }
 
 /** A form that cannot give a request: the text key (ui.request.err.* or plan.error.*) and its values (`day`: the
@@ -125,7 +156,7 @@ export function formFromPlan(stored: StoredPlan, today: IsoDate): RequestForm {
     athlete: stored.athlete ?? "", start: today, sports, level: (LEVELS as readonly string[]).includes(r.level) ? r.level : "",
     recent_weekly_minutes: r.recent_weekly_minutes, days, mode: goals.length ? "goal" : "weeks",
     goals: goals.length ? goals : [newGoal()], weeks: r.duration_weeks ?? 8, strength_sessions: r.strength_sessions ?? 0,
-    capacity: (r.capacity ?? []).filter((c) => !ownValues(c)), values: ownValuesOf(r),
+    capacity: (r.capacity ?? []).filter((c) => !ownValues(c)), values: ownValuesOf(r), kept: keptOf(r),
   };
 }
 
@@ -182,6 +213,7 @@ export function requestFromForm(f: RequestForm): StoredRequest {
     format: 2, start: f.start, sports, availability: slots, capacity, goals, duration_weeks: weeks, level: f.level,
     recent_weekly_minutes: recent, roles: roles.length > 1 || roles[0].sport !== RUNNING ? roles : [],
     ...(strength ? { strength_sessions: strength } : {}),
+    ...keptFor(f.kept, new Set(slots.map((x) => x.weekday)), f.start),
   });
 }
 

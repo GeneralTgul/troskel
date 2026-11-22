@@ -65,6 +65,24 @@ describe("the form against Tröskel", () => {
     expect(formFromPlan(demoPlan(), c.today!)).toEqual(c.form);
   });
 
+  it("carries the coach's choices along from the plan it was filled in from", () => {
+    const c = fx.cases.find((x) => x.name === "from-demo")!;
+    const demo = demoPlan();
+    const on = demo.request.availability.map((x) => x.weekday);
+    const [hard, easy] = on;
+    const choices = { quality_sessions: 1, second_long: true, max_weekly_minutes: 600,
+      hard_days: [{ weekday: hard, minutes: 60 }], easy_days: [{ weekday: easy }], easy_weeks: ["2099-01-07", "2000-01-05"] };
+    const stored = { ...demo, request: { ...demo.request, ...choices } };
+    const f = formFromPlan(stored, c.today!);
+    const r = requestFromForm(f);
+    expect(r).toMatchObject({ quality_sessions: 1, second_long: true, max_weekly_minutes: 600,
+      hard_days: [{ weekday: hard, minutes: 60 }], easy_days: [{ weekday: easy }], easy_weeks: ["2099-01-07"] });
+    expect(() => planFromForm(f, { id: "app-x", today: c.today })).not.toThrow();
+    // A fixed day whose day is turned off in the form is gone.
+    f.days[hard] = { ...f.days[hard], on: false };
+    expect(requestFromForm(f).hard_days).toBeUndefined();
+  });
+
   it("gives a plan without a test zones and no targets", () => {
     const c = fx.cases.find((x) => x.name === "run-weeks")!;
     const p = planFromForm(c.form, { id: "app-x", today: c.today });

@@ -6,8 +6,9 @@ second_long, easy_weeks, max_weekly_minutes and a fixed day's minutes) for the a
 
 ``build`` is requests with choices and the plans ``build_plan`` makes of them, ``roll`` rolling plans detailed later
 (``roll_forward``), ``rebuild`` plans with new times (``phone.rebuild``), and ``short`` the short link's payload of
-every build case (``link._pack``), which expands to the whole payload under the same name in ``plans``: for the
-app's reader of the short link, once it reads the choices (``link.APP_LACKS``). The requests are the made-up ones of tests/plan/cases.py.
+every build case (``link._pack``, format 3; ``link.short_plan`` gives it once the guard ``link.APP_LACKS`` is off), which expands to the whole payload under the same name in
+``plans``: for the app's reader of the short link (app/test/short_choices.test.ts). The requests are the made-up
+ones of tests/plan/cases.py.
 """
 from __future__ import annotations
 
@@ -74,8 +75,9 @@ def data() -> dict[str, Any]:
         stored[name] = whole
         build.append({"name": name, "request": codec.request_to_dict(request), "plan_id": "choice",
                       "today": today.isoformat() if today else None, "plan": codec.plan_to_dict(plan)})
-        assert link.app_lacks(whole["request"]) and link.short_plan(whole) is None, name
+        assert link.short_plan(whole) is None or not link.APP_LACKS, name
         packed = link._pack(whole)
+        assert packed["format"] == link.CHOICES_FORMAT, name
         assert link.expand(json.loads(json.dumps(packed))) == json.loads(json.dumps(whole)), name
         short[name] = packed
         if today is not None:

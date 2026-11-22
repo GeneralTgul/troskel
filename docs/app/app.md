@@ -72,7 +72,7 @@ https://generaltgul.github.io/troskel/app/#p=<data>
 
 `<data>` är JSON, komprimerat med deflate och kodat som base64url. Allt efter `#` stannar i telefonen: webbläsaren skickar det aldrig till någon server. När appen har läst länken sparas schemat på enheten och tas bort ur adressfältet.
 
-Länken bär **underlaget**, inte passen (format 2, `short_plan` i `lopanalys.plan.link`). Appen bygger schemat själv med planmotorn, samma regler som i Tröskel, och får exakt det schema som Tröskel sparade. Underlaget är:
+Länken bär **underlaget**, inte passen (format 2, och 3 med coachens val, `short_plan` i `lopanalys.plan.link`; [Coachens val](../TRANINGSPLAN.md#coachens-val)). Appen bygger schemat själv med planmotorn, samma regler som i Tröskel, och får exakt det schema som Tröskel sparade. Underlaget är:
 
 - begäran: formuläret, testen per idrott, tiderna och målen,
 - schemats id, startdatum, när det skapades och gränsen för passen i ett rullande schema,

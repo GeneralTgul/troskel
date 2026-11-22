@@ -84,12 +84,22 @@ export interface StoredRequest {
   strength_sessions?: number;
   /** Fixed hard days (engine 9): the week's quality sessions go there first; only when set. */
   hard_days?: StoredHardDay[];
+  /** The coach's choices (docs/TRANINGSPLAN.md, *Coachens val*), each only when set: quality sessions in a load
+   * week (1-3), fixed easy days, a long workout in the supporting sport the day after the long run, the weeks the
+   * coach makes easy (any day of the week) and the most endurance minutes a week. */
+  quality_sessions?: number;
+  easy_days?: StoredHardDay[];
+  second_long?: boolean;
+  easy_weeks?: IsoDate[];
+  max_weekly_minutes?: number;
 }
 
-/** A weekday the coach fixes as a hard day, with the sport of its quality session (none: the engine's choice). */
+/** A weekday the coach fixes as a hard day (or an easy one, `easy_days`), with the sport of its session (none: the
+ * engine's choice) and the group session's length in minutes (none: the template's own). */
 export interface StoredHardDay {
   weekday: number;
   sport?: Sport;
+  minutes?: number;
 }
 
 export type PartKind = "warmup" | "steady" | "work" | "cooldown" | "test" | "race" | string;

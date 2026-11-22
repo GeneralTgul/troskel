@@ -94,7 +94,9 @@ describe("the short link (format 2): the app builds the plan with its engine", (
     const code = (f: () => unknown) => { try { f(); } catch (e) { return (e as PlanError).code; } return null; };
     expect(code(() => readPlanText(JSON.stringify({ ...raw, v: "7" })))).toBe("other_engine");
     expect(code(() => readPlanText(JSON.stringify({ ...raw, r: { ...raw.r, a: [] } })))).toBe("broken");
-    expect(code(() => readPlanText(JSON.stringify({ ...raw, format: 3 })))).toBe("too_new");
+    // Format 3 (the coach's choices) is read like 2; a newer one asks for an update.
+    expect(code(() => readPlanText(JSON.stringify({ ...raw, format: 3 })))).toBeNull();
+    expect(code(() => readPlanText(JSON.stringify({ ...raw, format: 4 })))).toBe("too_new");
   });
 });
 
