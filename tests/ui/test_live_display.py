@@ -107,7 +107,7 @@ def test_distance_on_the_belt():
     gap = smp[:31] + [TimeSample(60.0, speed_kmh=12.0)]          # a 30 s gap counts nothing
     assert distance_m(gap) == pytest.approx(100.0)
     from lopanalys.ui.live_controller import LiveController
-    ctl = SimpleNamespace(runner=SimpleNamespace(samples=smp), resume=None)
+    ctl = SimpleNamespace(runner=SimpleNamespace(samples=smp), _resume=None)
     assert LiveController.distance_m(ctl) == pytest.approx(200.0)
     board = LiveBoard.__new__(LiveBoard)
     board.power, board.ctl = False, SimpleNamespace(distance_m=lambda: LiveController.distance_m(ctl))

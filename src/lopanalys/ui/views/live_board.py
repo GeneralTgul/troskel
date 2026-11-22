@@ -700,6 +700,13 @@ class LiveBoard(QWidget):
             self.video2.caption = want
             self.video2.update()
 
+    def attach_video(self) -> None:
+        """Poll the camera pictures again (the TV window was closed and is shown again)."""
+        self.video.attach(self.ctl.latest)
+        if self.video2 is not None:
+            self.video2.attach(self.ctl.latest2)
+            self._lost_timer.start(1000)
+
     def detach_video(self) -> None:
         """Stop polling the camera pictures (the page or the TV window is closing)."""
         self.video.detach()
@@ -754,5 +761,12 @@ class LiveWindow(QWidget):
             super().keyPressEvent(e)
 
     def closeEvent(self, e: Any) -> None:
+        self._closed = True
         self.board.detach_video()
         super().closeEvent(e)
+
+    def showEvent(self, e: Any) -> None:
+        if getattr(self, "_closed", False):      # closed with Esc and shown again: the picture runs again
+            self._closed = False
+            self.board.attach_video()
+        super().showEvent(e)
