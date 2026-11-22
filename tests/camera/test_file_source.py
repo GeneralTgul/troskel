@@ -78,3 +78,16 @@ def test_missing_and_broken_files(tmp_path):
     bad.write_bytes(b"not a video")
     with pytest.raises(CameraError):
         file_info(bad)
+
+
+def test_frames_past_a_short_sidecar_keep_the_time_rising(video30):
+    """A sidecar a frame or two shorter than the file is accepted; the frames after its last stamp
+    then got index/fps of the container, which jumped back in time when the real rate was lower."""
+    stamps = [i * 0.1 for i in range(43)]    # 10 fps real timing in a 30 fps container, two stamps short
+    sidecar_path(video30).write_text(json.dumps({"t": stamps}))
+    with FileSource(video30) as src:
+        frames = list(src.frames())
+    assert len(frames) == 45
+    assert frames[42].t == pytest.approx(4.2, abs=1e-6)
+    assert all(b.t > a.t for a, b in zip(frames, frames[1:]))
+    assert frames[44].t == pytest.approx(4.2 + 2 / 30, abs=1e-3)

@@ -191,6 +191,8 @@ class FileSource:
     def _timestamp(self, idx: int, pts: float) -> float:
         if self._sidecar and idx < len(self._sidecar):
             return self._sidecar[idx] - self._sidecar[0]
+        if self._sidecar:   # a frame or two past the last stamp: go on from it, never back in time
+            return self._sidecar[-1] - self._sidecar[0] + (idx - len(self._sidecar) + 1) / self.fps
         # Container PTS. Some backends report 0 for every frame; fall back to index/fps then.
         if self._pts0 is None:
             self._pts0 = pts if idx == 0 else pts - idx / self.fps
