@@ -4,6 +4,7 @@ import json
 import time
 
 import pytest
+from cam_helpers import write_video
 
 from lopanalys.camera.base import SourceKind
 from lopanalys.camera.discovery import make_source
@@ -91,3 +92,30 @@ def test_frames_past_a_short_sidecar_keep_the_time_rising(video30):
     assert frames[42].t == pytest.approx(4.2, abs=1e-6)
     assert all(b.t > a.t for a, b in zip(frames, frames[1:]))
     assert frames[44].t == pytest.approx(4.2 + 2 / 30, abs=1e-3)
+
+
+def test_a_one_frame_file_loops(tmp_path):
+    """Before 2026-11-23 the rewind of a one-frame file gave nothing and the loop ended after one pass."""
+    import itertools
+    src = FileSource(write_video(tmp_path / "one.mp4", 1, 30.0), loop=True)
+    try:
+        got = list(itertools.islice(src.frames(), 4))
+    finally:
+        src.close()
+    assert [f.index for f in got] == [0, 1, 2, 3]
+    assert all(b.t > a.t for a, b in zip(got, got[1:]))
+
+
+def test_loop_timestamps_rise_without_a_frame_count(video30):
+    """A container that does not say how many frames it has: the clip length is what was read."""
+    import itertools
+    src = FileSource(video30, loop=True)
+    src.open()
+    src.frame_count = 0
+    try:
+        got = list(itertools.islice(src.frames(), 100))
+    finally:
+        src.close()
+    assert [f.index for f in got] == list(range(100))
+    assert all(b.t > a.t for a, b in zip(got, got[1:]))
+    assert abs(got[45].t - 45 / 30.0) < 0.01

@@ -146,14 +146,27 @@ class FileSource:
         index_offset = 0
         wall0: float | None = None
         t_first: float | None = None
+        reopened = False
         while not self._stop.is_set():
             frame = self.read()
             if frame is None:
-                if not self.loop or self._stop.is_set() or self._next_index == 0:
+                if not self.loop or self._stop.is_set():
                     break
-                offset += self.duration
+                if self._next_index == 0:
+                    # Nothing after the rewind (FFmpeg cannot seek back in a one-frame file): open the
+                    # file again, once; an empty file ends the loop.
+                    with self._lock:
+                        if reopened or self._cap is None:
+                            break
+                        reopened = True
+                        self._cap.release()
+                        self._cap = cv2.VideoCapture(str(self.path), cv2.CAP_FFMPEG)
+                    continue
+                # a container that does not give its frame count: the length is what was read
+                offset += self.duration or self._next_index / self.fps
                 index_offset += self._next_index
                 self.seek_frame(0)
+                reopened = False
                 continue
             if offset or index_offset:
                 frame = Frame(frame.image, frame.t + offset, frame.index + index_offset)
