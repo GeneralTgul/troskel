@@ -190,3 +190,37 @@ def test_a_new_test_ends_the_one_left_running(qapp, qtbot):
     assert ctx.store.db.get_session(sid).status == "stopped"  # and the first test is saved as stopped
     assert w.stack.currentWidget() is w.operator and w.operator.ctl is second
     w.close()
+
+
+def test_collected_report_takes_no_max_hr_from_a_stopped_test(qapp, monkeypatch):
+    """A lactate test stopped half-way: its highest heart rate is not a max HR. The result page gives
+    neither a max HR nor zones from it (services.own_peak_counts); the collected report of the same
+    test took it as the max HR and printed zones and watch values from it."""
+    from datetime import datetime, timedelta, timezone
+
+    from lopanalys.core.models import Session, StepRecord, TestKind, TimeSample
+    from lopanalys.report import builder
+    from lopanalys.ui import services
+
+    ctx = _ctx()
+    a = ctx.store.save_athlete(Athlete(None, "Anna", "Svensson", height_cm=170, resting_hr=50))   # no max HR known
+    p = library.lactate_step(10.0, 1.0, 7, stage_s=240, pause_s=30, warmup_s=0)
+    start = datetime.now(timezone.utc) - timedelta(hours=1)
+    s = Session(None, a.id, TestKind.LACTATE_STEP, start, ended=start + timedelta(minutes=22), protocol_name=p.name,
+                protocol=p.to_dict(), status="stopped", result={"plan_kind": "lactate"})
+    lac = [1.1, 1.3, 2.0, 3.6, 6.0]
+    recs = [StepRecord(index=i, speed_kmh=10.0 + i, incline_pct=1.0, duration_s=240.0, hr_end=120 + 11 * i,
+                       hr_mean=118 + 11 * i, lactate_mmol=v) for i, v in enumerate(lac)]
+    smp = [TimeSample(t_s=float(i), hr=min(164, 100 + i // 20), speed_kmh=10.0 + i // 270) for i in range(1350)]
+    ctx.store.db.save_test(s, recs, smp)
+    saved = ctx.store.session(s.id)
+    assert not services.own_peak_counts(saved)
+
+    got: dict = {}
+    collect = builder.collect
+    monkeypatch.setattr(builder, "collect", lambda parts, **kw: got.update(kw) or collect(parts, **kw))
+    services.render_collected_report(ctx.store, a, [saved], {})
+    hr_top = [z.get("hr_high") for z in got["zones"] or []]
+    assert 164 not in hr_top                                   # no zone ends at the stopped test's top
+    assert (got["garmin"] or {}).get("max_hr") is None         # and it is not handed out as the watch's max HR
+    ctx.shutdown()

@@ -1174,6 +1174,8 @@ def render_collected_report(store: Any, athlete: Athlete, sessions: list[Session
             relation = rel or relation
         mv = analyze_max_hr(samples, records, res.get("exhaustion_t_s"), age, sport)
         peak = (mv.peak if mv else None) or max((r.hr_end or 0 for r in records), default=0) or None
+        if not own_peak_counts(s):      # stopped half-way and not a max test: its top is no max HR (as the result page)
+            peak = None
         lv = analyze_lactate(records, res.get("lt1_method"), res.get("lt2_method"), saved_max or peak, sport)
         if lv is not None and lv.lt2:
             lactates.append(lv)
