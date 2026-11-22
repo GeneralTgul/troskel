@@ -114,12 +114,16 @@ def coggan_zones(ftp_w: float | None) -> list[PowerZone]:
                       round(ftp_w * hi) if hi else None) for code, lo, hi in COGGAN]
 
 
-def analyze(samples: Iterable[Any], kind: str, weight_kg: float | None = None, measured: bool = True) -> PowerResult:
+def analyze(samples: Iterable[Any], kind: str, weight_kg: float | None = None, measured: bool = True,
+            effort_s: float | None = None) -> PowerResult:
     """FTP and the best powers of a test in watt.
 
     kind: ``"ftp"`` (the 20 minute test: FTP = 95 % of the best 20 minutes) or ``"max_hr"`` (a ramp:
     FTP = 75 % of the best minute). Any other kind only gets the best powers. ``measured`` False:
     the powers in the samples are targets (manual mode), so nothing is computed from them.
+    ``effort_s``: how long the work stages ran (the warm-up left out), when known. The samples hold
+    the warm-up too, so an effort given up before 20 minutes has no 20 minute power of its own: the
+    best 20 minutes would be the effort and a piece of the warm-up.
     """
     res = PowerResult(weight_kg=weight_kg if weight_kg and weight_kg > 0 else None)
     power, hr, cad = _series(samples)
@@ -134,6 +138,9 @@ def analyze(samples: Iterable[Any], kind: str, weight_kg: float | None = None, m
     m1, _ = best_mean(power, MAP_WINDOW_S)
     res.map_w = round(m1) if m1 else None
     m20, i20 = best_mean(power, FTP_WINDOW_S)
+    short_effort = effort_s is not None and effort_s < FTP_WINDOW_S - 1.0
+    if short_effort:
+        m20 = None
     if m20:
         res.mean_20min_w = round(m20)
         h = hr[i20:i20 + FTP_WINDOW_S]
@@ -148,7 +155,7 @@ def analyze(samples: Iterable[Any], kind: str, weight_kg: float | None = None, m
                                                                  pct=round(100 * (first - second) / first))})
         else:
             res.warnings.append({"code": "short", "text": t("assessments.power.warn.short",
-                                                            min=int(res.work_s // 60))})
+                                                            min=int((effort_s if short_effort else res.work_s) // 60))})
     elif kind == "max_hr" and m1:
         res.method, res.ftp_w = "ramp", round(res.map_w * FTP_FROM_MAP)
     if res.weight_kg:

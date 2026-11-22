@@ -955,7 +955,7 @@ class ResultsView(QWidget):
     def _fill_power(self) -> None:
         """FTP, the best minute and the power zones of a cycling test in watt (and the best minute of
         a SkiErg ramp). Every number says how it was computed; FTP is never called a threshold from lactate."""
-        self.power = services.analyze_power(self.session, self.samples)
+        self.power = services.analyze_power(self.session, self.samples, self.records)
         clear_layout(self.power_lay)
         pw = self.power
         show = bool(pw) and self.session is not None and self.session.kind in (TestKind.FTP, TestKind.MAX_HR)

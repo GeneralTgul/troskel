@@ -347,3 +347,18 @@ def test_comparison_between_two_bike_tests_is_in_watt():
     ski = compare.compare_lactate(lactate.analyze(recs([(w * 0.7 + 8, la, hr) for w, la, hr in BIKE]), sport="skierg"),
                                   lactate.analyze(recs([(w * 0.7, la, hr) for w, la, hr in BIKE]), sport="skierg"))
     assert "/500 m" in ski.summary and ski.lt2.pace_delta_s < 0
+
+
+def test_ftp_is_not_taken_from_a_window_that_reaches_into_the_warm_up():
+    # 15 min warm-up at 110 W, then the 20 minute effort given up after 12 min at 250 W. The best 20
+    # minutes of the samples are 8 min of warm-up and the 12 min of effort: that gave an FTP.
+    from lopanalys.assessments import power
+    from lopanalys.core.models import TimeSample
+    smp = [TimeSample(t_s=float(i), hr=120, speed_kmh=110.0) for i in range(900)]
+    smp += [TimeSample(t_s=900.0 + i, hr=165, speed_kmh=250.0) for i in range(720)]
+    r = power.analyze(smp, "ftp", 70, effort_s=720.0)
+    assert r.ftp_w is None and r.mean_20min_w is None and not r.zones
+    short = [w["text"] for w in r.warnings if w["code"] == "short"]
+    assert short and "12 min" in short[0]
+    whole = smp + [TimeSample(t_s=1620.0 + i, hr=170, speed_kmh=250.0) for i in range(480)]
+    assert power.analyze(whole, "ftp", 70, effort_s=1200.0).ftp_w == round(250 * 0.95)

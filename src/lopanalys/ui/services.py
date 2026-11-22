@@ -755,10 +755,13 @@ def analyze_max_hr(samples: list[TimeSample], records: list[StepRecord] | None =
     return MaxHrView(r.peak_hr, r, r.likely_max, texts, r.peak_single_hr)
 
 
-def analyze_power(session: Session | None, samples: list[TimeSample]) -> dict[str, Any] | None:
+def analyze_power(session: Session | None, samples: list[TimeSample],
+                  records: list[StepRecord] | None = None) -> dict[str, Any] | None:
     """FTP, best one-minute power and W/kg of a test in watt (power.PowerResult.to_dict()), or None
     for a test in km/h. FTP comes from the 20 minute test and from a cycling ramp; a SkiErg ramp
-    gets the best minute only. The weight is the one saved with the test."""
+    gets the best minute only. The weight is the one saved with the test. ``records``: the work
+    stages (no warm-up); they say how long the effort ran, so a 20 minute test given up early gets no
+    FTP from a window that reaches into the warm-up."""
     if session is None or profile(session.sport).load_quantity != "power":
         return None
     res = session.result or {}
@@ -766,7 +769,9 @@ def analyze_power(session: Session | None, samples: list[TimeSample]) -> dict[st
     if sport_of(session.sport).value != "bike" and kind in ("ftp", "max_hr"):
         kind = "other"                      # FTP is a cycling measure
     try:
-        r = power_mod.analyze(samples, kind, res.get("weight_kg"), measured=session.treadmill_mode != "manual")
+        effort = sum(float(r.duration_s or 0) for r in records) if records is not None else None
+        r = power_mod.analyze(samples, kind, res.get("weight_kg"), measured=session.treadmill_mode != "manual",
+                              effort_s=effort)
     except Exception:
         log.exception("power analysis failed")
         return None
@@ -1189,7 +1194,7 @@ def render_collected_report(store: Any, athlete: Athlete, sessions: list[Session
             systems.append((s.kind != TestKind.LACTATE_STEP, res["zone_system"]))
         parts.append(report_data(athlete, s, records, lv, [], mv, store.gait(s.id), None, branding, samples,
                                  res.get("coach_comment", ""), hr_speed=hr_speed_dict(rel, peak),
-                                 power=analyze_power(s, samples)))
+                                 power=analyze_power(s, samples, records)))
     if not parts:
         raise ValueError("no saved tests")
     system = next((v for other, v in systems if not other), systems[0][1] if systems else None)
