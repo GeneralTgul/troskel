@@ -100,6 +100,12 @@ export function Week({ stored, today, onCalendar, log = NO_LOG, onLog = ignore, 
   const [open, setOpen] = useState<IsoDate | null>(null);
   const wk = weekOf(stored, monday);
   const thisWeek = mondayOf(today);
+  // The app was left open on this week and a new week began: the view follows, as it does when it is opened.
+  const shownWeek = useRef(thisWeek);
+  useEffect(() => {
+    if (shownWeek.current !== thisWeek && monday === shownWeek.current) setMonday(thisWeek);
+    shownWeek.current = thisWeek;
+  }, [thisWeek]);
   const offset = Math.round(daysBetween(thisWeek, monday) / 7);
   const kicker = offset === 0 ? t("ui.week.this") : offset === -1 ? t("ui.week.prev") : offset === 1 ? t("ui.week.next")
     : `${dayMonth(monday)} – ${dayMonth(addDays(monday, 6))}`;

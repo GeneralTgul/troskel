@@ -1,5 +1,5 @@
 /**
- * Everything the app keeps, on the device only: the plan, the athlete's new times, what the athlete has ticked off,
+ * Everything the app keeps, on the device only: the plan, the athlete's new times and dates that do not work, what the athlete has ticked off,
  * the phone's health data and the settings.
  * The browser (the PWA) keeps it in localStorage. The app store builds keep it in Capacitor Preferences
  * (UserDefaults on iOS, SharedPreferences on Android), because iOS may empty a web view's localStorage when
@@ -12,7 +12,8 @@ import type { NewAvailability } from "../engine";
 import { checkHealth, HEALTH_FORMAT, HEALTH_KIND, type HealthData } from "./health";
 import { checkPlan } from "./link";
 import { checkLog, type TrainingLog } from "./log";
-import type { StoredPlan } from "./types";
+import { checkTimes } from "./times";
+import type { IsoDate, StoredPlan } from "./types";
 
 export interface Backend {
   get(key: string): string | null;
@@ -21,7 +22,7 @@ export interface Backend {
 }
 
 const PREFIX = "troskel.";
-const KEYS = ["plan", "demo", "times", "settings", "log", "health"] as const;
+const KEYS = ["plan", "demo", "times", "off", "settings", "log", "health"] as const;
 
 /** An asynchronous key-value store, such as Capacitor Preferences. */
 export interface AsyncBackend {
@@ -179,11 +180,23 @@ export class Store {
   }
 
   times(): PendingTimes | null {
-    return this.read<PendingTimes>("times");
+    return checkTimes(this.read<unknown>("times"));
   }
 
   setTimes(t: PendingTimes): void {
     this.write("times", t);
+  }
+
+  /** The single dates that do not work, as the plan was last rebuilt with under "Mina tider": the engine dropped their
+   * workouts, and the next rebuild must drop them again. A plan with another id empties them (App.accept). */
+  unavailable(): IsoDate[] {
+    const v = this.read<unknown>("off");
+    return Array.isArray(v) ? v.filter((d): d is IsoDate => typeof d === "string" && /^\d{4}-\d\d-\d\d$/.test(d)) : [];
+  }
+
+  setUnavailable(days: IsoDate[]): void {
+    if (days.length) this.write("off", [...days].sort());
+    else this.backend.remove(PREFIX + "off");
   }
 
   /** What the athlete has ticked off and added (log.ts). A new plan does not empty it: see `log.keepFor`. */

@@ -35,14 +35,18 @@ export function Welcome({ error, onText, onDemo, onQr, onOwn }: Props) {
           </>
         ) : null}
         <button class={`${onOwn ? "secondary" : "primary"} wide`} onClick={() => file.current?.click()}>{t("ui.load.file")}</button>
-        <input ref={file} type="file" hidden accept=".troskel,.json,application/json,text/plain"
+        {/* No `accept`: Android knows no type for ".troskel", and its file picker greys out every file that is not
+            one of the listed types, the plan's own file among them. Any other file gives the reader's own message. */}
+        <input ref={file} type="file" hidden
           onChange={async (e) => {
             const f = e.currentTarget.files?.[0];
             if (f) onText(await f.text());
             e.currentTarget.value = "";
           }} />
         {onQr ? <button class="secondary wide" onClick={onQr}>{t("ui.load.qr")}</button> : null}
-        <form class="paste" onSubmit={(e) => { e.preventDefault(); if (paste.trim()) onText(paste); }}>
+        {/* noValidate: a pasted message with the link in it ("Här är schemat: https://…") is not a URL to the browser,
+            which would refuse to send the form; the reader finds the link in the text itself. */}
+        <form class="paste" noValidate onSubmit={(e) => { e.preventDefault(); if (paste.trim()) onText(paste); }}>
           <input type="url" placeholder={t("ui.load.paste")} aria-label={t("ui.load.paste")} value={paste}
             onInput={(e) => setPaste(e.currentTarget.value)} />
           <button class="secondary" disabled={!paste.trim()}>{t("ui.load.paste_go")}</button>

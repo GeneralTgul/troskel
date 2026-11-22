@@ -9,6 +9,21 @@ export interface DayTimes {
 }
 
 const DEFAULT_MINUTES = 45;
+/** The longest slot of a day, as the coach's form in Tröskel (views/plan.py MAX_SLOT, request.ts). */
+export const MAX_MINUTES = 480;
+
+const isDay = (d: unknown): d is IsoDate => typeof d === "string" && /^\d{4}-\d\d-\d\d$/.test(d);
+
+/** Times read from storage or from a copy: null for anything the views cannot show (no slots, a slot without its
+ * weekday, minutes or sports), so that broken times never stop "Mina tider" from opening. */
+export function checkTimes(v: unknown): PendingTimes | null {
+  const p = v as Partial<PendingTimes> | null;
+  if (!p || typeof p !== "object" || !Array.isArray(p.slots) || typeof p.saved !== "string") return null;
+  const ok = p.slots.every((s) => s && typeof s === "object" && Number.isInteger(s.weekday) && s.weekday >= 0
+    && s.weekday <= 6 && Number.isFinite(s.max_minutes) && Array.isArray(s.sports));
+  if (!ok) return null;
+  return { ...p, slots: p.slots, saved: p.saved, unavailable: Array.isArray(p.unavailable) ? p.unavailable.filter(isDay) : [] };
+}
 
 /** One row per weekday from the core slots (the first one of a day; extra slots are kept as they are). */
 export function daysFromSlots(slots: StoredSlot[]): DayTimes[] {
@@ -27,7 +42,7 @@ export function slotsFromDays(days: DayTimes[], original: StoredSlot[], sports: 
     if (d.on) {
       const base = old[0];
       out.push({
-        weekday: wd, max_minutes: Math.max(5, Math.round(d.minutes)), sports: base?.sports ?? [...sports],
+        weekday: wd, max_minutes: Math.min(MAX_MINUTES, Math.max(5, Math.round(d.minutes) || 0)), sports: base?.sports ?? [...sports],
         start: d.start ? `${d.start}:00` : null, role: base?.role ?? "core",
       });
       out.push(...old.slice(1));

@@ -13,10 +13,11 @@
 import { Capacitor } from "@capacitor/core";
 import { strFromU8, unzlibSync } from "fflate";
 import { addDays } from "./dates";
-import { checkPlan, fromBase64Url, PlanError } from "./link";
-import { checkLog, type TrainingLog } from "./log";
+import { checkPlan, dataForms, fromBase64Url, PlanError } from "./link";
+import { checkLog, type Extra, type TrainingLog } from "./log";
 import { ATHLETE_KIND, ATHLETE_FORMAT, type AthletePayload } from "./share";
 import type { PendingTimes } from "./storage";
+import { checkTimes } from "./times";
 import type { IsoDate, StoredPlan } from "./types";
 
 /** A copy read back: the plan, the log (the watch's marks become the athlete's) and the waiting times. */
@@ -39,7 +40,7 @@ function restored(v: unknown): Restored {
   if (p.format !== ATHLETE_FORMAT) throw new PlanError(typeof p.format === "number" && p.format > ATHLETE_FORMAT ? "too_new" : "broken");
   const plan = checkPlan(p.plan);
   const log = checkLog({ marks: p.marks, extras: p.extras });
-  const times = p.times && typeof p.times === "object" && typeof p.times.saved === "string" ? p.times : null;
+  const times = checkTimes(p.times);
   return { plan, log, times, exported: typeof p.exported === "string" ? p.exported : null };
 }
 
@@ -59,20 +60,35 @@ export function readCopyText(text: string): Restored | null {
   const data = copyData(s);
   if (!data) return null;
   let json: unknown;
-  try {
-    json = JSON.parse(strFromU8(unzlibSync(fromBase64Url(data))));
-  } catch {
-    throw new PlanError("broken");
+  for (const form of dataForms(data)) {
+    try {
+      json = JSON.parse(strFromU8(unzlibSync(fromBase64Url(form))));
+      break;
+    } catch {
+      /* the next form (a message that goes on after the link) */
+    }
   }
+  if (json === undefined) throw new PlanError("broken");
   if ((json as { kind?: unknown })?.kind !== ATHLETE_KIND) throw new PlanError("not_a_plan");
   return restored(json);
 }
 
 /** The log after a copy is read in: the copy's marks over the ones the phone kept for the same plan, and the sessions
- * outside the plan from both, once each. */
+ * outside the plan from both, once each. An id is the day and a running number, so two phones can give the same id to
+ * two different sessions: the phone's then gets the day's next free number instead of being dropped. */
 export function mergeLog(kept: TrainingLog, copy: TrainingLog): TrainingLog {
-  const ids = new Set(copy.extras.map((x) => x.id));
-  return { marks: { ...kept.marks, ...copy.marks }, extras: [...copy.extras, ...kept.extras.filter((x) => !ids.has(x.id))] };
+  const extras = [...copy.extras];
+  const same = (a: Extra, b: Extra) => a.date === b.date && a.sport === b.sport && a.minutes === b.minutes && a.name === b.name;
+  for (const x of kept.extras) {
+    const twin = extras.find((c) => c.id === x.id);
+    if (!twin) extras.push(x);
+    else if (!same(twin, x)) {
+      let n = 1;
+      while (extras.some((c) => c.id === `${x.date}-${n}`)) n++;
+      extras.push({ ...x, id: `${x.date}-${n}` });
+    }
+  }
+  return { marks: { ...kept.marks, ...copy.marks }, extras };
 }
 
 /** The copy's file name: troskel-kopia-<day>.troskel. */

@@ -67,7 +67,7 @@ describe("the app store builds keep everything in Preferences", () => {
     expect(prefs.writes).toEqual(["set troskel.plan", "set troskel.demo", "remove troskel.times", "set troskel.times"]);
     const again = new Store(await cached(prefs));
     expect(again.plan()).toEqual(demoPlan());
-    expect(again.times()).toEqual({ saved: "2026-11-16", slots: [] });
+    expect(again.times()).toEqual({ saved: "2026-11-16", slots: [], unavailable: [] });
     expect(localStorage.length).toBe(0);
   });
 

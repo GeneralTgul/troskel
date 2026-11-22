@@ -4,7 +4,7 @@ import type { Engine } from "../engine";
 import { planSports } from "../engine/models";
 import { addDays, dayMonth, weekdayLong } from "../model/dates";
 import type { PendingTimes } from "../model/storage";
-import { daysFromSlots, slotsFromDays, type DayTimes } from "../model/times";
+import { daysFromSlots, MAX_MINUTES, slotsFromDays, type DayTimes } from "../model/times";
 import type { IsoDate, StoredPlan } from "../model/types";
 
 interface Props {
@@ -12,14 +12,18 @@ interface Props {
   today: IsoDate;
   engine: Engine;
   pending: PendingTimes | null;
+  /** The dates that do not work from the last rebuild (store.unavailable): shown again, so that the next save drops
+   * their workouts again instead of bringing them back. */
+  off?: IsoDate[];
   onSaveTimes: (p: PendingTimes) => void;
-  onRebuilt: (s: StoredPlan) => void;
+  /** The rebuilt plan, and the dates that do not work it was rebuilt with. */
+  onRebuilt: (s: StoredPlan, unavailable: IsoDate[]) => void;
 }
 
 /** Minutes and a clock time per weekday, and dates that do not work. */
-export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }: Props) {
+export function Times({ stored, today, engine, pending, off: kept = [], onSaveTimes, onRebuilt }: Props) {
   const [days, setDays] = useState<DayTimes[]>(() => daysFromSlots(pending?.slots ?? stored.request.availability));
-  const [off, setOff] = useState<IsoDate[]>(() => pending?.unavailable ?? []);
+  const [off, setOff] = useState<IsoDate[]>(() => (pending?.unavailable ?? kept).filter((d) => d > today));
   const [newDate, setNewDate] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -35,7 +39,7 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
     const p: PendingTimes = { slots, unavailable, saved: today };
     if (engine.available) {
       try {
-        onRebuilt(engine.rebuild(stored, { slots, unavailable, from: addDays(today, 1) }));
+        onRebuilt(engine.rebuild(stored, { slots, unavailable, from: addDays(today, 1) }), unavailable);
         setMsg(t("ui.times.saved_rebuilt"));
         return;
       } catch {
@@ -55,7 +59,9 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
       {pending && !msg ? (
         <p class="notice">{t(pending.kept ? "ui.times.kept" : "ui.times.pending", { date: dayMonth(pending.saved) })}</p>
       ) : null}
-      <form onSubmit={save}>
+      {/* noValidate: a slot from the coach may be longer than the field's hint or between its steps, and the browser
+          would then refuse to save any change at all. `slotsFromDays` keeps the minutes within what a day holds. */}
+      <form onSubmit={save} noValidate>
         <ol class="time-rows">
           {days.map((d, i) => (
             <li key={i} class={d.on ? "" : "is-off"}>
@@ -67,7 +73,7 @@ export function Times({ stored, today, engine, pending, onSaveTimes, onRebuilt }
                 <div class="time-fields">
                   <label>
                     <span class="small muted">{t("ui.times.minutes")}</span>
-                    <input type="number" inputMode="numeric" min={10} max={300} step={5} value={d.minutes}
+                    <input type="number" inputMode="numeric" min={10} max={MAX_MINUTES} step={5} value={d.minutes}
                       onInput={(e) => edit(i, { minutes: Number(e.currentTarget.value) || 0 })} />
                   </label>
                   <label>

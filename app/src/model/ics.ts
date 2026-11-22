@@ -12,7 +12,7 @@ export const PRODID = "-//Troskel//App//EN";
 export const UID_DOMAIN = "lopanalys";
 
 export function escape(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,")
+  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
     .replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\\n");
 }
 

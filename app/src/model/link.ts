@@ -78,10 +78,26 @@ export function linkData(link: string): string | null {
   return null;
 }
 
+/** The data of a link as it may stand in a pasted text: the whole of it without the line breaks a mail program put
+ * in, and then only up to the first blank, for a message that goes on after the link ("…#p=abc Lycka till!"). */
+export function dataForms(data: string): string[] {
+  const whole = data.replace(/\s+/g, "");
+  const first = data.trim().split(/\s/)[0];
+  return first === whole ? [whole] : [whole, first];
+}
+
 export function decodeLink(link: string): StoredPlan {
   const data = linkData(link);
   if (!data) throw new PlanError("not_a_plan");
-  return decodeData(data);
+  const forms = dataForms(data);
+  for (const form of forms.slice(0, -1)) {
+    try {
+      return decodeData(form);
+    } catch {
+      /* the next form */
+    }
+  }
+  return decodeData(forms[forms.length - 1]);
 }
 
 /** The contents of a `.troskel` or `.json` file, or a text holding a link (a QR code, a pasted message). */

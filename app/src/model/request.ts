@@ -214,8 +214,15 @@ export const ownPlan = (s: StoredPlan | null) => !!s && s.plan.id.startsWith(APP
 
 /** The athlete's own plan renewed on `today` (`rollForward` when `due`), or null when there is nothing to renew: not
  * an own plan, every week detailed already (a plan made before #789), or not yet time. A coach's plan is renewed by
- * the coach (*Förnya* in Tröskel) and comes with a new link. */
-export function renewOwn(s: StoredPlan | null, today: IsoDate): StoredPlan | null {
+ * the coach (*Förnya* in Tröskel) and comes with a new link. `off`: the dates that do not work (store.unavailable). */
+export function renewOwn(s: StoredPlan | null, today: IsoDate, off: IsoDate[] = []): StoredPlan | null {
   if (!s || !ownPlan(s) || due(s.plan, today) === 0) return null;
-  return { ...s, plan: rollForward(s.plan, s.request, today) };
+  const plan = rollForward(s.plan, s.request, today);
+  if (!off.length) return { ...s, plan };
+  // The dates that do not work ("Mina tider"): the weeks that were sketches had no workouts to drop when the athlete
+  // saved them, so the workouts the renewal gives those weeks are dropped here, by the rule of `rebuild` (a race stays).
+  const was = new Map(s.plan.weeks.map((w) => [w.index, w]));
+  const weeks = plan.weeks.map((w) => (was.get(w.index)?.sketch && !w.sketch
+    ? { ...w, workouts: w.workouts.filter((x) => x.goal != null || !off.includes(x.date)) } : w));
+  return { ...s, plan: { ...plan, weeks } };
 }

@@ -105,10 +105,12 @@ export function checkLog(v: unknown): TrainingLog {
   const { marks, extras } = v as Partial<TrainingLog>;
   if (marks && typeof marks === "object")
     for (const [k, m] of Object.entries(marks))
-      if (m && STATUSES.includes(m.status)) out.marks[k] = m.minutes != null ? { status: m.status, minutes: +m.minutes } : { status: m.status };
+      if (m && STATUSES.includes(m.status))
+        out.marks[k] = Number.isFinite(m.minutes) ? { status: m.status, minutes: Math.max(0, m.minutes!) } : { status: m.status };
   if (Array.isArray(extras))
     out.extras = extras.filter((x) => x && typeof x.id === "string" && typeof x.date === "string"
-      && typeof x.sport === "string" && Number.isFinite(x.minutes));
+      && typeof x.sport === "string" && Number.isFinite(x.minutes))
+      .map((x) => (typeof x.name === "string" ? x : { ...x, name: "" }));
   return out;
 }
 

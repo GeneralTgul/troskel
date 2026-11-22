@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { deviceLang, setLang, t, type Lang } from "./i18n";
 import type { Engine } from "./engine";
 import { today as todayIn } from "./model/dates";
@@ -67,9 +67,27 @@ function errorText(e: unknown): string {
 
 export function App(props: AppProps) {
   const { store, engine } = props;
-  // A tablet on the wall runs for days: the date is read again every minute in the wall mode (`tick`).
+  // The app stays open for days, on the wall and in a phone's memory: the date is read again every minute and each
+  // time the app comes back to the front, and a new day draws the views again (`tick`).
   const [, setTick] = useState(0);
   const today = todayIn(props.now?.() ?? new Date(), props.timeZone);
+  const shownDay = useRef(today);
+  shownDay.current = today;
+  useEffect(() => {
+    const check = () => {
+      if (todayIn(props.now?.() ?? new Date(), props.timeZone) !== shownDay.current) setTick((n) => n + 1);
+    };
+    const minute = setInterval(check, 60_000);
+    globalThis.document?.addEventListener("visibilitychange", check);
+    globalThis.addEventListener?.("pageshow", check);
+    globalThis.addEventListener?.("focus", check);
+    return () => {
+      clearInterval(minute);
+      globalThis.document?.removeEventListener("visibilitychange", check);
+      globalThis.removeEventListener?.("pageshow", check);
+      globalThis.removeEventListener?.("focus", check);
+    };
+  }, []);
   const [lang, setLangState] = useState<Lang>(() => {
     const l = store.settings().lang ?? deviceLang();
     setLang(l);
@@ -77,7 +95,7 @@ export function App(props: AppProps) {
   });
   // The athlete's own plan renews itself (#789): at the start, and when the day changes in the wall mode (below).
   const renewed = (s: StoredPlan | null, isDemo: boolean) => {
-    const r = isDemo ? null : renewOwn(s, today);
+    const r = isDemo ? null : renewOwn(s, today, store.unavailable());
     if (r) store.setPlan(r, false);
     return r;
   };
@@ -162,8 +180,17 @@ export function App(props: AppProps) {
   }, [hc]);
 
   const accept = (p: StoredPlan, isDemo = false, keepTab = false) => {
-    const kept = isDemo || demo ? null : keptTimes(stored, p, today, pending);
+    // The dates that do not work stay with the same plan (a new test, a renewed plan): the new plan has workouts on
+    // them again, so they wait with the times until the athlete saves. Another plan starts without them.
+    const same = !isDemo && !demo && stored?.plan.id === p.plan.id;
+    const off = same ? store.unavailable().filter((d) => d > today) : [];
+    let kept = isDemo || demo ? null : keptTimes(stored, p, today, pending);
+    if (off.length) {
+      const days = [...new Set([...(kept?.unavailable ?? []), ...off])].sort();
+      kept = { slots: kept?.slots ?? p.request.availability, unavailable: days, saved: today, kept: true };
+    }
     store.setPlan(p, isDemo);
+    store.setUnavailable(off);
     if (kept) store.setTimes(kept);
     onLog(keepFor(store.log(), p));
     setStored(p);
@@ -239,10 +266,8 @@ export function App(props: AppProps) {
     const events = ["pointerdown", "keydown", "touchstart", "wheel"];
     for (const e of events) globalThis.addEventListener?.(e, poke, { passive: true });
     timer.poke();
-    const minute = setInterval(() => setTick((n) => n + 1), 60_000);
     return () => {
       timer.stop();
-      clearInterval(minute);
       for (const e of events) globalThis.removeEventListener?.(e, poke);
       release();
     };
@@ -276,6 +301,8 @@ export function App(props: AppProps) {
     setStored(null);
     setDemo(false);
     setPending(null);
+    setCopied(undefined);
+    setError(null);
     setToast(t("ui.about.deleted"));
   };
 
@@ -361,7 +388,8 @@ export function App(props: AppProps) {
     body = (
       <Times stored={stored} today={today} engine={engine} pending={pending}
         onSaveTimes={(p) => { store.setTimes(p); setPending(p); }}
-        onRebuilt={(p) => { store.setPlan(p, demo); setStored(p); setPending(null); }} />
+        off={store.unavailable()}
+        onRebuilt={(p, off) => { store.setPlan(p, demo); store.setUnavailable(off); setStored(p); setPending(null); }} />
     );
   else body = null;
 
