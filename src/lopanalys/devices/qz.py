@@ -129,6 +129,7 @@ class QzTreadmill(SupervisedConnection):
         self._target_speed: float | None = None
         self._target_incline: float | None = None
         self._waiters: dict[str, asyncio.Future[Any]] = {}
+        self._apply_lock: asyncio.Lock | None = None   # one set of targets at a time, the newest last
         self._device_connected: bool | None = None
         self._hr_listeners: list[Callable[[HeartRateSample], None]] = []
 
@@ -190,6 +191,7 @@ class QzTreadmill(SupervisedConnection):
         self._ws = await connect(f"ws://{self.host}:{port}/", open_timeout=5, ping_interval=20,
                                  max_size=8 * 1024 * 1024)
         self._device_connected = None
+        self._apply_lock = asyncio.Lock()
         self._reader = asyncio.create_task(self._read_loop())
         await self._apply_targets()
 
@@ -298,16 +300,19 @@ class QzTreadmill(SupervisedConnection):
                 del self._waiters[name]
 
     async def _apply_targets(self) -> None:
-        with self._lock:
-            speed, incline = self._target_speed, self._target_incline
-        if self._ws is None:
+        if self._ws is None or self._apply_lock is None:
             return
-        if speed is not None:
-            reply = await self._send_and_wait("setspeed", {"value": speed})
-            if isinstance(reply, dict) and reply.get("value") is None:
-                self._log(t("devices.qz.rejected"))
-        if incline is not None:
-            await self._send_and_wait("setresistance", {"value": incline})
+        # One at a time, and the targets read when it is this one's turn: a second target sent while
+        # QZ had not answered the first took over its wait, and the first one's incline went out last.
+        async with self._apply_lock:
+            with self._lock:
+                speed, incline = self._target_speed, self._target_incline
+            if speed is not None:
+                reply = await self._send_and_wait("setspeed", {"value": speed})
+                if isinstance(reply, dict) and reply.get("value") is None:
+                    self._log(t("devices.qz.rejected"))
+            if incline is not None:
+                await self._send_and_wait("setresistance", {"value": incline})
 
 
 class QzHeartRate:

@@ -26,6 +26,7 @@ class FakeQz:
         self.incline = 0.0
         self.paused = False
         self.heart = 141
+        self.reply_delay_s = 0.0
         self.port = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._clients: set[Any] = set()
@@ -79,6 +80,8 @@ class FakeQz:
                     self.paused = True
                 elif name == "start":
                     self.paused = False
+                if self.reply_delay_s:
+                    await asyncio.sleep(self.reply_delay_s)
                 # QZ sends replies with QJsonDocument::toJson(): indented JSON, to every client
                 for c in list(self._clients):
                     await c.send(json.dumps(reply, indent=4))
@@ -224,5 +227,23 @@ def test_reconnects_when_qz_drops_the_socket(qz):
         # after reconnecting the targets are sent again
         wait_for(lambda: qz.speed == 9.0, timeout=5)
         wait_for(lambda: tm.connected, timeout=5)  # the flag is set just after the targets are resent
+    finally:
+        tm.disconnect()
+
+
+def test_two_targets_in_a_row_end_at_the_last_one(qz):
+    """A second target while QZ has not answered the first: the first one's incline was sent last
+    (its wait for the reply was taken over by the second), so the belt ended at a stale incline."""
+    tm = QzTreadmill(Bus(), port=qz.port, reply_timeout_s=0.4)
+    try:
+        tm.connect()
+        qz.reply_delay_s = 0.1
+        tm.set_target(10.0, 1.0)
+        tm.set_target(12.0, 2.0)
+        wait_for(lambda: len([m for m in qz.received if m["msg"] == "setresistance"]) >= 2, timeout=5)
+        time.sleep(0.3)
+        sent = [(m["msg"], m["content"]["value"]) for m in qz.received if m["msg"].startswith("set")]
+        assert sent[-2:] == [("setspeed", 12.0), ("setresistance", 2.0)]
+        assert (qz.speed, qz.incline) == (12.0, 2.0)
     finally:
         tm.disconnect()
