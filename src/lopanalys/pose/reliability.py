@@ -79,6 +79,10 @@ REQUIREMENTS: dict[str, Requirement] = {r.metric: r for r in (
     Requirement("heel_whip_deg", 20, 50, _SYN),
 )}
 
+# The limits are nominal rates, and the achieved rate is measured from the timestamps: a 30 fps film
+# is 29.97 (NTSC) and an exact 25 comes out as 24.999999. A rate this share under a limit meets it.
+NOMINAL_SLACK = 0.005
+
 # summary fields that follow another metric (foot_strike is read from foot_angle_deg)
 FOLLOWS = {"foot_strike": "foot_angle_deg"}
 
@@ -88,6 +92,7 @@ def level(metric: str, fps: float | None) -> str:
     r = REQUIREMENTS.get(FOLLOWS.get(metric, metric))
     if r is None or fps is None:
         return OK
+    fps = fps * (1.0 + NOMINAL_SLACK)
     if fps < r.show_fps:
         return HIDDEN
     if fps < r.sure_fps:

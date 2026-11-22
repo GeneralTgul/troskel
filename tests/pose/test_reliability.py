@@ -95,3 +95,20 @@ def test_findings_on_uncertain_values_are_marked():
     assert by["overstride"].uncertain                      # judged on the shin angle too
     assert not by["cadence"].uncertain
     assert all(not f.uncertain for f in _analysis(120).findings)
+
+
+def test_a_nominal_rate_measured_a_hair_low_still_counts_as_that_rate():
+    """The limits are whole rates (25, 30, 50, 100) and the achieved rate is measured from the clip's
+    timestamps: a 30 fps film is 29.97 (NTSC), and 25.0 came out as 24.999999 by rounding. Both fell
+    under their limit, so a phone film lost overstride, shin angle and knee flexion at contact, and the
+    same camera got a value marked in one clip and not in the next."""
+    assert rel.levels(29.97) == rel.levels(30)
+    assert rel.level("overstride_cm", 29.97) == rel.UNCERTAIN
+    assert rel.level("ground_contact_ms", 50 - 1e-9) == rel.UNCERTAIN
+    assert rel.level("ground_contact_ms", 99.9) == rel.OK and rel.level("ground_contact_ms", 59.94) == rel.UNCERTAIN
+    assert rel.level("overstride_cm", 29.5) == rel.HIDDEN     # really lower: still left out
+    for dur in (7.3, 10.0, 12.34):                            # 10 s at 25 fps measured 24.999999...
+        p = RunnerParams(fps=25, duration_s=dur, view=View.SIDE_LEFT)
+        poses, truth = generate(p)
+        a = analyze_core(poses, p.height_cm, p.view, times=truth.times).analysis
+        assert "knee_flex_midstance_deg" not in a.reliability, dur
