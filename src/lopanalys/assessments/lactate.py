@@ -44,7 +44,7 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 
-from lopanalys.core.i18n import t
+from lopanalys.core.i18n import localize_number, t
 from lopanalys.core.sport import profile, sport_of
 
 LT1_METHODS = ["bsln_1_0", "log_log", "bsln_0_5", "first_rise", "fixed_2_0"]
@@ -466,7 +466,7 @@ def analyze(records: Iterable[Any], max_hr: int | None = None, *, model: str = "
         return empty
     r2 = _r2(chosen, xs, ys)
     if r2 < 0.9:
-        warn("poor_fit", r2=f"{r2:.2f}".replace(".", ","))
+        warn("poor_fit", r2=localize_number(f"{r2:.2f}"))
     if chosen.kind == "poly3" and n < 5:
         warn("poly_interpolates")
 

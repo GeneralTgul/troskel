@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from lopanalys.assessments.protocol import Protocol, Stage
-from lopanalys.core.i18n import t
+from lopanalys.core.i18n import localize_number, t
 from lopanalys.core.models import TestKind
 from lopanalys.core.sport import Sport, profile, sport_of
 
@@ -72,13 +72,12 @@ def _round_half(v: float) -> float:
 
 
 def fmt_kmh(v: float) -> str:
-    """Swedish decimal comma, one decimal: 12.0 -> "12,0"."""
-    return f"{v:.1f}".replace(".", ",")
+    """One decimal with the decimal sign of the language: 12.0 -> "12,0" in Swedish, "12.0" in English."""
+    return localize_number(f"{v:.1f}")
 
 
 def fmt_pct(v: float) -> str:
-    s = f"{v:.1f}".rstrip("0").rstrip(".")
-    return s.replace(".", ",")
+    return localize_number(f"{v:.1f}".rstrip("0").rstrip("."))
 
 
 def start_speed_for(level: str | None = None, estimated_lt2_kmh: float | None = None,

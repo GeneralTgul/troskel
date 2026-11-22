@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from lopanalys.assessments.lactate import LactateResult, Threshold
-from lopanalys.core.i18n import t
+from lopanalys.core.i18n import localize_number, t
 from lopanalys.core.sport import Sport, profile
 
 LEVELS_MMOL = (2.0, 3.0, 4.0)
@@ -129,4 +129,4 @@ def compare_max_hr(current: dict[str, Any] | Any, previous: dict[str, Any] | Any
 
 def _signed(v: float, nd: int = 1) -> str:
     s = f"{v:+.{nd}f}" if nd else f"{round(v):+d}"
-    return s.replace(".", ",").replace("-", "−")
+    return localize_number(s).replace("-", "−")

@@ -41,6 +41,11 @@ def t(key: str, **fmt: object) -> str:
     return text.format(**fmt) if fmt else text
 
 
+def localize_number(s: str) -> str:
+    """A formatted number ("12.5") with the decimal sign of the current language ("12,5" in Swedish)."""
+    return s.replace(".", ",") if _lang == "sv" else s
+
+
 def has(key: str) -> bool:
     """True when the key has a text in the current language or in Swedish."""
     module = key.split(".", 1)[0]
