@@ -8,14 +8,16 @@ import { setupOffline } from "./model/offline";
 import { saveFile } from "./model/save";
 import { openStore } from "./model/storage";
 import "./styles.css";
+import { Broken } from "./views/Broken";
 
 // ?view=week opens a view directly (screenshots, a shortcut on the home screen).
 const view = new URLSearchParams(location.search).get("view") as Tab | null;
 
 // The app store builds read Capacitor Preferences first (asynchronous); the browser has localStorage at once.
 // Health Connect only in the Android build; null elsewhere (and if the plugin cannot load).
+// Broken: a view that breaks (a saved plan the app cannot draw) shows a way to delete all data, not a white page.
 Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store, healthConnect]) => render(
-  <App
+  <Broken store={store} reload={() => location.reload()}><App
     tab={view && TABS.includes(view) ? view : undefined}
     store={store}
     engine={engine}
@@ -28,7 +30,7 @@ Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store
     hasCamera={!!navigator.mediaDevices?.getUserMedia}
     healthConnect={healthConnect}
     storageState={() => storageState()}
-  />,
+  /></Broken>,
   document.getElementById("app")!,
 ));
 

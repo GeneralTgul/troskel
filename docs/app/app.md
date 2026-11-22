@@ -352,8 +352,9 @@ Var de sparas står i `app/src/model/storage.ts`:
 - Preferences är asynkron. Appen läser därför in allt en gång vid starten (`openStore` i `main.tsx`) och läser sedan ur minnet och skriver igenom till Preferences, i ordning. Vyerna är synkrona som förut. Går Preferences inte att läsa startar appen med `localStorage` i stället.
 - En installerad app som sparat i `localStorage` förut flyttar sina data till Preferences första gången, när Preferences är tom, och tömmer sedan `localStorage`. Misslyckas flytten ligger de kvar där.
 - *Ta bort all data på enheten* tömmer både Preferences och `localStorage`.
+- **Ett sparat schema som appen inte kan rita** ger ingen vit sida (#846). Schemat kontrolleras när det läses (`checkPlan`), och går en vy ändå sönder visar appens felgräns (`app/src/views/Broken.tsx`, runt hela appen i `main.tsx`) *Något gick fel* med knappen *Ta bort all data och starta om*. Knappen frågar först, tömmer lagringen som *Ta bort all data på enheten*, väntar in skrivningarna till Preferences och laddar om appen. En sparad [kopia](#en-kopia-av-schemat) går att läsa in igen efteråt.
 
-Proven står i `app/test/storage.test.ts`. I en riktig telefon är lagringen inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
+Proven står i `app/test/storage.test.ts` och, för felgränsen, i `app/test/broken.test.tsx`. I en riktig telefon är lagringen inte provad ([PROV.md](../PROV.md#appen-i-telefonen)).
 
 ## Appen utan butiken
 

@@ -239,6 +239,12 @@ export class Store {
   clear(): void {
     for (const k of KEYS) this.backend.remove(PREFIX + k);
   }
+
+  /** Waits for the writes still on their way to Capacitor Preferences (`cached`); at once for localStorage. Before a
+   * reload, so that a deletion is not lost with the page. */
+  flush(): Promise<void> {
+    return (this.backend as Partial<CachedBackend>).flush?.() ?? Promise.resolve();
+  }
 }
 
 export const memoryStore = () => new Store(memory());
