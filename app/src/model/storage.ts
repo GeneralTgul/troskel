@@ -175,6 +175,12 @@ export class Store {
     this.backend.remove(PREFIX + "times");
   }
 
+  /** The same plan changed (a workout moved, new own values, an own plan renewed): only the plan is written. The
+   * times that wait under "Mina tider" stay; `setPlan` is for a new plan and takes them away. */
+  updatePlan(p: StoredPlan): void {
+    this.write("plan", p);
+  }
+
   isDemo(): boolean {
     return this.read<boolean>("demo") === true;
   }

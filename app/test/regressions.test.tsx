@@ -350,3 +350,39 @@ describe("the wall mode", () => {
     expect(root.querySelector(".today")).not.toBeNull();
   });
 });
+
+describe("the times that wait under Mina tider", () => {
+  const waiting = (p: StoredPlan): PendingTimes =>
+    ({ slots: p.request.availability.slice(1), unavailable: ["2026-12-24"], saved: "2026-11-20", kept: true });
+
+  it("stay when the athlete's own plan renews itself", async () => {
+    const f = { ...emptyForm("2026-10-26"), level: "recreational", weeks: 12 };
+    const own = planFromForm(f, { id: "app-test0002", today: "2026-10-26" });
+    expect(renewOwn(own, "2026-11-25")).not.toBeNull(); // due on the day of the test
+    const store = memoryStore();
+    store.setPlan(own);
+    store.setTimes(waiting(own));
+    await mount({ store, tab: "today" });
+    expect(store.plan()!.plan.weeks.filter((w) => !w.sketch).length).toBeGreaterThan(own.plan.weeks.filter((w) => !w.sketch).length);
+    expect(store.times()).toEqual(waiting(own));
+  });
+
+  it("stay when the athlete changes own values, and the example stays the example", async () => {
+    const plan = demoPlan();
+    const store = memoryStore();
+    store.setPlan(plan);
+    store.setTimes(waiting(plan));
+    await mount({ store, tab: "plan" });
+    await click(byText(".overview button", "Ändra mina värden"));
+    await act(async () => {
+      root.querySelector(".values form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(root.querySelector(".values")).toBeNull(); // saved
+    expect(store.times()).toEqual(waiting(plan));
+
+    const demo = memoryStore();
+    demo.setPlan(plan, true);
+    demo.updatePlan(plan);
+    expect(demo.isDemo()).toBe(true);
+  });
+});

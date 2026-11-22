@@ -97,7 +97,7 @@ export function App(props: AppProps) {
   // The athlete's own plan renews itself (#789): at the start, and when the day changes in the wall mode (below).
   const renewed = (s: StoredPlan | null, isDemo: boolean) => {
     const r = isDemo ? null : renewOwn(s, today, store.unavailable());
-    if (r) store.setPlan(r, false);
+    if (r) store.updatePlan(r);
     return r;
   };
   const [stored, setStored] = useState<StoredPlan | null>(() => renewed(store.plan(), store.isDemo()) ?? store.plan());
@@ -383,12 +383,12 @@ export function App(props: AppProps) {
     body = (
       <Week key={home} stored={stored} today={today} onCalendar={calendar} log={shown} onLog={onLog}
         onPlan={demo ? undefined
-          : (p) => { store.setPlan(p, false); setStored(p); setToast(t("ui.adjust.saved")); }} />
+          : (p) => { store.updatePlan(p); setStored(p); setToast(t("ui.adjust.saved")); }} />
     );
   else if (tab === "plan" && values)
     body = (
       <ValuesView stored={stored} onCancel={() => setValues(false)}
-        onSave={(p) => { store.setPlan(p, false); setStored(p); setValues(false); setToast(t("ui.values.saved")); }} />
+        onSave={(p) => { store.updatePlan(p); setStored(p); setValues(false); setToast(t("ui.values.saved")); }} />
     );
   else if (tab === "plan")
     body = <Overview stored={stored} today={today} onCalendar={calendar} onValues={demo ? undefined : () => setValues(true)} />;
