@@ -191,7 +191,7 @@ class LiveController(QObject):
         self._t0 = time.perf_counter()
         self._last_stage = -1
         self._recorder: _RecorderThread | None = None
-        self.resume: ResumeFrom | None = None
+        self._resume: ResumeFrom | None = None
         self._started = False
         self._closing = False
         self._saved_counts = (0, 0)
@@ -291,7 +291,7 @@ class LiveController(QObject):
     def resume_from(self, r: ResumeFrom) -> None:
         """Continue a cut-off test instead of starting a new one: same session, protocol and kind;
         the stages and samples saved before the cut are kept and the runner starts at ``r.from_index``."""
-        self.resume = r
+        self._resume = r
         self.session = r.session
         kind = (r.session.result or {}).get("plan_kind") or self.plan.kind
         self.plan = dataclasses.replace(self.plan, protocol=Protocol.from_dict(r.session.protocol), kind=kind,
@@ -312,7 +312,7 @@ class LiveController(QObject):
             log.exception("runner could not be created")
             self.error.emit(t("ui.err.start", detail=str(e)))
             return False
-        r = self.resume
+        r = self._resume
         offset = r.t_offset_s if r else 0.0
         self._restart_clock(time.perf_counter() - offset)
         s = self.session
@@ -391,7 +391,7 @@ class LiveController(QObject):
             if x.index in self.stage_gait2 and "second" not in (x.gait or {}):
                 x.gait = dict(x.gait or {}, second=self.stage_gait2[x.index])   # the second view's summary
         smp = list(getattr(rn, "samples", []) or [])
-        r = self.resume
+        r = self._resume
         if r is not None:
             new = {x.index for x in recs + warm}
             recs = [x for x in r.records if x.index not in new] + recs
@@ -436,7 +436,7 @@ class LiveController(QObject):
     def _discard_unstarted(self) -> None:
         """The runner never started: a new test row that was just written is removed again."""
         s = self.session
-        if self.resume is None and s.id is not None:
+        if self._resume is None and s.id is not None:
             try:
                 self.ctx.store.db.delete_session(s.id, delete_files=False)
                 s.id = None
@@ -638,8 +638,8 @@ class LiveController(QObject):
         """The distance on the belt so far in metres (the 1 Hz belt speed integrated), including the
         part before a cut-off test was resumed; None before any samples."""
         smp = list(getattr(self.runner, "samples", []) or []) if self.runner is not None else []
-        if self.resume is not None:
-            smp = [x for x in self.resume.samples if x.t_s < (smp[0].t_s if smp else 1e18)] + smp
+        if self._resume is not None:
+            smp = [x for x in self._resume.samples if x.t_s < (smp[0].t_s if smp else 1e18)] + smp
         return distance_m(smp) if len(smp) > 1 else None
 
     def _on_hr(self, s: Any) -> None:
