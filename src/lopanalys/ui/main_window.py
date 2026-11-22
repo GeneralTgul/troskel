@@ -366,6 +366,14 @@ class MainWindow(QMainWindow):
                 ctl.resume_from(r)
             else:
                 QMessageBox.information(self, t("ui.recover.title"), t("ui.recover.no_resume"))
+        left = self.ctx.live
+        if left is not None and left is not ctl:
+            # A test still open behind the guide (running, or never started): it is stopped and saved
+            # as closing its window would, so that two runners never drive the same belt.
+            try:
+                left.abort()
+            except Exception:
+                log.exception("ending the test left open failed")
         if self.operator is not None:
             self._drop_operator()
         self.ctx.live = ctl

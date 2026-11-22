@@ -163,3 +163,30 @@ def test_stages_after_the_camera_stopped_get_no_technique_values(qapp, qtbot):
     assert not recs[1].gait and not recs[2].gait
     assert [bool(r.gait) for r in got[0].records] == [True, False, False]
     ctx.shutdown()
+
+
+def test_a_new_test_ends_the_one_left_running(qapp, qtbot):
+    """With the customer mode off, *Nytt test* is in reach while a test runs. Before 2026-11-23 a test
+    started from there left the first one running without a page: two runners drove the same belt,
+    and the first test stayed "running" in the database until the program was started again."""
+    from lopanalys.ui.main_window import MainWindow
+
+    ctx = _ctx()
+    ctx.set_setting("lock.customer_mode", False)
+    a = _athlete(ctx)
+    ctx.store.save_athlete(a)
+    w = MainWindow(ctx)
+    first = LiveController(ctx, _lactate_plan(a))
+    w.launch_test(first)
+    assert w.nav_buttons["new_test"].isVisibleTo(w)           # the way to the second test
+    w.operator.start()
+    _until(qtbot, lambda: first.state is not None and first.state.phase == Phase.RUNNING)
+    sid = first.session.id
+
+    second = LiveController(ctx, _lactate_plan(a))
+    w.launch_test(second)
+    assert ctx.live is second
+    assert first.runner.done                                  # nothing drives the belt behind the new test
+    assert ctx.store.db.get_session(sid).status == "stopped"  # and the first test is saved as stopped
+    assert w.stack.currentWidget() is w.operator and w.operator.ctl is second
+    w.close()
