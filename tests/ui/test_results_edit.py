@@ -76,3 +76,33 @@ def test_a_finished_max_test_does_not_write_old_athlete_fields_back(qtbot, tmp_p
     assert (saved.height_cm, saved.weight_kg, saved.notes, saved.birth_date) == (181, 74.0, "Ont i vaden",
                                                                                  date(1990, 5, 17))
     ctx.shutdown()
+
+
+def test_the_change_since_last_time_uses_the_same_method_on_both_tests(qtbot, tmp_path, monkeypatch):
+    """Before 2026-11-23 the report compared this test's thresholds with the previous test's as each
+    was saved: with OBLA 4 mmol chosen now and modified Dmax then, the page *Sedan förra testet* showed
+    the difference between two methods as the athlete's progress."""
+    ctx = AppContext(store=services.open_store(tmp_path / "db.sqlite"))
+    a, old = _lactate_test(ctx)
+    p = library.lactate_step(9.0, 1.0, 7, stage_s=240, pause_s=30, warmup_s=0)
+    recs = [StepRecord(i, 9.0 + i, 1.0, 240, hr_end=130 + 9 * i, lactate_mmol=v) for i, v in enumerate(LACTATE)]
+    new = Session(None, a.id, TestKind.LACTATE_STEP, T0 + timedelta(days=60), T0 + timedelta(days=60, minutes=32),
+                  protocol_name=p.name, protocol=p.to_dict(), result={"plan_kind": "lactate"})
+    ctx.store.db.save_test(new, recs, [])
+    seen = {}
+
+    def render(athlete, session, records, lactate, zone_list, max_view, gait, previous, *args, **kw):
+        seen["now"], seen["then"] = lactate, previous["lactate"]
+        return "<html></html>"
+
+    monkeypatch.setattr(services, "render_report", render)
+    v = ResultsView(ctx)
+    qtbot.addWidget(v)
+    v.load_session(new.id)
+    v.method.setCurrentIndex(v.method.findData("obla_4"))
+    v._html = None
+    v.html()
+    assert seen["now"].lt2_method == "obla_4" and seen["then"].lt2_method == "obla_4"
+    # the same values in both tests: no change, whatever the method
+    assert seen["then"].lt2.speed_kmh == seen["now"].lt2.speed_kmh
+    ctx.shutdown()

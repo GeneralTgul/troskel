@@ -1730,8 +1730,13 @@ class ResultsView(QWidget):
             if prev is not None and prev.id is not None:
                 precs = self._work_records(prev, self.ctx.store.records(prev.id))
                 res = prev.result or {}
+                # The change since last time is the same method on both tests (as assessments.compare
+                # does): OBLA 4 mmol now against modified Dmax then is a change of method, not of form.
+                cur = self.lactate
+                m1 = (cur.lt1_method if cur is not None else None) or res.get("lt1_method")
+                m2 = (cur.lt2_method if cur is not None else None) or res.get("lt2_method")
                 pd = {"session": prev, "records": precs,
-                      "lactate": services.analyze_lactate(precs, res.get("lt1_method"), res.get("lt2_method"),
+                      "lactate": services.analyze_lactate(precs, m1, m2,
                                                           self.athlete.max_hr_for(prev.sport) if self.athlete else None,
                                                           prev.sport)}
             self._html = services.render_report(self.athlete or Athlete(None, "", ""), self.session, self.records,
