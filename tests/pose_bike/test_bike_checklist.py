@@ -53,3 +53,16 @@ def test_every_item_and_option_has_a_text_in_both_languages():
             assert f"{ck.PREFIX}.item.{item.key}" in sv, item.key
             for o in item.options:
                 assert f"{ck.PREFIX}.opt.{o}" in sv, o
+
+
+def test_a_measurement_of_zero_is_a_value():
+    """A level saddle is 0°. Typed as "0" it was kept once, but stored as the number 0.0 it was
+    dropped the next time the values were read (0 == False), so the report said "– → 2°"."""
+    stored = ck.clean({"saddle_tilt_deg.before": "0", "saddle_tilt_deg.after": "2", "bar_drop_mm.before": 0,
+                              "bar_drop_mm.after": 0.0, "insoles": False, "goal": ""})
+    assert stored == {"saddle_tilt_deg.before": 0.0, "saddle_tilt_deg.after": 2.0, "bar_drop_mm.before": 0.0,
+                      "bar_drop_mm.after": 0.0}
+    assert ck.clean(stored) == stored                    # reading it again changes nothing
+    bike = next(s for s in ck.rows(stored) if s["key"] == "bike")
+    tilt = next(r for r in bike["rows"] if r["key"] == "saddle_tilt_deg")
+    assert tilt["value"].startswith("0 °") and "–" not in tilt["value"] and "+2 °" in tilt["value"]

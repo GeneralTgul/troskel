@@ -77,8 +77,8 @@ def clean(values: dict[str, Any] | None) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for f, v in (values or {}).items():
         item = ITEMS.get(f.split(".")[0])
-        if item is None or f not in item.fields() or v in (None, "", False):
-            continue
+        if item is None or f not in item.fields() or v is None or v is False or v == "":
+            continue                    # not ``v in (None, "", False)``: 0 == False, and 0 is a measurement
         if item.kind == "number":
             try:
                 out[f] = float(str(v).replace(",", "."))
