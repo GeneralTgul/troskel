@@ -96,11 +96,18 @@ Analysen är byggd och provad mot syntetiska cyklister och stakare, där sanning
 | Bandet över FTMS | Tryck START på bandet, sätt 8 → 12 km/h och 0 → 2 % | Bandet går till farten och lutningen, livevärdena stämmer med panelen | |
 | Bandet över FTMS | Stå still 10 min ansluten | Bandet somnar inte | |
 | Bandet över FTMS | Dra ur säkerhetsnyckeln under gång | Programmet visar att bandet stannat | |
-| Bandet över FTMS | Slå av bandet och på igen under ett test | Programmet ansluter igen och skickar farten på nytt | |
+| Bandet över FTMS | Slå av bandet och på igen mitt i ett steg | Programmet ansluter igen och skickar stegets fart på nytt | |
 | Bandet över FTMS | Försök söka eller ansluta med QZ igång | Programmet visar "Bandet används av QZ. Välj läget QZ, eller stäng QZ för att ansluta direkt." | |
 | Bandet över FTMS | Slå på bandet utan START, med QZ stängt. Välj Bluetooth (FTMS) | Bandet som anslöts förra gången står i listan direkt, *Anslut* fungerar, och *Sök* hittar det före START | |
 | Pulsbandet | Anslut HRM-Pro+ | Puls och RR syns, batteriet visas | |
 | Pulsbandet | Ta av bandet en stund | Meddelandet om hudkontakt syns, inga nollvärden | |
+| Pulsbandet tystnar | Ta av bandet mitt i ett steg och låt det ligga i 30 s, sätt på det igen | Pulsen på TV:n försvinner inom cirka 5 s och kommer tillbaka, och stegets puls är inte den sista som bandet sände (`7576889`) | |
+| Bandet tappas i en paus | Slå av Bluetooth på gymdatorn under en laktatpaus och slå på det igen, med FTMS och med QZ | Bandet står stilla tills nästa steg startar: ingen fart skickas vid återanslutningen (`6494242`) | |
+| Stopp utan kontakt | Slå av Bluetooth mitt i ett steg, tryck *Stoppa* i programmet, slå på Bluetooth | Bandet stannar när kontakten är tillbaka (`443f441`). Med QZ: skriv här hur QZ tar en paus direkt efter att dess uttag öppnats igen | |
+| Bandet tappas för gott | Slå av Bluetooth mitt i ett steg och låt det vara av. Ställ bandet på panelen som TV:n ber om | Programmet ber om farten för hand, och stegen sparas med farterna som ställdes in, inte med farten när kontakten försvann (`7576889`) | |
+| Paus mitt i ett steg | *Paus* efter två minuter av ett steg på 10 km/h, *Fortsätt* efter 30 s | Steget sparas på 10,0 km/h, och TV:n säger inte att bandet ställts om för hand. Skriv här hur många sekunder bandet behöver från stillastående till farten (`7576889`, gränsen är 45 s) | |
+| Slutspurt i paus | *Paus* i en maxpulstrappa och sedan *Slutspurt* | Bandet står kvar stilla (`801c37b`) | |
+| Två mål i rad över QZ | Laktattest i QZ-läget med steg som byter fart och lutning | Bandet hamnar på det senaste målet, också när två mål kommer tätt (`546c956`) | |
 | Pulsbandet: kadensen (RSC) | Anslut HRM-Pro+ och spring 2 min på 10 och 13 km/h med Zwift igång. Att bandet sänder löpdata över Bluetooth med tjänsten RSC (0x1814, mätvärdet 0x2A53) är Garmins uppgift och inte kontrollerat mot källa | Loggen säger *running cadence (RSC) available*; rutan heter *Kadens (pulsbandet)* och visar samma steg/min som Zwift (±2), inte halva (en fot); resultatet och rapporten säger *Kadens (pulsbandet)*. Utan RSC: rutan heter *Kadens* och kamerans värde visas | 2026-11-14: RSC finns på HRM-Pro+ (loggen), men kadensen visade 84 vid 10 km/h: bandet sänder varv (en fot). Fördubblas sedan dess under 125. Kvar: jämför med Zwift |
 | QZ | QZ igång med bandet anslutet, välj läget QZ | Porten läses ur registret, fart, lutning och puls syns live | |
 | QZ | Sätt 10 km/h och 1 % från programmet, stoppa | Bandet följer; stopp pausar QZ utan att avsluta QZ:s pass | |
