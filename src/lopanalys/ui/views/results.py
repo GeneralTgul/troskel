@@ -1643,6 +1643,9 @@ class ResultsView(QWidget):
             if lv and lv.lt1 and lv.lt2:
                 s.result["lt1"] = vars(lv.lt1)
                 s.result["lt2"] = vars(lv.lt2)
+            else:       # values were removed or changed: no thresholds any more, so none are kept
+                s.result.pop("lt1", None)
+                s.result.pop("lt2", None)
             s.result["max_hr"] = self.max_hr
             if self._max_set:
                 s.result["max_hr_set"] = self._max_set
