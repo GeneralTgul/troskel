@@ -248,8 +248,27 @@ class TechniquePanel(QWidget):
                 out[f] = w.text().strip()
         return checklist.clean(out)
 
+    def _unreadable(self) -> dict[str, str]:
+        """The number fields whose text is not a number ("7 mm"): the checklist drops those."""
+        bad: dict[str, str] = {}
+        for f, w in self._inputs.items():
+            item = checklist.ITEMS.get(f.split(".")[0])
+            if isinstance(w, QLineEdit) and item is not None and item.kind == "number" and w.text().strip():
+                try:
+                    float(w.text().strip().replace(",", "."))
+                except ValueError:
+                    bad[f] = w.text()
+        return bad
+
     def _save(self) -> None:
+        bad = self._unreadable()
         if self._on_save is not None:
             self._on_save(self.values())
+        for f, text in bad.items():          # the page is built again on save: what was typed stays, to correct
+            w = self._inputs.get(f)
+            if isinstance(w, QLineEdit):
+                w.setText(text)
         if self.saved_note is not None:
-            self.saved_note.setText(t("technique.ui.checklist_saved"))
+            names = dict.fromkeys(t(f"{checklist.PREFIX}.item.{f.split('.')[0]}") for f in bad)
+            self.saved_note.setText(t("technique.ui.checklist_unreadable", items=", ".join(names)) if bad
+                                    else t("technique.ui.checklist_saved"))

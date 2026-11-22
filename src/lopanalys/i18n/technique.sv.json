@@ -336,6 +336,7 @@
  "technique.report.tile.target": "Riktvärde {range}",
  "technique.ui.save_checklist": "Spara checklistan",
  "technique.ui.checklist_saved": "Checklistan är sparad och kommer med i rapporten.",
+ "technique.ui.checklist_unreadable": "Sparad, utom det som inte gick att läsa som tal: {items}. Skriv bara siffror där.",
  "technique.ui.left": "Vänster",
  "technique.ui.right": "Höger",
  "technique.ui.before": "Före",

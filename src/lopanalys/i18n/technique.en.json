@@ -336,6 +336,7 @@
  "technique.report.tile.target": "Reference {range}",
  "technique.ui.save_checklist": "Save the checklist",
  "technique.ui.checklist_saved": "The checklist is saved and goes into the report.",
+ "technique.ui.checklist_unreadable": "Saved, except what could not be read as a number: {items}. Type digits only there.",
  "technique.ui.left": "Left",
  "technique.ui.right": "Right",
  "technique.ui.before": "Before",

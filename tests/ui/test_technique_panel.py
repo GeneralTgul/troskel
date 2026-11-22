@@ -89,3 +89,26 @@ def test_other_tests_have_no_technique_tab(demo_window, qtbot):
     s = store.save_session(Session(None, a.id, TestKind.MAX_HR, T0, T0 + timedelta(minutes=15)))
     win.open_session(s.id)
     assert not win.results.tabs.isTabVisible(win.results.tabs.indexOf(win.results.tech_tab))
+
+
+def test_a_number_that_cannot_be_read_is_not_silently_dropped(demo_window, qtbot):
+    """Before 2026-11-23 "72 cm" in a number field vanished at Spara and the note said saved."""
+    win = demo_window
+    p = bs.with_knee(bs.CyclistParams(duration_s=12), 52.0)
+    poses, times = bs.generate(p)[:2]
+    _, s = make(win, "Bikefit", [ba.analyze_poses(poses, p.height_cm, p.view, times=times)])
+    win.open_session(s.id)
+    panel = win.results.tech_panel
+    panel._inputs["leg_length_diff_mm"].setText("7 mm")
+    panel._inputs["saddle_height_mm.after"].setText("72,5")
+    panel.save_button.click()
+    stored = win.ctx.store.session(s.id).result["bikefit_checklist"]
+    assert stored == {"saddle_height_mm.after": 72.5}
+    panel = win.results.tech_panel
+    assert panel._inputs["leg_length_diff_mm"].text() == "7 mm"        # still there, to correct
+    note = panel.saved_note.text()
+    assert "Benlängdsskillnad" in note and "inte" in note and note != "Checklistan är sparad och kommer med i rapporten."
+    panel._inputs["leg_length_diff_mm"].setText("7")
+    panel.save_button.click()
+    assert win.results.tech_panel.saved_note.text() == "Checklistan är sparad och kommer med i rapporten."
+    assert win.ctx.store.session(s.id).result["bikefit_checklist"]["leg_length_diff_mm"] == 7.0
