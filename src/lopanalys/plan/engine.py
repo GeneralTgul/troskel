@@ -68,7 +68,8 @@ The rules (docs/TRANINGSPLAN.md):
       the day after it gets a long, easy workout in the first supporting sport when that day's slot allows the
       sport: at most three quarters of the long run, the level's longest easy run, the slot and the sport's part
       of the week, and in an easy or a test week three quarters of the last load week's, at least 60 minutes
-      (else the day is as before). The day is then no hard day, the day after it
+      (else the day is as before). A fixed hard day on that weekday wins: then there is no second long workout;
+      a fixed easy day there gives way. The day is then no hard day, the day after it
       counts as the day after a long run, and the smaller long workout every other week is not used.
     * The most minutes a week (PlanRequest.max_weekly_minutes): the weekly time grows towards it and stops there
       (periodize.week_capacity), where it else grows towards what the slots hold.
@@ -285,13 +286,16 @@ class _Filler:
                     self.hard_minutes[h.weekday] = h.minutes
         self.hard_rank = {wd: i for i, wd in enumerate(self.hard)}
         # The coach's choices: the fixed easy days (the first given for a weekday; a fixed hard day on the same
-        # weekday wins) and the weekday of the second long workout, the day after the long run.
+        # weekday wins) and the weekday of the second long workout, the day after the long run (None: none, also
+        # when that day is a fixed hard day).
         self.easy: dict[int, HardDay] = {}
         for h in request.easy_days:
             if 0 <= h.weekday <= 6 and h.weekday not in self.hard and h.weekday not in self.easy:
                 self.easy[h.weekday] = h
         self.support = next((r.sport for r in self.roles[1:] if r.role == "support"), None)
         self.pair_wd = (self.long_slot.weekday + 1) % 7 if request.second_long and self.support else None
+        if self.pair_wd in self.hard:          # a fixed hard day the day after the long run wins
+            self.pair_wd = None
         self.state = _State()
         first, last = skeleton.weeks[0].monday, skeleton.weeks[-1].monday + timedelta(days=6)
         self.blocked: set[date] = set()       # no quality session on these days

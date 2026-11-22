@@ -50,6 +50,8 @@ def requests() -> list[tuple[str, Any, date | None]]:
         ("second-long-only", replace(ski, second_long=True), None),
         ("second-long-one-sport", replace(half, second_long=True), None),
         ("second-long-triathlon", replace(c.CASES["triathlon_swim"], second_long=True), None),
+        ("second-long-on-a-hard-day", replace(c.CASES["run_bike_choices"], hard_days=(HardDay(0, c.RUNNING),)), None),
+        ("second-long-on-an-easy-day", replace(c.CASES["run_bike_choices"], easy_days=(HardDay(0, "bike", 45),)), None),
         ("easy-weeks-goal", replace(half, easy_weeks=(date(2026, 12, 23), date(2026, 11, 1), date(2027, 2, 1))), None),
         ("easy-weeks-beginner", replace(c.CASES["beginner_26"], easy_weeks=(date(2026, 12, 21), date(2027, 2, 15))), None),
         ("easy-weeks-first-and-last", c.request(weeks=12, easy_weeks=(c.START, date(2027, 2, 1), date(2028, 1, 1))), None),

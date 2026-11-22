@@ -241,7 +241,8 @@ class Filler {
     for (const h of chosen.easy_days ?? [])
       if (h.weekday >= 0 && h.weekday <= 6 && !this.hard.has(h.weekday) && !this.easy.has(h.weekday)) this.easy.set(h.weekday, h);
     this.support = this.roles.slice(1).find((r) => r.role === "support")?.sport ?? null;
-    this.pairWd = chosen.second_long && this.support ? mod(this.longSlot.weekday + 1, 7) : null;
+    const pairWd = chosen.second_long && this.support ? mod(this.longSlot.weekday + 1, 7) : null;
+    this.pairWd = pairWd !== null && this.hard.has(pairWd) ? null : pairWd; // a fixed hard day there wins
     const own = new Map<number, StoredSlot>();
     for (const s of request.availability)
       if (s.role === "core" && s.sports.includes(STRENGTH) && s.max_minutes > 0 && s.weekday >= 0 && s.weekday <= 6)

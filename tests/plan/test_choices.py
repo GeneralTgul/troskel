@@ -186,6 +186,15 @@ def test_the_second_long_follows_last_weeks_long_run_on_a_sunday():
     assert not [w for w in _on(plan.weeks[0], 0) if w.family == "long"]       # no long run before the first week
 
 
+def test_a_fixed_hard_day_after_the_long_run_wins_over_the_second_long():
+    r = replace(c.CASES["run_bike_choices"], hard_days=(HardDay(0, RUNNING),))       # the long run is on the Sunday
+    plan = build_plan(r, plan_id="t")
+    assert not [w for wk in plan.weeks for w in _on(wk, 0) if w.family == "long"]
+    assert sum(1 for wk in plan.weeks for w in _on(wk, 0) if w.quality) >= 4
+    easy = replace(c.CASES["run_bike_choices"], easy_days=(HardDay(0, "bike", 45),))    # an easy day gives way
+    assert [w for wk in build_plan(easy, plan_id="t").weeks for w in _on(wk, 0) if w.family == "long"]
+
+
 def test_no_second_long_without_the_choice_or_a_supporting_sport():
     r = replace(c.CASES["high_ski_choices"], second_long=False)
     for wk in build_plan(r, plan_id="t").weeks:
