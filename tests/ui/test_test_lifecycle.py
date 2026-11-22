@@ -110,3 +110,32 @@ def test_exhaustion_is_saved_when_it_happens(qapp, qtbot):
     (s,) = recovery.collect_interrupted(ctx2.store)
     assert s.result.get("exhaustion_t_s") == t_exh
     ctx2.shutdown()
+
+
+def test_a_test_cut_a_second_time_ends_when_it_was_cut(qapp):
+    """The samples' time leaves out the break before a test was continued. A test continued once and
+    cut again was given an end that much too early: the question named the wrong time, and *Fortsätt*
+    was refused although the athlete had stopped a minute ago."""
+    from datetime import datetime, timedelta, timezone
+
+    from lopanalys.core.models import Session, StepRecord, TestKind, TimeSample
+
+    ctx = _ctx()
+    a = _athlete(ctx)
+    now = datetime.now(timezone.utc)
+    p = library.lactate_step(10.0, 1.0, 5, stage_s=240, pause_s=30, warmup_s=0)
+    # started 40 min ago, cut after 10 min, continued 6 min ago (a break of 24 min less the 10) and cut 1 min ago
+    s = Session(None, a.id, TestKind.LACTATE_STEP, now - timedelta(minutes=40), protocol_name=p.name,
+                protocol=p.to_dict(), status="running",
+                result={"plan_kind": "lactate", "resumed": [
+                    {"from_stage": 2, "at": (now - timedelta(minutes=6)).isoformat(timespec="seconds"), "t_s": 600.0}]})
+    recs = [StepRecord(index=i, speed_kmh=10.0 + i, incline_pct=1.0, duration_s=240.0, hr_end=140 + 8 * i)
+            for i in range(3)]
+    ctx.store.db.save_test(s, recs, [TimeSample(t_s=float(i), hr=150, speed_kmh=10.0) for i in range(900)])
+
+    (cut,) = recovery.collect_interrupted(ctx.store)
+    assert abs((cut.ended - (now - timedelta(minutes=1))).total_seconds()) < 5
+    assert abs((ctx.store.db.get_session(s.id).ended - (now - timedelta(minutes=1))).total_seconds()) < 5
+    info = recovery.resume_info(ctx.store, cut, now)
+    assert info is not None and info.from_index == 3 and info.t_offset_s == 900.0
+    ctx.shutdown()

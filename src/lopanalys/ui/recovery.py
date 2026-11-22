@@ -61,6 +61,18 @@ def video_readable(path: str | None) -> bool | None:
         return False
 
 
+def _cut_at(s: Session, last_t_s: float) -> datetime:
+    """When the test was cut: its start plus the time of its last sample. A test that was continued
+    counts from the latest continue instead, because the samples' time leaves the break out."""
+    assert s.started is not None
+    resumed = (s.result or {}).get("resumed") or []
+    try:
+        at = datetime.fromisoformat(str(resumed[-1]["at"]))
+        return at + timedelta(seconds=max(0.0, last_t_s - float(resumed[-1]["t_s"])))
+    except (IndexError, KeyError, TypeError, ValueError):
+        return s.started + timedelta(seconds=last_t_s)
+
+
 def collect_interrupted(store: Any) -> list[Session]:
     """Mark every session still "running" as interrupted and return them, newest first."""
     db = store.db
@@ -68,7 +80,7 @@ def collect_interrupted(store: Any) -> list[Session]:
     for s in db.running_sessions():
         assert s.id is not None
         smp = db.time_samples(s.id)
-        ended = s.started + timedelta(seconds=smp[-1].t_s) if smp and s.started else None
+        ended = _cut_at(s, smp[-1].t_s) if smp and s.started else None
         db.mark_interrupted(s.id, ended)
         s.status, s.ended = "interrupted", s.ended or ended
         res = dict(s.result or {})
