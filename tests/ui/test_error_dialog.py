@@ -20,6 +20,9 @@ def _open_boxes() -> list[QMessageBox]:
 
 def test_a_repeating_error_shows_one_dialog(qapp, qtbot, tmp_path):
     old, old_thread = sys.excepthook, threading.excepthook
+    for b in _open_boxes():       # a box an earlier test in the same run left open is not this test's
+        b.close()
+    qapp.processEvents()
     try:
         app_mod.install_exception_hook(str(tmp_path / "log.txt"))
         hook = sys.excepthook
