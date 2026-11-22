@@ -45,3 +45,34 @@ def test_removed_lactate_values_take_the_saved_thresholds_with_them(qtbot, tmp_p
     h.select_athlete(a.id)
     assert "LT2" not in h.table.item(0, 3).text()
     ctx.shutdown()
+
+
+def test_a_finished_max_test_does_not_write_old_athlete_fields_back(qtbot, tmp_path):
+    """Before 2026-11-22 the results page saved the athlete as the wizard had read it before the test:
+    what the coach typed in Idrottare while the test ran (height, weight, notes) was written over
+    when the max test saved its new max HR."""
+    import dataclasses
+    from datetime import date
+
+    from lopanalys.core.models import TimeSample
+    from lopanalys.ui.context import TestOutcome
+    from lopanalys.ui.context import TestPlan as Plan
+    ctx = AppContext(store=services.open_store(tmp_path / "db.sqlite"))
+    a = ctx.store.save_athlete(Athlete(None, "Olle", "Löpare", max_hr=180))
+    before = dataclasses.replace(a)                          # what the wizard handed the test
+    p = library.max_hr_ramp(12.0, warmup_s=0, start_incline_pct=1.0)
+    recs = [StepRecord(i, 12.0, 1.0 + i, 60, hr_end=150 + 4 * i) for i in range(12)]
+    smp = [TimeSample(float(k), int(round(120 + 76 * k / 720)), 12.0) for k in range(721)]
+    s = Session(None, a.id, TestKind.MAX_HR, T0, T0 + timedelta(seconds=790), protocol_name=p.name,
+                protocol=p.to_dict(), result={"plan_kind": "max_hr", "exhaustion_t_s": 720.0})
+    ctx.store.db.save_test(s, recs, smp)
+    a.height_cm, a.weight_kg, a.notes, a.birth_date = 181, 74.0, "Ont i vaden", date(1990, 5, 17)
+    ctx.store.save_athlete(a)                                # typed in Idrottare while the test ran
+    v = ResultsView(ctx)
+    qtbot.addWidget(v)
+    v.load_outcome(TestOutcome(Plan(before, "max_hr", p), s, recs, smp))
+    saved = ctx.store.athlete(a.id)
+    assert saved.max_hr == 196                                # the test's max HR
+    assert (saved.height_cm, saved.weight_kg, saved.notes, saved.birth_date) == (181, 74.0, "Ont i vaden",
+                                                                                 date(1990, 5, 17))
+    ctx.shutdown()

@@ -380,7 +380,15 @@ class ResultsView(QWidget):
     # ================================================================== loading
     def load_outcome(self, o: TestOutcome) -> None:
         self.flush()
-        self._load(o.plan.athlete, o.session, o.records + list(getattr(o, "warmup_records", [])), o.samples, None,
+        a = o.plan.athlete
+        if a is not None and a.id is not None:
+            # as saved now: what was typed in Idrottare while the test ran is not written over when
+            # the test saves its max HR on the athlete
+            try:
+                a = self.ctx.store.athlete(a.id) or a
+            except Exception:
+                log.exception("reading the athlete failed")
+        self._load(a, o.session, o.records + list(getattr(o, "warmup_records", [])), o.samples, None,
                    o.gait_summaries)
         if o.session.id is not None:
             self.save()            # the computed results (thresholds, zones, VO2max) belong to the test
