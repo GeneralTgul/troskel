@@ -71,3 +71,24 @@ it("opens the app from the cache at once, without waiting for a network that nev
   expect(await open("https://x.test/troskel/app/privacy.html")).toBe(privacy);
   expect(asked).toEqual([]);
 });
+
+it("is registered in the browser, and taken away with its caches in an app store build (#844)", async () => {
+  const { setupOffline } = await import("../src/model/offline");
+  const seen: string[] = [];
+  const workers = {
+    register: async (url: string) => { seen.push(`register ${url}`); },
+    getRegistrations: async () => [{ unregister: async () => { seen.push("unregister"); return true; } }],
+  };
+  const caches = {
+    keys: async () => ["troskel-0.1.0-abc", "other"],
+    delete: async (name: string) => { seen.push(`delete ${name}`); return true; },
+  };
+  expect(await setupOffline({ native: false, prod: true, base: "/troskel/app/", workers, caches })).toBe("registered");
+  expect(seen).toEqual(["register /troskel/app/sw.js"]);
+  // An updated app must open as the new version: the cache of the version before must not answer.
+  seen.length = 0;
+  expect(await setupOffline({ native: true, prod: true, base: "./", workers, caches })).toBe("removed");
+  expect(seen).toEqual(["unregister", "delete troskel-0.1.0-abc"]);
+  expect(await setupOffline({ native: false, prod: false, base: "/", workers, caches })).toBe("none"); // the dev server
+  expect(await setupOffline({ native: true, prod: true, base: "./" })).toBe("none");                   // iOS: no workers
+});

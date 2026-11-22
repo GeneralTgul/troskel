@@ -1,8 +1,10 @@
+import { Capacitor } from "@capacitor/core";
 import { render } from "preact";
 import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
 import { storageState } from "./model/backup";
 import { healthConnectPlugin } from "./model/healthconnect";
+import { setupOffline } from "./model/offline";
 import { saveFile } from "./model/save";
 import { openStore } from "./model/storage";
 import "./styles.css";
@@ -30,6 +32,9 @@ Promise.all([openStore(), healthConnectPlugin().catch(() => null)]).then(([store
   document.getElementById("app")!,
 ));
 
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  addEventListener("load", () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {}));
-}
+// The web app keeps its files with a service worker; the app store builds have none (model/offline.ts).
+addEventListener("load", () => void setupOffline({
+  native: Capacitor.isNativePlatform(), prod: import.meta.env.PROD, base: import.meta.env.BASE_URL,
+  workers: "serviceWorker" in navigator ? navigator.serviceWorker : undefined,
+  caches: "caches" in globalThis ? caches : undefined,
+}));
