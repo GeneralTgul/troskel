@@ -259,7 +259,8 @@ class OperatorView(QWidget):
 
     def show_tv(self) -> None:
         if self.tv is None:
-            self.tv = LiveWindow(self.ctl, int(self.ctx.setting("tv.screen") or -1))
+            scr = self.ctx.setting("tv.screen")       # 0 is the first screen, not "choose by itself"
+            self.tv = LiveWindow(self.ctl, -1 if scr in (None, "") else int(scr))
             if self.ctl.state:
                 self.tv.board.on_state(self.ctl.state)
         self.tv.show_on_screen()

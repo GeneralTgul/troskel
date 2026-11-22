@@ -165,7 +165,8 @@ class SettingsView(QWidget):
         for i, s in enumerate(QGuiApplication.screens()):
             g2 = s.geometry()
             self.screen.addItem(t("ui.set.screen_n", n=i + 1, name=s.name(), w=g2.width(), h=g2.height()), i)
-        self.screen.setCurrentIndex(max(0, self.screen.findData(int(ctx.setting("tv.screen") or -1))))
+        scr = ctx.setting("tv.screen")                # 0 is the first screen, not "choose by itself"
+        self.screen.setCurrentIndex(max(0, self.screen.findData(-1 if scr in (None, "") else int(scr))))
         self.screen.currentIndexChanged.connect(lambda _: ctx.set_setting("tv.screen", self.screen.currentData()))
         lt.body.addWidget(field(t("ui.set.tv_screen"), self.screen, t("ui.set.tv_hint")))
         self.sound = QCheckBox(t("ui.set.sound"))
