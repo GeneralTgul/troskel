@@ -173,3 +173,41 @@ def test_cli_gopro_download_and_analyze(tmp_path, capsys, monkeypatch):
     assert seen["height"] == 178 and seen["view"] == "side_left" and seen["speed"] == 12
     assert "ground_contact_ms" in out and "(uncertain)" in out
     assert "cadence_spm" in out and "! " in out
+
+
+def test_a_failed_open_does_not_leave_the_source_opening():
+    """Before 2026-11-23 the state stayed OPENING after a failed open, so frames() waited for ever."""
+    states = []
+    src = OpenCvSource(SourceInfo(SourceKind.SYSTEM, "v4l2:/dev/video99", "Kamera 99"),
+                       on_status=lambda s: states.append(s.state))
+    with pytest.raises(CameraError):
+        src.open()
+    assert src.state == SourceState.CLOSED and states == [SourceState.OPENING, SourceState.CLOSED]
+    done = []
+    th = threading.Thread(target=lambda: done.append(list(src.frames())), daemon=True)
+    th.start()
+    th.join(3)
+    assert done == [[]]
+
+
+def test_a_driver_that_throws_while_the_mode_is_chosen_releases_the_camera(monkeypatch):
+    class ThrowingCap:
+        released = 0
+
+        def __init__(self, *a):
+            caps.append(self)
+
+        def isOpened(self):
+            return True
+
+        def set(self, *a):
+            raise cv2.error("Unknown C++ exception")
+
+        def release(self):
+            self.released += 1
+    caps: list[ThrowingCap] = []
+    monkeypatch.setattr(cv2, "VideoCapture", ThrowingCap)
+    src = OpenCvSource(SourceInfo(SourceKind.SYSTEM, "0", "Kamera 0"))
+    with pytest.raises(CameraError, match="Stäng andra program"):
+        src.open()
+    assert len(caps) == 1 and caps[0].released == 1

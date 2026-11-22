@@ -180,7 +180,13 @@ class OpenCvSource:
             return
         self._stop.clear()
         self._set_state(SourceState.OPENING, t("camera.status.opening", label=self.info.label))
-        self._cap = self._open_capture()
+        try:
+            self._cap = self._open_capture()
+        except Exception:
+            # not left as "opening": frames() on a source that never opened ends instead of waiting
+            self._stop.set()
+            self._set_state(SourceState.CLOSED, t("camera.status.closed", label=self.info.label))
+            raise
         self._set_state(SourceState.RUNNING, t("camera.status.running", label=self.info.label))
         self._thread = threading.Thread(target=self._reader, name=f"cam-{safe_url(self.info.id)}", daemon=True)
         self._thread.start()
@@ -269,7 +275,11 @@ class OpenCvSource:
             cap = cv2.VideoCapture(target, cv2.CAP_ANY)
             if not cap.isOpened():
                 return cap
-        best = choose_mode(cap, self.modes)
+        try:
+            best = choose_mode(cap, self.modes)
+        except cv2.error:
+            cap.release()        # a driver that throws must not keep the camera held
+            raise
         self.mode = best
         return cap
 
