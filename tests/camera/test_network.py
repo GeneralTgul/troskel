@@ -251,3 +251,61 @@ def test_stream_stats_numbers():
         st.tick(100.0 + i * 0.04, 1000)
     s = st.snapshot()
     assert abs(s["fps"] - 25.0) < 0.1 and abs(s["interval_ms"] - 40) < 0.5 and s["frames"] == 50
+
+
+def test_an_address_that_answers_something_else_than_http_is_a_plain_no():
+    """A typed "host:554" is also tried as http://; an RTSP server answers that with an RTSP status
+    line, which came out as http.client.BadStatusLine from the probe that never raises and from open()."""
+    with FakeRtspPort(400) as rtsp:
+        url = f"http://127.0.0.1:{rtsp.port}/"
+        r = probe_url(url)
+        assert not r.ok and not r.needs_login
+        with pytest.raises(CameraError):
+            MjpegSource(stream_info(url), open_timeout_s=2).open()
+
+
+def test_a_chunked_stream_cut_off_mid_way_is_connected_again():
+    """A server that sends the stream with chunked transfer encoding and goes away: the read raised
+    http.client.IncompleteRead, the reader thread died and the picture stood still for good."""
+    import socket
+
+    import cv2
+    import numpy as np
+    jpg = cv2.imencode(".jpg", np.full((48, 64, 3), 90, np.uint8))[1].tobytes()
+    part = b"--f\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n" % len(jpg) + jpg + b"\r\n"
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(4)
+    srv.settimeout(0.2)
+    stop, connects = threading.Event(), []
+
+    def serve() -> None:
+        while not stop.is_set():
+            try:
+                c, _ = srv.accept()
+            except OSError:
+                continue
+            with c:
+                connects.append(1)
+                c.recv(2048)
+                c.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: multipart/x-mixed-replace; boundary=f\r\n"
+                          b"Transfer-Encoding: chunked\r\n\r\n")
+                for _ in range(3):
+                    c.sendall(b"%x\r\n" % len(part) + part + b"\r\n")
+                    time.sleep(0.02)
+            # closed without the last chunk: the stream is cut off
+
+    th = threading.Thread(target=serve, daemon=True)
+    th.start()
+    src = MjpegSource(stream_info(f"http://127.0.0.1:{srv.getsockname()[1]}/video"), stall_s=1.0)
+    try:
+        src.open()
+        end = time.perf_counter() + 6
+        while len(connects) < 2 and time.perf_counter() < end:
+            time.sleep(0.05)
+        assert len(connects) >= 2 and src._thread is not None and src._thread.is_alive()
+    finally:
+        src.close()
+        stop.set()
+        th.join(2)
+        srv.close()

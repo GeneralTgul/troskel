@@ -196,3 +196,16 @@ def test_status_unknown_when_missing():
     with FakeGoPro(api="legacy") as c:
         gp = gp_for(c)
         assert gp.webcam_status() == WebcamStatus.OFF
+
+
+def test_an_answer_that_is_not_http_counts_as_no_answer():
+    """Something else than a GoPro on the address (or a camera that breaks the answer off) gave
+    http.client.BadStatusLine instead of GoProError, past every ``_try``."""
+    from lopanalys.camera.network_sim import FakeRtspPort
+    with FakeRtspPort(400) as other:
+        gp = GoProUsb("127.0.0.1", port=other.port, timeout_s=2)
+        assert gp._try("/gopro/version", 8080) is None
+        with pytest.raises(GoProError) as e:
+            gp.identify()
+        assert e.value.code == "unreachable"
+        assert GoProUsb.find(timeout_s=2, candidates=[f"127.0.0.1:{other.port}"]) == []

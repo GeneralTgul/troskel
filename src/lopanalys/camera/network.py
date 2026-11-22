@@ -22,6 +22,7 @@ rows for the real test.
 from __future__ import annotations
 
 import base64
+import http.client
 import logging
 import re
 import socket
@@ -428,7 +429,7 @@ class MjpegSource:
             log.info("stream %s: HTTP %s", self._what, e.code)
             key = "camera.error.stream_auth" if e.code in (401, 403) else "camera.error.rtsp_open"
             raise CameraError(t(key, url=self._what)) from e
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError, http.client.HTTPException) as e:   # the last: an answer that is not HTTP
             log.info("stream %s: %s", self._what, e)
             raise CameraError(t("camera.error.rtsp_open", url=self._what)) from e
         ctype = resp.headers.get("Content-Type", "") if getattr(resp, "headers", None) is not None else ""
@@ -474,8 +475,8 @@ class MjpegSource:
             try:
                 if resp is not None:
                     chunk = resp.read1(65536) if hasattr(resp, "read1") else resp.read(65536)
-            except (OSError, ValueError, AttributeError):
-                chunk = b""
+            except (OSError, ValueError, AttributeError, http.client.HTTPException):
+                chunk = b""        # also a chunked stream cut off mid-way (IncompleteRead): reconnect
             now = time.perf_counter()
             if chunk and self._parser is not None:
                 pictures = self._parser.feed(chunk)
@@ -602,7 +603,7 @@ def probe_url(url: str, timeout_s: float = 1.5) -> ProbeResult:
             resp = urllib.request.urlopen(_request(url), timeout=timeout_s)
         except urllib.error.HTTPError as e:
             return done(e.code in (401, 403), "mjpeg", e.code in (401, 403), f"HTTP {e.code}")
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError, http.client.HTTPException) as e:
             return done(False, detail=str(e))
         try:
             ctype = resp.headers.get("Content-Type", "")

@@ -31,6 +31,7 @@ treats them as optional and never fails only because one of them is missing.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import re
@@ -313,7 +314,8 @@ class GoProUsb:
                 body = r.read()
         except urllib.error.HTTPError as e:
             raise GoProError(t("camera.gopro.err.refused", path=path.split("?")[0], code=e.code), f"http_{e.code}") from e
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
+            # HTTPException: an answer that is not HTTP, or one broken off mid-way
             raise GoProError(t("camera.gopro.err.unreachable", host=self.host), "unreachable") from e
         if not body.strip():
             return {}
@@ -555,7 +557,7 @@ class GoProUsb:
         except GoProError:
             part.unlink(missing_ok=True)
             raise
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
             part.unlink(missing_ok=True)
             raise GoProError(t("camera.gopro.err.download", name=media.name), "download") from e
 
