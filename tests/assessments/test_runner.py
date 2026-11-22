@@ -238,9 +238,98 @@ def test_gait_summary_from_bus_is_stored_per_stage():
     p = library.gait_check([10.0], stage_s=60)
     r, clock, tm, *_ = make(p)
     r.start()
-    r.bus.publish(TOPIC_GAIT_SUMMARY, {"cadence_spm": 172.0})
-    run_until(r, clock, lambda: r.done)
+    while not r.records:                                   # the camera sends a summary every second
+        r.bus.publish(TOPIC_GAIT_SUMMARY, {"cadence_spm": 172.0})
+        run(r, clock, 1.0)
     assert r.records[0].gait == {"cadence_spm": 172.0}
+
+
+def test_a_stage_after_the_camera_stopped_gets_no_gait_values():
+    # The runner kept the last summary for ever: every later stage was saved with the cadence of the
+    # moment the camera stopped, and the samples carried it as the camera's cadence.
+    from lopanalys.core.bus import TOPIC_GAIT_SUMMARY
+    p = library.gait_check([10.0, 14.0], stage_s=60, warmup_s=0)
+    r, clock, tm, *_ = make(p)
+    r.start()
+    while not r.records:
+        r.bus.publish(TOPIC_GAIT_SUMMARY, {"cadence_spm": 172.0})
+        run(r, clock, 1.0)
+    run_until(r, clock, lambda: len(r.records) == 2)        # the camera is silent through the second stage
+    assert r.records[0].gait == {"cadence_spm": 172.0} and r.records[1].gait == {}
+
+
+def test_a_strap_that_went_silent_gives_no_heart_rate():
+    # ``last`` of a strap is never cleared. After a dropout its last heart rate was saved in every
+    # sample and as every stage's heart rate for the rest of the test, and shown on the TV.
+    from lopanalys.core.bus import TOPIC_HEART_RATE
+    from lopanalys.devices.base import HeartRateSample
+
+    class Strap:
+        last = None
+
+    clock, bus, strap = FakeClock(), Bus(), Strap()
+    r = TestRunner(library.lactate_step(10.0, 1.0, 2, stage_s=240, pause_s=0, warmup_s=0), FakeTreadmill(), strap,
+                   bus, clock=clock, threaded=False)
+    r.start()
+    for _ in range(100):
+        strap.last = HeartRateSample(t=clock.now(), bpm=150)
+        bus.publish(TOPIC_HEART_RATE, strap.last)
+        run(r, clock, 1.0)
+    run_until(r, clock, lambda: r.done)
+    assert {x.hr for x in r.samples if x.t_s < 95} == {150}
+    assert {x.hr for x in r.samples if x.t_s > 110} == {None}
+    assert [x.hr_end for x in r.records] == [None, None] and r.state.hr_bpm is None
+
+
+def test_stages_set_by_hand_after_the_link_was_lost_keep_their_own_speed():
+    # The treadmill's ``state`` keeps the last reading when Bluetooth is lost. The runner went over to
+    # manual prompts but still read that frozen speed as measured: 11 and 12 km/h were saved as 10.
+    p = library.lactate_step(10.0, 1.0, 3, stage_s=240, pause_s=0, warmup_s=0)
+    r, clock, tm, states, cues = make(p)
+    r.start()
+    run_until(r, clock, lambda: r.phase == Phase.RUNNING)
+    run(r, clock, 120)
+    tm.fail_on_set = True
+    while not r.done:
+        run(r, clock, 1.0)
+        if r.phase == Phase.AWAIT_OPERATOR:
+            r.operator_ready()
+    assert [x.speed_kmh for x in r.records] == [10.0, 11.0, 12.0] and not r.belt_stats
+    assert {x.speed_kmh for x in r.samples if x.t_s > 520} == {12.0}
+
+
+def test_a_pause_in_a_stage_is_not_the_stages_speed_and_not_a_change_by_hand():
+    # A belt needs some 20 s from standstill to 10 km/h. The stop, the standstill and the way back up
+    # counted as the stage's readings: the stage was saved at 9.8 km/h, marked "set by hand", and
+    # the lactate point landed at the wrong speed.
+    from lopanalys.core.bus import TOPIC_LOG
+    from lopanalys.devices import sim
+
+    class Adapter:
+        def __init__(self, mc): self.mc = mc
+        def now(self): return self.mc()
+        def sleep(self, dt): self.mc.advance(dt)
+
+    bus, logs = Bus(), []
+    bus.subscribe(TOPIC_LOG, logs.append)
+    mc = sim.ManualClock(0.0)
+    tm = sim.SimTreadmill(bus, clock=mc, autorun=False, seed=1)
+    hr = sim.SimHeartRate(bus, treadmill=tm, clock=mc, autorun=False, seed=1)
+    tm.connect(), hr.connect()
+    r = TestRunner(library.lactate_step(10.0, 1.0, 2, stage_s=240, pause_s=0, warmup_s=0), tm, hr, bus,
+                   clock=Adapter(mc), threaded=False)
+
+    def step(seconds):
+        for _ in range(int(seconds / 0.25)):
+            mc.advance(0.25), tm.tick(), hr.tick(), r.tick()
+
+    r.start()
+    step(10 + 120)
+    r.pause(), step(30), r.resume()
+    while len(r.records) < 2:
+        step(1)
+    assert [x.speed_kmh for x in r.records] == [10.0, 11.0]
+    assert not r.belt_stats and not logs
 
 
 def test_threaded_with_real_clock():

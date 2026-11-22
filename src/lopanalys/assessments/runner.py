@@ -84,11 +84,13 @@ LOW_CADENCE_WARN_S = 10.0    # bike in ERG: this long below the trainer's cadenc
 BELT_SPEED_TOL_KMH = 0.25    # a reading this close to the target is the target (belts report 9,9 for 10,0)
 BELT_INCLINE_TOL_PCT = 0.4
 BELT_SETTLE_S = 8.0          # the belt needs some seconds to reach a new target: not a hand change, not in the mean
+BELT_SETTLE_MAX_S = 45.0     # ... and longer from standstill (after a pause): until it is at the target, at most this
 HAND_CHANGE_S = 5.0          # off the target this long while the stage runs: changed by hand
 BELT_END_S = 20.0            # the stage's end value: the median of its last 20 s
 
 HR_WINDOW_S = 30.0       # stage HR = mean of the last 30 s
 HR_STALE_S = 5.0         # a bus HR reading older than this is ignored
+GAIT_STALE_S = 10.0      # a gait summary older than this is not the current stage's (the camera stopped)
 LACTATE_MIN, LACTATE_MAX = 0.0, 30.0
 PARTIAL_GAIT_MIN_S = 20.0  # a gait stage stopped after this long is kept as a partial record
 RPE_MIN, RPE_MAX = 6, 20
@@ -234,6 +236,13 @@ class TestRunner:
         self._warmup: list[StepRecord] = []
         self._samples: list[TimeSample] = []
         self._hr_bus: tuple[int, float] | None = None
+        self._hr_last: tuple[Any, float] | None = None     # the strap's ``last`` sample and when it was first seen
+        self._gait_t: float | None = None                  # when the gait summary came
+        self._link_lost = False           # the belt's link failed: its readings are no longer what the belt does
+        self._excluded: list[tuple[float, float]] = []     # test times of this stage that are not the stage: a pause
+        self._pause_t: float | None = None
+        self._settling: float | None = None   # since this test time the belt is on its way to the target
+        self._settle_t0 = 0.0                 # ... and when it was started towards it
         self._cad_bus: tuple[float, float] | None = None   # strap cadence (RSC), steps/min and time
         self._tm_bus: Any = None
         self._gait: Any = None
@@ -339,6 +348,8 @@ class TestRunner:
                                                    Phase.AWAIT_OPERATOR):
                 return
             self._paused = True
+            if self._phase == Phase.RUNNING:
+                self._pause_t = self._now_s()
             self._belt_stop()
             self._prompt = t("assessments.prompt.paused")
             self._publish(force=True)
@@ -766,6 +777,7 @@ class TestRunner:
         if fresh:
             self._stage_start_t = self._now_s() - carry
             self._announced = False
+            self._excluded, self._pause_t, self._settling = [], None, None
         was_controllable = self._controllable
         self._set_belt(s.speed_kmh, s.incline_pct, force_start=True, free=s.free)
         if was_controllable and not self._controllable:
@@ -774,6 +786,11 @@ class TestRunner:
             self._cue("operator", self._stage_text(s.speed_kmh, s.incline_pct))
             return
         self._phase = Phase.RUNNING
+        # The belt's way up to the target is not the stage's load, and not a change made by hand on
+        # the panel; after a pause neither are the stop and the standstill (see _track_settling).
+        self._settling = self._pause_t if self._pause_t is not None else self._now_s()
+        self._settle_t0 = self._now_s()
+        self._pause_t = None
         self._stage_elapsed += carry
         self._ticked.clear()
         self._low_cadence_since = None
@@ -808,8 +825,8 @@ class TestRunner:
             hr_end=round(sum(hrs_end) / len(hrs_end)) if hrs_end else None,
             hr_mean=round(sum(hrs_all) / len(hrs_all)) if hrs_all else None,
         )
-        if s.record_gait and self._gait is not None:
-            g = self._gait
+        g = self._fresh_gait()
+        if s.record_gait and g is not None:
             rec.gait = g.to_dict() if hasattr(g, "to_dict") else (dict(g) if isinstance(g, dict) else {})
         for k, v in self._early_values.pop(self._idx, {}).items():
             setattr(rec, k, v)
@@ -821,7 +838,8 @@ class TestRunner:
 
     def _readings_real(self) -> bool:
         """The samples' speed is what the belt reports (FTMS, QZ), not the target of a manual belt."""
-        return bool(self.treadmill is not None and getattr(self.treadmill, "controllable", False))
+        return bool(self.treadmill is not None and getattr(self.treadmill, "controllable", False)
+                    and not self._link_lost)
 
     def _belt_load(self, s: Stage, start_t: float, end_t: float) -> tuple[float, float]:
         """The stage's speed and incline as the belt reported them: the target while the belt kept
@@ -832,11 +850,16 @@ class TestRunner:
         hand = self._hand
         self._hand, self._off_since = None, None
         self._hand_before = hand
+        excluded = list(self._excluded)
+        for since in (self._pause_t, self._settling):   # ended while paused, or before the belt was up again
+            if since is not None:
+                excluded.append((since, end_t))
         if not self._readings_real():
             return s.speed_kmh, s.incline_pct
         settle = min(BELT_SETTLE_S, (end_t - start_t) / 4)
         win = [x for x in self._samples if start_t + settle <= x.t_s <= end_t
-               and x.speed_kmh is not None and x.speed_kmh >= PANEL_MOVING_KMH]
+               and x.speed_kmh is not None and x.speed_kmh >= PANEL_MOVING_KMH
+               and not any(a <= x.t_s <= b for a, b in excluded)]
         if not win:
             return s.speed_kmh, s.incline_pct
         v = sum(x.speed_kmh for x in win) / len(win)
@@ -911,6 +934,7 @@ class TestRunner:
         """A belt the program drives that is off its target for HAND_CHANGE_S while a stage runs was
         changed on the panel. Said once per stage (log and the log topic)."""
         if (not self._run or not self._controllable or self._phase != Phase.RUNNING or speed is None
+                or self._paused or self._settling is not None
                 or self._prev_set is None or self._stage_elapsed < BELT_SETTLE_S or speed < PANEL_MOVING_KMH):
             self._off_since = None
             return
@@ -929,6 +953,18 @@ class TestRunner:
             log.info("stage %d: the belt was set by hand to %.1f km/h, %s %% (planned %.1f km/h, %s %%)",
                      self._idx, speed, fmt_pct(self._hand[1]).replace(",", "."), tv, fmt_pct(ti).replace(",", "."))
             self.bus.publish(TOPIC_LOG, text)
+
+    def _track_settling(self, el: float, speed: float | None) -> None:
+        """The belt is on its way to the stage's target (from standstill after a pause it takes a real
+        belt far longer than BELT_SETTLE_S). That time is left out of the stage's mean: it ends when
+        the reading is at the target, or after BELT_SETTLE_MAX_S (then the belt was set by hand)."""
+        if self._settling is None or self._paused or self._phase != Phase.RUNNING:
+            return
+        target = self._prev_set[0] if self._prev_set else None
+        there = speed is not None and target is not None and abs(speed - target) <= BELT_SPEED_TOL_KMH
+        if there or el - self._settle_t0 >= BELT_SETTLE_MAX_S or not self._readings_real():
+            self._excluded.append((self._settling, el if there else min(el, self._settle_t0 + BELT_SETTLE_MAX_S)))
+            self._settling = None
 
     def _stage_stats(self, s: Stage, start_t: float, end_t: float) -> float:
         """Note what the ergometer measured in the stage, and return the stage's load: the target
@@ -1214,6 +1250,7 @@ class TestRunner:
 
     def _fallback_manual(self, err: Exception) -> None:
         self._controllable = False
+        self._link_lost = True              # ``state`` keeps the last reading: it is not what the belt does now
         self._belt_running = False
         msg = t("assessments.error.treadmill" if self._run else "assessments.error.ergometer", err=str(err))
         self.bus.publish(TOPIC_LOG, msg)
@@ -1235,7 +1272,7 @@ class TestRunner:
         self._tm_bus = s
 
     def _on_gait(self, g: Any) -> None:
-        self._gait = g
+        self._gait, self._gait_t = g, self.clock.now()
 
     def _current_cadence(self) -> tuple[float | None, str | None]:
         """The strap's cadence (RSC) while it is fresh, else the camera's."""
@@ -1245,7 +1282,8 @@ class TestRunner:
             st = self._erg_state()
             cad = getattr(st, "cadence", None) if st is not None else None
             return (float(cad), "ergometer") if cad else (None, None)
-        cad = getattr(self._gait, "cadence_spm", None) if self._gait is not None else None
+        gait = self._fresh_gait()
+        cad = getattr(gait, "cadence_spm", None) if gait is not None else None
         return cad, ("camera" if cad is not None else None)
 
     def _erg_state(self) -> Any:
@@ -1261,8 +1299,27 @@ class TestRunner:
         if self._hr_bus and self.clock.now() - self._hr_bus[1] <= HR_STALE_S:
             return self._hr_bus[0]
         last = getattr(self.heart_rate, "last", None) if self.heart_rate is not None else None
+        if last is None:
+            return None
+        # ``last`` is never cleared by the strap: the same sample still there after HR_STALE_S (of
+        # real time) means the strap went silent, and its last heart rate is not the heart rate now.
+        now = self.clock.now()
+        if self._hr_last is None or self._hr_last[0] is not last:
+            self._hr_last = (last, now)
+        elif now - self._hr_last[1] > HR_STALE_S * self._real_scale():
+            return None
         bpm = getattr(last, "bpm", None)
         return int(bpm) if bpm and 25 <= bpm <= 250 else None
+
+    def _real_scale(self) -> float:
+        """Test seconds per real second (demo mode runs the clock faster; the devices do not)."""
+        return float(getattr(self.clock, "scale", 1.0) or 1.0)
+
+    def _fresh_gait(self) -> Any:
+        """The latest gait summary while the camera still sends them, else None."""
+        if self._gait is None or self._gait_t is None:
+            return None
+        return self._gait if self.clock.now() - self._gait_t <= GAIT_STALE_S * self._real_scale() else None
 
     def _current_belt(self) -> tuple[float | None, float | None]:
         st = None
@@ -1272,6 +1329,8 @@ class TestRunner:
             except Exception:
                 st = None
         st = st or self._tm_bus
+        if self._link_lost:
+            st = None                       # the operator sets the belt now: the target is what is known
         if st is not None and getattr(st, "speed_kmh", None) is not None and (self._controllable or getattr(st, "measured", True)):
             return st.speed_kmh, st.incline_pct
         if self._measured_only:             # a PM5 that has not said anything yet: no reading, not the target
@@ -1295,6 +1354,7 @@ class TestRunner:
             df = getattr(st, "drag_factor", None) if st is not None else None
             if isinstance(df, (int, float)) and df > 0:
                 self._drag.append((el, int(df)))
+        self._track_settling(el, speed)
         self._watch_hand(el, speed, inc)
         while self._next_sample <= el + 1e-9:
             self._samples.append(TimeSample(t_s=round(self._next_sample, 3), hr=hr, speed_kmh=speed,
