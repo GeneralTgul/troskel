@@ -109,3 +109,28 @@ def test_no_runner_status():
     r = la.latest()
     la.stop()
     assert r is not None and r.pose is None and r.status == "Ingen löpare i bild"
+
+
+def test_a_step_is_published_once_though_the_window_is_analysed_again():
+    """Every publish analyses the whole window again, and the same landing then comes out a few
+    milliseconds later or earlier. "Later than the last one by 1 ms" published such a step twice
+    (7 to 15 extra steps in 110 at 25-60 fps)."""
+    p = RunnerParams(fps=30, duration_s=30, time_jitter=0.3, noise_px=1.5, heel_marker_cm=4)
+    poses, truth = generate(p)
+    bus = Bus()
+    steps = []
+    bus.subscribe(TOPIC_GAIT_STEP, steps.append)
+    la = LiveAnalyzer(FakeSource(0, 30), bus, 178, View.SIDE_LEFT, estimator=ReplayEstimator({}))
+    nxt = 1.0
+    for pose, tt in zip(poses, truth.times):
+        la._poses.append((tt, pose))
+        while la._poses and tt - la._poses[0][0] > la.window_s:
+            la._poses.popleft()
+        if tt >= nxt:
+            nxt += 1.0
+            la._publish()
+    assert len(steps) > 60
+    gaps = np.diff([s.t_contact for s in steps])
+    assert gaps.min() > 0.2                                  # 170 steps a minute: 0.35 s between landings
+    assert all(a.side != b.side for a, b in zip(steps, steps[1:]) if b.t_contact - a.t_contact < 0.5)
+    assert la.steps_published == len(steps)

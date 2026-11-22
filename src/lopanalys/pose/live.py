@@ -40,6 +40,9 @@ from lopanalys.pose.types import GaitSummary, LiveResult, Pose, StepMetrics, Vie
 log = logging.getLogger(__name__)
 
 
+MIN_STEP_GAP_S = 0.12      # a "new" landing closer than this to the last published one is the same landing
+
+
 class _Rate:
     """Events per second, exponentially smoothed."""
 
@@ -315,7 +318,9 @@ class LiveAnalyzer:
             if self.bus is not None:
                 self.bus.publish(self.summary_topic, a.summary)
         end = times[-1]
-        new: list[StepMetrics] = [s for s in a.steps if s.t_contact > self._last_step_t + 1e-3
+        # The window is analysed again each time, and a landing that was published then comes out a
+        # few milliseconds off. Two landings are never closer than this (0.2 s at 300 steps a minute).
+        new: list[StepMetrics] = [s for s in a.steps if s.t_contact > self._last_step_t + MIN_STEP_GAP_S
                                   and s.t_toe_off is not None and s.t_toe_off < end - 0.25]
         for s in sorted(new, key=lambda x: x.t_contact):
             self._last_step_t = s.t_contact
