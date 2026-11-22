@@ -114,3 +114,40 @@ def test_info_log_without_names_or_addresses(caplog):
         assert needed in text, needed
     for secret in ("SW1000", "HRM-Pro", "Kim", "AA", "HH"):
         assert secret not in text, secret
+
+
+def test_a_reconnect_that_hangs_is_given_up_and_tried_again():
+    """Only the first connect had a time limit: a call that never came back in a reconnect left the
+    device in "connecting" for ever (before 2026-11-23)."""
+    import asyncio
+
+    from lopanalys.devices._runtime import SupervisedConnection
+
+    class Conn(SupervisedConnection):
+        opens = 0
+
+        async def _open(self):
+            self.opens += 1
+            self.lost = asyncio.Event()
+            if self.opens == 2:
+                await asyncio.Event().wait()         # the reconnect never comes back
+
+        async def _wait_lost(self):
+            await self.lost.wait()
+
+        async def _close(self):
+            pass
+
+    c = Conn(None, name="x", connect_timeout_s=0.3, backoff_s=(0.01,))
+    try:
+        c._start_session()
+        assert c.connected
+        c._io.call_soon(lambda: c.lost.set())
+        deadline = threading.Event()
+        for _ in range(100):
+            if c.opens >= 3 and c.connected:
+                break
+            deadline.wait(0.05)
+        assert c.opens >= 3 and c.connected and c.status.state == ConnState.CONNECTED
+    finally:
+        c.disconnect()

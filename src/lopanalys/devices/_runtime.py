@@ -202,7 +202,12 @@ class SupervisedConnection:
         while not self._stopping:
             self._publish_status(ConnState.CONNECTING, t("devices.status.connecting", name=self._name))
             try:
-                await self._open()
+                if first.done():
+                    # A reconnect has nobody waiting with a time limit, as the first connect has: a
+                    # Bluetooth call that never comes back is given up, and the next attempt follows.
+                    await asyncio.wait_for(self._open(), self._connect_timeout_s)
+                else:
+                    await self._open()
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001
