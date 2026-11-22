@@ -420,6 +420,9 @@ def analyze_video(path: str | Path, height_cm: float | None, view: View | str,
     fps_hdr = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     stamps = recorded_times(path, total)
+    # a time file that is there but could not be used: the coach is told, not only the log
+    from lopanalys.camera.file_source import sidecar_path
+    stamps_ignored = stamps is None and sidecar_path(path).is_file()
     if max_seconds and fps_hdr and stamps is None:
         total = min(total or 10**9, int(max_seconds * fps_hdr))
     poses: list[Pose | None] = []
@@ -459,6 +462,8 @@ def analyze_video(path: str | Path, height_cm: float | None, view: View | str,
             est.close()
     core = analyze_core(poses, height_cm, v, speed_kmh, times=times, frames_total=len(poses))
     core.analysis.video_path = str(path)
+    if stamps_ignored:
+        core.analysis.warnings.append(t("pose.warn.sidecar_ignored"))
     if core.kin is None:
         raise AnalysisError(t("pose.error.no_runner"))
     report(0.92, t("pose.progress.keyframes"))

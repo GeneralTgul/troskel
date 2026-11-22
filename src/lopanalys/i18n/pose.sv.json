@@ -140,6 +140,7 @@
  "pose.warn.facing": "Löparen springer åt andra hållet än den valda kameravinkeln. Analysen utgår från det som syns i videon.",
  "pose.warn.scale": "Avstånd i centimeter är uppskattade från längden (ungefär ±{unc} %).",
  "pose.warn.rear_timing": "Bakifrån blir kontakttiden mindre säker än från sidan.",
+ "pose.warn.sidecar_ignored": "Filmens tidsfil stämmer inte med filmen och användes inte. Stegfrekvensen och tiderna bygger på filmens nominella bildfrekvens och kan visa för högt.",
  "pose.error.model_missing": "Pose-modellen saknas och kunde inte laddas ner ({reason}). Anslut datorn till internet en gång, eller lägg filen {name} i mappen {folder}.",
  "pose.error.model_corrupt": "Modellfilen {name} är skadad (kontrollsumman stämmer inte).",
  "pose.error.mediapipe": "Pose-analysen kunde inte starta: {reason}",

@@ -7,6 +7,7 @@ import threading
 import cv2
 import pytest
 
+from lopanalys.core.i18n import t
 from lopanalys.pose.estimator import ReplayEstimator
 from lopanalys.pose.offline import AnalysisError, analyze_poses, analyze_video
 from lopanalys.pose.synthetic import RunnerParams, frames_and_poses, generate
@@ -182,3 +183,21 @@ def test_a_film_that_cannot_be_opened_does_not_leave_the_pose_model_open(tmp_pat
     with pytest.raises(technique.TechniqueError):
         technique.read_poses(bad)
     assert len(made) == 2 and all(m.closed for m in made)
+
+
+def test_an_ignored_time_file_is_a_warning_for_the_coach(tmp_path):
+    """A time file that does not fit the film was dropped with only a line in the log: cadence then
+    builds on the nominal frame rate (too high here), and the coach was not told."""
+    path, poses, p, real_fps = _uneven_clip(tmp_path, with_sidecar=True)
+    side = path.with_name(path.name + ".json")
+    data = json.loads(side.read_text(encoding="utf-8"))
+    data["t"] = data["t"][:-10]                                  # ten stamps short of the film
+    side.write_text(json.dumps(data), encoding="utf-8")
+    a = analyze_video(path, p.height_cm, View.SIDE_LEFT, keyframes_dir=tmp_path / "kf",
+                      estimator=ReplayEstimator(poses), speed_kmh=12)
+    assert a.summary.cadence_spm == pytest.approx(170 * 30 / real_fps, rel=0.05)      # the container's rate
+    assert t("pose.warn.sidecar_ignored") in a.warnings and "tidsfil" in t("pose.warn.sidecar_ignored")
+    side.unlink()                                                # no time file at all: nothing to warn about
+    b = analyze_video(path, p.height_cm, View.SIDE_LEFT, keyframes_dir=tmp_path / "kf2",
+                      estimator=ReplayEstimator(poses), speed_kmh=12)
+    assert not any("tidsfil" in w for w in b.warnings)

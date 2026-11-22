@@ -140,6 +140,7 @@
  "pose.warn.facing": "The runner faces the other way than the chosen camera angle. The analysis follows what the video shows.",
  "pose.warn.scale": "Distances in centimetres are estimated from height (about ±{unc} %).",
  "pose.warn.rear_timing": "From behind, contact time is less exact than from the side.",
+ "pose.warn.sidecar_ignored": "The film's time file does not match the film and was not used. Cadence and times build on the film's nominal frame rate and may read too high.",
  "pose.error.model_missing": "The pose model is missing and could not be downloaded ({reason}). Connect the computer to the internet once, or put the file {name} in the folder {folder}.",
  "pose.error.model_corrupt": "The model file {name} is damaged (checksum mismatch).",
  "pose.error.mediapipe": "Pose analysis could not start: {reason}",
