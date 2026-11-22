@@ -224,3 +224,11 @@ def test_round_trip_through_a_dict():
     b = tq.TechniqueAnalysis.from_dict(a.to_dict())
     assert b.to_dict() == a.to_dict()
     assert tq.is_technique(a.to_dict()) and not tq.is_technique({"summary": {}})
+
+
+def test_a_50_fps_film_measured_a_hair_under_50_is_not_warned_as_too_slow():
+    """The achieved rate comes from the frame times: a 50 fps camera measured 49.95 got the warning
+    "the film has 50 frames/s" (too few) and the whole fit marked uncertain."""
+    poses, times = bs.generate(bs.CyclistParams(fps=49.95, duration_s=12))
+    a = ba.analyze_core(poses, 178, View.SIDE_LEFT, times=times).analysis
+    assert a.quality["level"] == "good" and not any("bilder/s" in w for w in a.warnings)

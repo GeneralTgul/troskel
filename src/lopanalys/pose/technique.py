@@ -277,13 +277,21 @@ def quality(level: str, reasons: list[str]) -> dict[str, Any]:
     return {"level": level, "label": t(f"technique.quality.{level}"), "reasons": reasons}
 
 
+def too_slow(fps: float, min_fps: float) -> bool:
+    """True when the achieved frame rate is under ``min_fps``. The rate is measured from the frame
+    times, so a camera at exactly the limit reads a hair under it: that still meets the limit
+    (``reliability.NOMINAL_SLACK``)."""
+    from lopanalys.pose.reliability import NOMINAL_SLACK
+    return fps * (1.0 + NOMINAL_SLACK) < min_fps
+
+
 def common_warnings(kind: str, raw: PoseSeries, frames: int, found: int, fps: float, min_fps: float) -> list[str]:
     """Warnings every film can get: the athlete not seen, and too few frames per second."""
     out = []
     pct = 100.0 * found / max(1, frames)
     if pct < 80:
         out.append(t("technique.warn.low_detection", pct=num(pct)))
-    if fps < min_fps:
+    if too_slow(fps, min_fps):
         out.append(t(f"technique.{kind}.warn.low_fps", fps=num(fps)))
     return out
 

@@ -217,7 +217,7 @@ def _side(kin: PoseSeries, raw: PoseSeries, v: View, height_cm: float | None,
         if legs < 0.8:
             level = "uncertain"
             warn.append(t("technique.bikefit.warn.leg_hidden", pct=num(100 * legs)))
-    if fps < MIN_FPS and level == "good":
+    if tq.too_slow(fps, MIN_FPS) and level == "good":
         level = "uncertain"
     if tq.body_facing(kin) != facing and level != "poor":
         level = "uncertain"

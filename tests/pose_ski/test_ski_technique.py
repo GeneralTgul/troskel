@@ -151,3 +151,11 @@ def test_noise_gaps_and_uneven_frame_times():
 def test_round_trip_through_a_dict():
     a = run(ss.SkierParams(trunk_lean_end_deg=22.0)).analysis
     assert tq.TechniqueAnalysis.from_dict(a.to_dict()).to_dict() == a.to_dict()
+
+
+def test_a_50_fps_film_measured_a_hair_under_50_is_not_warned_as_too_slow():
+    """The achieved rate comes from the frame times: a 50 fps camera measured 49.95 got the warning
+    "the film has 50 frames/s" (too few) and the whole analysis marked uncertain."""
+    poses, times = ss.generate(ss.SkierParams(fps=49.95, duration_s=25))
+    a = sa.analyze_core(poses, 178, View.SIDE_LEFT, times=times).analysis
+    assert a.quality["level"] == "good" and not any("bilder/s" in w for w in a.warnings)

@@ -229,7 +229,7 @@ def analyze_core(poses: Sequence[Pose | None], height_cm: float | None, view: Vi
         if scale is not None and cyc.travel_px < 0.25 * scale.stature_px:
             level = "uncertain"
             warn.append(t("technique.ski.warn.short_travel"))
-    if fps < MIN_FPS and level == "good":
+    if tq.too_slow(fps, MIN_FPS) and level == "good":
         level = "uncertain"
     warnings = tq.common_warnings(KIND, raw, n, found, fps, MIN_FPS) + warn
     if 100.0 * found / max(1, n) < 60:
