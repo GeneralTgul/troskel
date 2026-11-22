@@ -16,6 +16,7 @@ for the coach (``MailError``), and the log gets the kind of error only.
 """
 from __future__ import annotations
 
+import base64
 import html
 import logging
 import re
@@ -136,6 +137,21 @@ def login_password(host: str, password: str) -> str:
     return "".join(password.split()) if host.strip().lower().endswith("gmail.com") else password
 
 
+def _login(smtp: smtplib.SMTP, user: str, password: str) -> None:
+    """Log in. smtplib sends the login as ASCII only; a user or password with other letters (å, ä, ö)
+    goes as AUTH PLAIN in UTF-8, as RFC 4616 says."""
+    if user.isascii() and password.isascii():
+        smtp.login(user, password)
+        return
+    smtp.ehlo_or_helo_if_needed()
+    if "PLAIN" not in smtp.esmtp_features.get("auth", "").upper().split():
+        raise smtplib.SMTPAuthenticationError(535, b"no AUTH PLAIN for a login outside ASCII")
+    token = base64.b64encode(f"\0{user}\0{password}".encode("utf-8")).decode("ascii")
+    code, resp = smtp.docmd("AUTH", "PLAIN " + token)
+    if code not in (235, 503):
+        raise smtplib.SMTPAuthenticationError(code, resp)
+
+
 def send(cfg: MailConfig, msg: EmailMessage, *, context: ssl.SSLContext | None = None,
          timeout: float = TIMEOUT_S) -> None:
     """Log in and send. Raises MailError with what the coach can do about it."""
@@ -153,7 +169,7 @@ def send(cfg: MailConfig, msg: EmailMessage, *, context: ssl.SSLContext | None =
         with smtp:
             if cfg.security == "starttls":
                 smtp.starttls(context=context)       # raises when the server has no STARTTLS: never plain
-            smtp.login(cfg.user.strip(), login_password(host, cfg.password))
+            _login(smtp, cfg.user.strip(), login_password(host, cfg.password))
             smtp.send_message(msg)
     except smtplib.SMTPAuthenticationError:
         log.warning("mail: the server refused the login")

@@ -129,3 +129,15 @@ def test_what_keeps_the_mail_out_of_the_spam_folder():
     same = mail.MailConfig(user="kim@example.se", password="x", reply_to="kim@example.se")
     assert mail.build_message(same, TO, "x", "y")["Reply-To"] is None          # not the sender again
     assert mail.first_address("Telefon 070-000 00 00") == ""
+
+
+def test_a_password_with_swedish_letters_logs_in(tmp_path):
+    """smtplib encodes the login as ASCII and raised UnicodeEncodeError, which reached the coach as
+    "'ascii' codec can't encode ...". AUTH PLAIN takes UTF-8 (RFC 4616), so the login is sent that way."""
+    with FakeSMTP(tmp_path, password="lösenord-åäö-123") as srv:
+        cfg = _cfg(srv)
+        mail.send(cfg, _message(cfg), context=srv.client_context())
+        assert srv.logins == [(srv.user, "lösenord-åäö-123")] and len(srv.messages) == 1
+        wrong = _cfg(srv, password="fel-lösenord")
+        with pytest.raises(mail.MailError, match="applösenord"):
+            mail.send(wrong, _message(wrong), context=srv.client_context())
