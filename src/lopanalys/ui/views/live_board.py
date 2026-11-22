@@ -381,8 +381,10 @@ class LiveBoard(QWidget):
         if self.video2 is not None:
             ctl.gait2_changed.connect(self.on_gait2)
             self.video2.attach(ctl.latest2)
+        self._lost_timer: QTimer | None = None
+        if plan.camera is not None:
             self._lost_timer = QTimer(self)
-            self._lost_timer.timeout.connect(self._check_camera2)
+            self._lost_timer.timeout.connect(self._check_cameras)
             self._lost_timer.start(1000)
         self._show_idle()
 
@@ -690,6 +692,31 @@ class LiveBoard(QWidget):
                 tile.set_value(num(val, ref.decimals), st, t(f"ui.status.{st}") if st else t("ui.status.none"),
                                tile.reference)
 
+    def _check_cameras(self) -> None:
+        self._check_camera()
+        self._check_camera2()
+
+    def _check_camera(self) -> None:
+        """Says so in the first picture when its camera never started or stopped delivering, instead
+        of "Startar kameran ..." (or a still picture) for the rest of the test."""
+        if self.ctl.plan.camera is None:
+            return
+        a = self.ctl.analyzer
+        err = getattr(a, "error", None)
+        lost = a is None or bool(err) or bool(getattr(a, "source_lost", False))
+        if self.ctl.latest() is None:
+            want = t("ui.video.starting") if not lost else \
+                t("ui.err.camera_start", detail=err) if err else t("ui.video.no_camera")
+            if self.video.placeholder != want:
+                self.video.placeholder = want
+                self.video.update()
+            return
+        base = t(f"ui.view.{self.ctl.plan.view}") if self.two else ""
+        want = t("ui.live.camera2_lost") if a is not None and getattr(a, "source_lost", False) else base
+        if self.video.caption != want:
+            self.video.caption = want
+            self.video.update()
+
     def _check_camera2(self) -> None:
         """Says so in the second picture when its camera is lost; the test goes on with the first."""
         if self.video2 is None:
@@ -705,6 +732,7 @@ class LiveBoard(QWidget):
         self.video.attach(self.ctl.latest)
         if self.video2 is not None:
             self.video2.attach(self.ctl.latest2)
+        if self._lost_timer is not None:
             self._lost_timer.start(1000)
 
     def detach_video(self) -> None:
@@ -712,6 +740,7 @@ class LiveBoard(QWidget):
         self.video.detach()
         if self.video2 is not None:
             self.video2.detach()
+        if self._lost_timer is not None:
             self._lost_timer.stop()
 
     def on_lactate(self, pts: list[tuple[float, float]]) -> None:
