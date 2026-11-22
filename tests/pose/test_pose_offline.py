@@ -152,3 +152,33 @@ def test_bad_sidecar_falls_back_to_the_container(tmp_path):
     assert recorded_times(path) is None                          # not increasing
     side.write_text("trasig", encoding="utf-8")
     assert recorded_times(path) is None
+
+
+def test_a_film_that_cannot_be_opened_does_not_leave_the_pose_model_open(tmp_path, monkeypatch):
+    """The model was loaded before the film was opened, and when the film could not be read (a
+    damaged file) nothing closed it: one MediaPipe instance stayed in memory per attempt."""
+    from lopanalys.pose import estimator as est_mod
+    from lopanalys.pose import technique
+    made = []
+
+    class Model:
+        closed = False
+
+        def process(self, image, t, frame_index):
+            return None
+
+        def close(self):
+            self.closed = True
+
+    def make(*a, **k):
+        made.append(Model())
+        return made[-1]
+
+    monkeypatch.setattr(est_mod, "make_estimator", make)
+    bad = tmp_path / "skadad film åäö.mp4"
+    bad.write_bytes(b"this is not a film")
+    with pytest.raises(AnalysisError):
+        analyze_video(bad, 178, View.SIDE_LEFT)
+    with pytest.raises(technique.TechniqueError):
+        technique.read_poses(bad)
+    assert len(made) == 2 and all(m.closed for m in made)

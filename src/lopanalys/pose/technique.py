@@ -362,6 +362,8 @@ def read_poses(path: str | Path, *, estimator: Any = None, model_variant: str = 
     try:
         cap = _open(path)
     except Exception as e:      # offline.AnalysisError carries a localised message
+        if own:
+            est.close()         # the model is loaded already: a film that cannot be read must not keep it
         raise TechniqueError(str(e)) from e
     fps_hdr = float(cap.get(cv2.CAP_PROP_FPS) or 0.0) or 30.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)

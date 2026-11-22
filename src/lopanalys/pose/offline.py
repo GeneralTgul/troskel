@@ -411,7 +411,12 @@ def analyze_video(path: str | Path, height_cm: float | None, view: View | str,
     est: PoseEstimator = estimator if estimator is not None else make_estimator(  # type: ignore[assignment]
         model_variant, "video", progress_cb=lambda d, tot: report(0.0, t("pose.progress.model")))
     report(0.0, t("pose.progress.analyze", i=0, n="…"))
-    cap = _open(path)
+    try:
+        cap = _open(path)
+    except BaseException:
+        if own:
+            est.close()          # the model is loaded already: a film that cannot be read must not keep it
+        raise
     fps_hdr = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     stamps = recorded_times(path, total)
