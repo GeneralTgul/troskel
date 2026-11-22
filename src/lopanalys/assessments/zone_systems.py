@@ -392,7 +392,8 @@ def curve_zones(result: LactateResult, max_hr: int | None = None, system: str = 
         return speed, hr, la(speed)
 
     if system == "seiler":
-        bounds = [(None, v1), (v1, v2), (v2, top_v)]
+        # LT2 at the last stage: the top zone has no measured upper speed (not "16,2-16,2 km/h").
+        bounds = [(None, v1), (v1, v2), (v2, top_v if top_v > v2 else None)]
         codes = ["Z1", "Z2", "Z3"]
     else:
         target4 = max(6.0, (lt2.lactate_mmol or 4.0) + 2.0)
@@ -404,10 +405,21 @@ def curve_zones(result: LactateResult, max_hr: int | None = None, system: str = 
         codes = ["I1", "I2", "I3", "I4", "I5"]
 
     zones = []
+    beyond = False     # True above a border whose heart rate the test cannot tell
     for code, (lo, hi) in zip(codes, bounds):
         name, purpose = _texts(system, code)
         s_lo, hr_lo, la_lo = border(lo)
         s_hi, hr_hi, la_hi = border(hi)
+        hr2 = lt2.hr or _hr_at_speed(result, v2, max_hr)
+        for at, spd in (("lo", lo), ("hi", hi)):
+            # The I4/I5 border often lies past the last stage, where the heart rate is a trend capped
+            # at max HR. When the cap leaves no room for I5 ("190-190"), the border is put halfway
+            # between LT2 and max HR, as the system does without a curve.
+            if system != "seiler" and spd == v4 and max_hr and hr2 and max_hr > hr2:
+                h = hr_lo if at == "lo" else hr_hi
+                if h is not None and round(h) >= round(max_hr):
+                    h = hr2 + 0.5 * (max_hr - hr2)
+                    hr_lo, hr_hi = (h, hr_hi) if at == "lo" else (hr_lo, h)
         if lo is None:   # bottom zone: from 55 % of max HR (easy jogging) up to LT1
             hr_lo = 0.55 * max_hr if max_hr else None
             la_lo = None
@@ -419,10 +431,17 @@ def curve_zones(result: LactateResult, max_hr: int | None = None, system: str = 
             hr_hi, la_hi = lt1.hr or hr_hi, lt1.lactate_mmol
         if lo == v1:
             hr_lo, la_lo = lt1.hr or hr_lo, lt1.lactate_mmol
-        if hi == v2:
+        if hi == v2 and code not in ("I5", "Z3"):
             hr_hi, la_hi = lt2.hr or hr_hi, lt2.lactate_mmol
         if lo == v2:
             hr_lo, la_lo = lt2.hr or hr_lo, lt2.lactate_mmol
+        # A zone without room in heart rate ("148-148"): the max HR handed in is no higher than the
+        # heart rate the test reached (a submaximal test, its own peak as "max"). The heart rate
+        # from there on up is not known, and is left out rather than shown as an empty interval.
+        if beyond:
+            hr_lo = hr_hi = None
+        elif hr_lo and hr_hi and round(hr_hi) <= round(hr_lo):
+            hr_hi, beyond = None, True
         zones.append(Zone(system, code, name, purpose,
                           hr_low=round(hr_lo) if hr_lo else None, hr_high=round(hr_hi) if hr_hi else None,
                           hr_pct_low=_pct(hr_lo, max_hr), hr_pct_high=_pct(hr_hi, max_hr),

@@ -206,3 +206,46 @@ def test_assessment_texts_exist_in_both_languages():
     for key, sys in zs.SYSTEMS.items():
         for code in sys.codes:
             assert f"assessments.zones.{key}.{code}.name" in sv and f"assessments.zones.{key}.{code}.purpose" in sv
+
+
+def _steps(rows):
+    return [StepRecord(i + 1, s, 1.0, 240, hr, lactate_mmol=la) for i, (s, la, hr) in enumerate(rows)]
+
+
+def _no_empty_zone(zl):
+    for z in zl:
+        if z.hr_low is not None and z.hr_high is not None:
+            assert z.hr_low < z.hr_high, (z.code, z.hr_low, z.hr_high)
+        if z.speed_low_kmh is not None and z.speed_high_kmh is not None:
+            assert z.speed_low_kmh < z.speed_high_kmh, (z.code, z.speed_low_kmh, z.speed_high_kmh)
+
+
+def test_a_submaximal_test_with_its_own_peak_as_max_gives_no_empty_top_zone():
+    # No max HR is known, so the highest heart rate of the test stands in for it. The I4/I5 border
+    # lies past the last stage and its heart rate is capped at that "max": I5 was "148-148".
+    res = analyze(_steps([(9.1, 1.2, 121), (9.6, 1.4, 129), (10.1, 2.2, 138), (10.6, 3.0, 148)]), max_hr=148)
+    zl = zs.curve_zones(res, 148, "olympiatoppen")
+    assert [z.code for z in zl] == ["I1", "I2", "I3", "I4", "I5"]
+    _no_empty_zone(zl)
+    assert zl[-1].hr_low < 148 and zl[-1].hr_high == 148
+
+
+def test_lt2_at_the_heart_rate_handed_in_as_max_leaves_the_heart_rate_above_it_out():
+    # LT2 lands at the last stage, whose heart rate is also the "max": what lies above is not known.
+    res = analyze(_steps([(157.0, 1.8, 117), (172.0, 2.6, 129), (187.0, 2.7, 135), (202.0, 3.4, 138)]),
+                  max_hr=138, sport="bike")
+    zl = zs.curve_zones(res, 138, "olympiatoppen")
+    _no_empty_zone(zl)
+    i4, i5 = zl[-2], zl[-1]
+    assert (i4.hr_low, i4.hr_high) == (138, None)
+    assert (i5.hr_low, i5.hr_high) == (None, None)
+    assert i5.speed_low_kmh < i5.speed_high_kmh      # the loads still stand
+
+
+def test_seiler_top_zone_reaches_max_hr_when_lt2_is_at_the_last_stage():
+    res = analyze(_steps([(10.2, 1.4, 106), (11.7, 2.4, 113), (13.2, 2.4, None), (14.7, 2.7, None),
+                          (16.2, 3.6, 139)]), max_hr=142)
+    assert res.lt2.speed_kmh == 16.2
+    z3 = zs.curve_zones(res, 142, "seiler")[-1]
+    assert (z3.hr_low, z3.hr_high) == (139, 142)       # was 139-139
+    assert (z3.speed_low_kmh, z3.speed_high_kmh) == (16.2, None)   # was 16.2-16.2
