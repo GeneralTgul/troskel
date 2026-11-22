@@ -388,6 +388,10 @@ class LiveController(QObject):
                 x.rpe = self.rpe[x.index]
             if not x.gait and x.index in self.stage_gait:
                 x.gait = self.stage_gait[x.index]
+            elif x.gait and x.index not in self.stage_gait:
+                # The runner keeps the last summary it saw: with no summary during this stage (the
+                # camera stopped delivering) those are an earlier stage's values, not this one's.
+                x.gait = {}
             if x.index in self.stage_gait2 and "second" not in (x.gait or {}):
                 x.gait = dict(x.gait or {}, second=self.stage_gait2[x.index])   # the second view's summary
         smp = list(getattr(rn, "samples", []) or [])

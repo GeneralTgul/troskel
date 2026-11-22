@@ -139,3 +139,27 @@ def test_a_test_cut_a_second_time_ends_when_it_was_cut(qapp):
     info = recovery.resume_info(ctx.store, cut, now)
     assert info is not None and info.from_index == 3 and info.t_offset_s == 900.0
     ctx.shutdown()
+
+
+def test_stages_after_the_camera_stopped_get_no_technique_values(qapp, qtbot):
+    """The camera stops delivering in the first stage. Before 2026-11-23 the stages after it were saved
+    with the values of the last moment the camera worked (the cadence at 10 km/h on the stage at 14)."""
+    from lopanalys.ui import demo
+
+    ctx = _ctx()
+    a = _athlete(ctx)
+    p = library.gait_check([10.0, 12.0, 14.0], stage_s=40)
+    ctl = LiveController(ctx, Plan(a, "gait", p, demo.demo_info_for("gait"), treadmill_mode="sim"))
+    got = []
+    ctl.finished.connect(got.append)
+    ctl.open_camera()
+    assert ctl.start()
+    _until(qtbot, lambda: ctl.state is not None and ctl.state.stage_index == 0 and 0 in ctl.stage_gait)
+    ctl.analyzer.stop()                                       # no more frames, no more summaries
+    _until(qtbot, lambda: bool(got), timeout=30000)
+    recs = ctx.store.records(ctl.session.id)
+    assert [r.index for r in recs] == [0, 1, 2]
+    assert recs[0].gait and recs[0].gait.get("cadence_spm")
+    assert not recs[1].gait and not recs[2].gait
+    assert [bool(r.gait) for r in got[0].records] == [True, False, False]
+    ctx.shutdown()
