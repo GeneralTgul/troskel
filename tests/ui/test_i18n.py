@@ -26,3 +26,13 @@ def test_placeholders_match():
     sv, en = _load("sv"), _load("en")
     for k, v in sv.items():
         assert set(re.findall(r"{(\w+)}", v)) == set(re.findall(r"{(\w+)}", en[k])), k
+
+
+def test_every_test_kind_has_a_name_in_the_history_list():
+    """Before 2026-11-22 a bike fit and a double poling test stood as "ui.testkind.bikefit" and
+    "ui.testkind.ski" in Historik (the list and the filter): the keys were missing."""
+    from lopanalys.core.models import TestKind
+    for lang in ("sv", "en"):
+        texts = _load(lang)
+        missing = [k.value for k in TestKind if not texts.get(f"ui.testkind.{k.value}")]
+        assert not missing, (lang, missing)

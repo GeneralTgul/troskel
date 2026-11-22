@@ -1026,5 +1026,7 @@
   "ui.css.pool_m": "{m} m",
   "ui.css.notes": "Anteckning",
   "ui.css.result": "CSS {pace} /100 m",
-  "ui.plan.sport_basis.css": "Tempot ur CSS-testet {date}: {pace} /100 m"
+  "ui.plan.sport_basis.css": "Tempot ur CSS-testet {date}: {pace} /100 m",
+  "ui.testkind.bikefit": "Bikefit",
+  "ui.testkind.ski": "Stakteknik"
 }

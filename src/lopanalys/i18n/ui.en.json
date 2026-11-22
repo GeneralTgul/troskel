@@ -1026,5 +1026,7 @@
   "ui.css.pool_m": "{m} m",
   "ui.css.notes": "Note",
   "ui.css.result": "CSS {pace} /100 m",
-  "ui.plan.sport_basis.css": "The pace from the CSS test {date}: {pace} /100 m"
+  "ui.plan.sport_basis.css": "The pace from the CSS test {date}: {pace} /100 m",
+  "ui.testkind.bikefit": "Bike fit",
+  "ui.testkind.ski": "Double poling technique"
 }
