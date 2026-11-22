@@ -178,6 +178,19 @@ export function inSport(parts: StoredPart[], id: string, sport: string): [string
   return [to, build(to, { minutes: Math.floor(parts.reduce((s, p) => s + partTotal(p), 0) / MIN) })];
 }
 
+/** library.fill_out: the parts with `minutes` of easy time added, half (whole minutes) to the warm-up, the rest
+ * to the cool-down; all of it to the one a workout has, and nothing to a workout with neither. */
+export function fillOut(parts: StoredPart[], minutes: number): StoredPart[] {
+  const warm = parts.findIndex((p) => p.kind === "warmup");
+  const cool = parts.map((p) => p.kind).lastIndexOf("cooldown");
+  const out = parts.map((p) => ({ ...p }));
+  if (minutes <= 0 || (warm < 0 && cool < 0)) return out;
+  const first = warm < 0 ? 0 : cool < 0 ? minutes : Math.floor(minutes / 2);
+  if (warm >= 0 && first) out[warm].duration_s += first * MIN;
+  if (cool >= 0 && minutes - first) out[cool].duration_s += (minutes - first) * MIN;
+  return out;
+}
+
 export function get(id: string): Template {
   const t = TEMPLATES[id];
   if (!t) throw new Error(`no template ${id}`);

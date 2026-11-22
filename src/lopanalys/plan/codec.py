@@ -19,6 +19,9 @@ a swimming test is stored as before, and a plan saved before reads back with non
 The fixed hard days (``PlanRequest.hard_days``, engine version 9) are stored the same way, under ``hard_days`` as
 ``{"weekday": 3, "sport": "ski"}`` (the sport left out when the engine picks it), only when there are any.
 
+The coach's choices (``quality_sessions``, ``easy_days``, ``second_long``, ``easy_weeks`` and a fixed day's
+``minutes``) are stored the same way: each only when it is set, so a request without them is stored as before.
+
 The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
 ``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any. The day of the next
 test the coach chose (``Plan.next_test``, #778) is stored under ``next_test``, only when set.
@@ -110,8 +113,25 @@ def request_to_dict(r: PlanRequest) -> dict[str, Any]:
     if r.strength_sessions:
         d["strength_sessions"] = r.strength_sessions
     if r.hard_days:
-        d["hard_days"] = [{"weekday": h.weekday, **({"sport": h.sport} if h.sport else {})} for h in r.hard_days]
+        d["hard_days"] = [_day_to_dict(h) for h in r.hard_days]
+    if r.quality_sessions:
+        d["quality_sessions"] = r.quality_sessions
+    if r.easy_days:
+        d["easy_days"] = [_day_to_dict(h) for h in r.easy_days]
+    if r.second_long:
+        d["second_long"] = True
+    if r.easy_weeks:
+        d["easy_weeks"] = [_d(x) for x in r.easy_weeks]
     return d
+
+
+def _day_to_dict(h: HardDay) -> dict[str, Any]:
+    """A fixed day: the sport and the minutes only when set."""
+    return {"weekday": h.weekday, **({"sport": h.sport} if h.sport else {}), **({"minutes": h.minutes} if h.minutes else {})}
+
+
+def _day_from_dict(h: dict[str, Any]) -> HardDay:
+    return HardDay(h["weekday"], _sport(h.get("sport", "")), h.get("minutes", 0))
 
 
 def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
@@ -124,7 +144,10 @@ def request_from_dict(d: dict[str, Any], athlete_name: str = "") -> PlanRequest:
                        d.get("level", "recreational"), d.get("recent_weekly_minutes"),
                        tuple(SportRole(_sport(x["sport"]), x.get("role", "main"), x.get("share", 0))
                              for x in d.get("roles", [])), d.get("strength_sessions", 0),
-                       tuple(HardDay(h["weekday"], _sport(h.get("sport", ""))) for h in d.get("hard_days", [])))
+                       tuple(_day_from_dict(h) for h in d.get("hard_days", [])),
+                       d.get("quality_sessions", 0), tuple(_day_from_dict(h) for h in d.get("easy_days", [])),
+                       bool(d.get("second_long", False)),
+                       tuple(date.fromisoformat(x) for x in d.get("easy_weeks", [])))
 
 
 def _workout_to_dict(w: Workout) -> dict[str, Any]:

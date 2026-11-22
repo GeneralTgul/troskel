@@ -1,6 +1,8 @@
 """The rules of the plan engine, checked on fixed requests (docs/TRANINGSPLAN.md)."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 from datetime import date, timedelta
 from types import SimpleNamespace
 
@@ -113,7 +115,9 @@ def test_easy_weeks_come_regularly_and_are_lighter(plan):
         run = run + 1 if wk.kind == "load" else 0
         opened = opened and wk.kind == "load"
         # The plan never opens with an easy week, so the first run may be one week longer.
-        assert run <= level.load_weeks + (1 if opened else 0), f"week {wk.index}: {run} load weeks in a row"
+        # ... and so may a run beside a week the coach made easy (PlanRequest.easy_weeks).
+        assert run <= level.load_weeks + (1 if opened or plan.request.easy_weeks else 0), \
+            f"week {wk.index}: {run} load weeks in a row"
     for i, wk in enumerate(plan.weeks):
         if wk.kind in ("easy", "test") and i and plan.weeks[i - 1].kind == "load":
             load = max(w.minutes for w in plan.weeks[max(0, i - level.load_weeks):i])
@@ -126,7 +130,8 @@ def test_mostly_easy(plan):
         assert wk.easy_share >= 0.75, (wk.index, wk.easy_share)
         n = len([w for w in wk.endurance if not w.goal])
         hard = [w for w in wk.workouts if w.quality]
-        assert len(hard) <= 2 and (n >= 4 or len(hard) <= 1 or any(w.goal for w in hard))
+        most = max(2, plan.request.quality_count)      # more than two only when the coach asks for it
+        assert len(hard) <= most and (n >= 4 or len(hard) <= 1 or any(w.goal for w in hard))
 
 
 def test_retests(plan):
@@ -157,12 +162,26 @@ def test_the_plan_stores_zones_not_numbers(plan):
             assert 1 <= p.rpe <= 10
 
 
+def _filled(parts, step) -> bool:
+    """True when the parts are the template's step, the warm-up and the cool-down as long or longer by whole minutes."""
+    if len(parts) != len(step):
+        return False
+    for p, q in zip(parts, step):
+        if p.kind in ("warmup", "cooldown"):
+            if replace(p, duration_s=q.duration_s) != q or p.duration_s < q.duration_s or (p.duration_s - q.duration_s) % 60:
+                return False
+        elif p != q:
+            return False
+    return True
+
+
 def test_every_workout_comes_from_the_library(plan):
     for w in plan.workouts:
         tpl = library.get(w.template_id)
         assert (w.family, w.quality) == (tpl.family, tpl.quality)
         if tpl.steps:
-            assert tuple(w.parts) in tpl.steps
+            # ... as it is, or filled out with easy time around it (a group session's length, HardDay.minutes).
+            assert any(_filled(w.parts, step) for step in tpl.steps)
         else:
             assert tpl.min_minutes <= w.minutes
 

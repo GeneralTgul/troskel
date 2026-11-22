@@ -19,6 +19,12 @@ The rules (docs/TRANINGSPLAN.md, "Planmotorn"):
     more than four hours (its length at a usual race speed of the sport, ``RACE_KMH``) gets three quarters of
     every minute beyond the four hours on top, at most ``LONG_CAP_MAX``. A 90 km ski race gives a trained athlete
     4:30; a 10 km race or a marathon keeps the level's ceiling.
+  - The coach's easy weeks (``PlanRequest.easy_weeks``, a holiday or a trip): a load week the coach marks becomes
+    an easy week, and one of the counted easy weeks within the level's load weeks minus one of it (two weeks at
+    3+1, one at 2+1) becomes a load week instead: the one that leaves the shortest run of load weeks, then the
+    nearest, then the later, and none when the run of load weeks would be more than one longer than the level's.
+    The first week, a test week without a goal and the taper are never changed, and a
+    retest is placed after the move, among the easy weeks as they then lie.
 """
 from __future__ import annotations
 
@@ -191,10 +197,20 @@ def long_slot(slots: list, main_sport: str):
     return max(own, key=lambda s: (s.max_minutes, s.weekday))
 
 
+def fixed_minutes(request: PlanRequest) -> dict[int, int]:
+    """Weekday -> the length the coach gave the day's group session (a fixed hard or easy day with minutes)."""
+    out: dict[int, int] = {}
+    for h in request.hard_days + request.easy_days:
+        if h.minutes > 0 and 0 <= h.weekday <= 6:
+            out[h.weekday] = max(out.get(h.weekday, 0), h.minutes)
+    return out
+
+
 def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     """The minutes a week can really hold: the level's number of sessions in the longest core slots (and the
     second slots of the days, ``second_slots``), the long run within the plan's longest long run (``long_cap``) and
-    every other run within the level's easy run (``Level.easy_max``)."""
+    every other run within the level's easy run (``Level.easy_max``), or the length the coach gave the day's group
+    session when that is longer (``fixed_minutes``)."""
     level = LEVEL[request.level]
     slots = core_slots(request, sport)
     if not slots:
@@ -202,8 +218,9 @@ def week_capacity(request: PlanRequest, sport: str | None = None) -> int:
     long = long_slot(slots, request.main_sport)
     easy_max, cap = level.easy_max, long_cap(request)
     seconds = second_slots(request, slots) if sport is None else []
-    held = sorted((min(s.max_minutes, cap) if s is long else min(s.max_minutes, easy_max)
-                   for s in slots + seconds), reverse=True)
+    fixed = fixed_minutes(request)
+    held = sorted([min(s.max_minutes, cap) if s is long else min(s.max_minutes, max(easy_max, fixed.get(s.weekday, 0)))
+                   for s in slots] + [min(s.max_minutes, easy_max) for s in seconds], reverse=True)
     return sum(held[:level.max_sessions])
 
 
@@ -242,6 +259,38 @@ def _goal_blocks(n: int, goal: Goal) -> list[tuple[str, int]]:
     rest = n - taper - peak
     build = rest if rest <= 4 else min(8, max(4, rest // 2))
     return [("base", rest - build), ("build", build), ("peak", peak), ("taper", taper)]
+
+
+def _longest_load(kinds: list[str]) -> int:
+    """The longest run of load weeks."""
+    best = run = 0
+    for k in kinds:
+        run = run + 1 if k == "load" else 0
+        best = max(best, run)
+    return best
+
+
+def coach_easy(kinds: list[str], marked: list[int], load_weeks: int) -> None:
+    """Lays the coach's easy weeks (1-based indices) on the kinds, in place (the rule in the module's docstring)."""
+    done: set[int] = set()
+    for w in sorted(set(marked)):
+        if w < 2 or w > len(kinds) or kinds[w - 1] != "load":
+            continue
+        kinds[w - 1] = "easy"
+        done.add(w)
+        near = [v for v in range(max(2, w - load_weeks + 1), min(len(kinds), w + load_weeks - 1) + 1)
+                if v != w and v not in done and kinds[v - 1] == "easy"]
+        if not near:
+            continue
+
+        def after(v: int) -> tuple[int, int, int]:
+            trial = list(kinds)
+            trial[v - 1] = "load"
+            return (_longest_load(trial), abs(v - w), -v)
+
+        best = min(near, key=after)
+        if after(best)[0] <= load_weeks + 1:      # never a longer run of load weeks than one more than the level's
+            kinds[best - 1] = "load"
 
 
 def periodize(request: PlanRequest) -> Skeleton:
@@ -293,6 +342,7 @@ def periodize(request: PlanRequest) -> Skeleton:
     # ---- load, easy, test, taper and race weeks
     period = level.load_weeks + 1
     kinds = ["load"] * n
+    marked = [(d - start).days // 7 + 1 for d in request.easy_weeks if d >= start]
     if goal is not None:
         taper_first = next(b.first_week for b in blocks if b.kind == "taper")
         for w in range(2, taper_first):
@@ -301,6 +351,7 @@ def periodize(request: PlanRequest) -> Skeleton:
         for w in range(taper_first, n + 1):
             kinds[w - 1] = "taper"
         kinds[n - 1] = "race"
+        coach_easy(kinds, [w for w in marked if w < taper_first], level.load_weeks)
         last_test = 0
         # No test in a week with days of recovery after a race (the engine makes them easy): the next easy week.
         rest = [(g.date, g.date + timedelta(days=recovery_days(g))) for g in request.goals if g is not goal]
@@ -318,6 +369,7 @@ def periodize(request: PlanRequest) -> Skeleton:
                     kinds[w - 1] = "easy"
             kinds[end - 1] = "test"
             prev_end = end
+        coach_easy(kinds, marked, level.load_weeks)
 
     # ---- weekly volume
     cap = week_capacity(request)

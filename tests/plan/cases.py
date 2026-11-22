@@ -27,10 +27,12 @@ STRENGTH_SLOTS = (Slot(0, 45, ("strength",), time(7)), Slot(2, 45, ("strength",)
 
 
 def request(slots=FIVE, *, goals=(), weeks=None, level="recreational", recent=200, capacity=(TESTED,),
-            start=START, roles=(), strength=0, hard=()) -> PlanRequest:
+            start=START, roles=(), strength=0, hard=(), quality=0, easy=(), second_long=False,
+            easy_weeks=()) -> PlanRequest:
     return PlanRequest("Exempel Löpare", start, slots, capacity, goals=tuple(goals), duration_weeks=weeks,
                        level=level, recent_weekly_minutes=recent, roles=tuple(roles), strength_sessions=strength,
-                       hard_days=tuple(hard))
+                       hard_days=tuple(hard), quality_sessions=quality, easy_days=tuple(easy), second_long=second_long,
+                       easy_weeks=tuple(easy_weeks))
 
 
 def for_sports(slots, *sports: str) -> tuple:
@@ -98,6 +100,22 @@ CASES = {
     "half_hard_tuesday": request(goals=(HALF, SEEDING, PARKRUN), hard=(HardDay(1),)),
     "run_bike_hard_bike": request(for_sports(FIVE, RUNNING, "bike"), goals=(HALF, SEEDING, PARKRUN), roles=RUN_BIKE,
                                   hard=(HardDay(3, "bike"), HardDay(5))),
+    # The coach's choices (off by default): two quality sessions in every block, the group's sessions with their
+    # lengths (a hard Thursday and an easy Tuesday), a long run the day after the long ski, and Christmas as an easy
+    # week. The same for a runner with a bike, the long run on the Sunday; and three quality sessions without a goal.
+    "high_ski_choices": request(HIGH, goals=(LONG_SKI,), level="high", recent=660, roles=SKI4, strength=3,
+                                capacity=(TESTED, SKIERG_TEST), hard=(HardDay(3, "ski", 105), HardDay(0, RUNNING)),
+                                quality=2, easy=(HardDay(1, "ski", 105),), second_long=True,
+                                easy_weeks=(date(2026, 12, 21),)),
+    "high_ski_choices_low": request(HIGH, goals=(LONG_SKI,), level="high", recent=400, roles=SKI4, strength=3,
+                                    capacity=(TESTED, SKIERG_TEST), hard=(HardDay(3, "ski", 105), HardDay(0, RUNNING)),
+                                    quality=2, easy=(HardDay(1, "ski", 105),), second_long=True,
+                                    easy_weeks=(date(2026, 12, 21),)),
+    "run_bike_choices": request(for_sports(SEVEN, RUNNING, "bike"), goals=(HALF, SEEDING, PARKRUN), level="trained",
+                                recent=360, roles=RUN_BIKE, hard=(HardDay(1, minutes=90),), quality=2,
+                                easy=(HardDay(3, "bike", 60),), second_long=True, easy_weeks=(date(2026, 12, 23),)),
+    "three_quality_cycle": request(SEVEN, weeks=16, level="trained", recent=360, quality=3,
+                                   easy_weeks=(date(2026, 12, 21), date(2027, 2, 15))),
 }
 
 # A long plan with every sport: four sports, a morning workout beside the evening's on three days, every test

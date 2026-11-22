@@ -3,8 +3,8 @@
  * lopanalys/plan/periodize.py; the rules are in its docstring and in docs/TRANINGSPLAN.md.
  */
 import type { IsoDate, StoredBlock, StoredGoal, StoredNote, StoredRequest, StoredSlot } from "../model/types";
-import { LEVELS, PlanError, mainSport, note, planSports } from "./models";
-import { addDays, daysBetween, floordiv, round, sortedBy, weekday } from "./py";
+import { LEVELS, PlanError, choices, mainSport, note, planSports } from "./models";
+import { addDays, daysBetween, floordiv, minBy, round, sortedBy, weekday } from "./py";
 
 export const DEFAULT_WEEKS = 12;
 export const MIN_WEEKS = 4;
@@ -145,6 +145,16 @@ export function longSlot(all: StoredSlot[], main: string): StoredSlot {
   return best;
 }
 
+/** periodize.fixed_minutes: weekday -> the length the coach gave the day's group session. */
+export function fixedMinutes(r: StoredRequest): Map<number, number> {
+  const out = new Map<number, number>();
+  const c = choices(r);
+  for (const h of [...(c.hard_days ?? []), ...(c.easy_days ?? [])])
+    if ((h.minutes ?? 0) > 0 && h.weekday >= 0 && h.weekday <= 6)
+      out.set(h.weekday, Math.max(out.get(h.weekday) ?? 0, h.minutes!));
+  return out;
+}
+
 /** The minutes a week can really hold (periodize.week_capacity). */
 export function weekCapacity(r: StoredRequest, sport: string | null = null): number {
   const level = LEVEL[r.level];
@@ -154,8 +164,12 @@ export function weekCapacity(r: StoredRequest, sport: string | null = null): num
   const easyMax = level.easy_max;
   const cap = longCap(r);
   const seconds = sport === null ? secondSlots(r, slots) : [];
-  const held = [...slots, ...seconds].map((s) => (s === ls ? Math.min(s.max_minutes, cap) : Math.min(s.max_minutes, easyMax)))
-    .sort((a, b) => b - a);
+  const fixed = fixedMinutes(r);
+  const held = [
+    ...slots.map((s) => (s === ls ? Math.min(s.max_minutes, cap)
+      : Math.min(s.max_minutes, Math.max(easyMax, fixed.get(s.weekday) ?? 0)))),
+    ...seconds.map((s) => Math.min(s.max_minutes, easyMax)),
+  ].sort((a, b) => b - a);
   return held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
 }
 
@@ -186,6 +200,38 @@ function goalBlocks(n: number, goal: StoredGoal): [string, number][] {
   const rest = n - taper - peak;
   const build = rest <= 4 ? rest : Math.min(8, Math.max(4, floordiv(rest, 2)));
   return [["base", rest - build], ["build", build], ["peak", peak], ["taper", taper]];
+}
+
+/** The longest run of load weeks. */
+function longestLoad(kinds: string[]): number {
+  let best = 0;
+  let run = 0;
+  for (const k of kinds) {
+    run = k === "load" ? run + 1 : 0;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
+/** periodize.coach_easy: lays the coach's easy weeks (1-based indices) on the kinds, in place. */
+export function coachEasy(kinds: string[], marked: number[], loadWeeks: number): void {
+  const done = new Set<number>();
+  for (const w of [...new Set(marked)].sort((a, b) => a - b)) {
+    if (w < 2 || w > kinds.length || kinds[w - 1] !== "load") continue;
+    kinds[w - 1] = "easy";
+    done.add(w);
+    const near: number[] = [];
+    for (let v = Math.max(2, w - loadWeeks + 1); v <= Math.min(kinds.length, w + loadWeeks - 1); v++)
+      if (v !== w && !done.has(v) && kinds[v - 1] === "easy") near.push(v);
+    if (!near.length) continue;
+    const after = (v: number) => {
+      const trial = [...kinds];
+      trial[v - 1] = "load";
+      return [longestLoad(trial), Math.abs(v - w), -v];
+    };
+    const best = minBy(near, after);
+    if (after(best)[0] <= loadWeeks + 1) kinds[best - 1] = "load"; // never a longer run than one more than the level's
+  }
 }
 
 export function periodize(r: StoredRequest): Skeleton {
@@ -238,11 +284,13 @@ export function periodize(r: StoredRequest): Skeleton {
   // ---- load, easy, test, taper and race weeks
   const period = level.load_weeks + 1;
   const kinds: string[] = Array(n).fill("load");
+  const marked = (choices(r).easy_weeks ?? []).filter((d) => d >= start).map((d) => floordiv(daysBetween(start, d), 7) + 1);
   if (goal) {
     const taperFirst = blocks.find((b) => b.kind === "taper")!.first_week;
     for (let w = 2; w < taperFirst; w++) if ((taperFirst - w) % period === 0) kinds[w - 1] = "easy";
     for (let w = taperFirst; w <= n; w++) kinds[w - 1] = "taper";
     kinds[n - 1] = "race";
+    coachEasy(kinds, marked.filter((w) => w < taperFirst), level.load_weeks);
     let lastTest = 0;
     // No test in a week with days of recovery after a race: the next easy week.
     const rest = r.goals.filter((g) => g !== goal).map((g) => [g.date, addDays(g.date, recoveryDays(g))] as const);
@@ -262,6 +310,7 @@ export function periodize(r: StoredRequest): Skeleton {
       kinds[end - 1] = "test";
       prevEnd = end;
     }
+    coachEasy(kinds, marked, level.load_weeks);
   }
 
   // ---- weekly volume

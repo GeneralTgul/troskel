@@ -27,6 +27,26 @@ export const EASY_ZONES = ["Z1", "Z2"];
 export const DEFAULT_SYSTEM = "garmin";
 export const CODEC_FORMAT = 2;
 
+/** The most quality sessions a week the coach can ask for (models.MAX_QUALITY). */
+export const MAX_QUALITY = 3;
+/** A fixed hard or easy day (models.HardDay): `minutes` is the group session's length, 0 or none for the template's. */
+export interface FixedDay { weekday: number; sport?: string; minutes?: number }
+/**
+ * The coach's choices in the request (models.PlanRequest: quality_sessions, easy_days, second_long, easy_weeks, and
+ * a fixed hard day's minutes), all off by default. The stored request's type (model/types.ts) does not name them
+ * yet: the engine reads them through `choices`, and `normRequest` keeps them.
+ */
+export interface Choices {
+  quality_sessions?: number;
+  easy_days?: FixedDay[];
+  second_long?: boolean;
+  easy_weeks?: string[];
+  hard_days?: FixedDay[];
+}
+export const choices = (r: StoredRequest) => r as Omit<StoredRequest, "hard_days"> & Choices;
+/** PlanRequest.quality_count. */
+export const qualityAsked = (r: StoredRequest) => Math.max(0, Math.min(MAX_QUALITY, choices(r).quality_sessions || 0));
+
 /** A plan the engine cannot make, with the text key of the reason (plan.error.*) and its values. */
 export class PlanError extends Error {
   constructor(readonly key: string, readonly args: Record<string, string | number> = {}) {
@@ -110,6 +130,10 @@ export const normGoal = (g: StoredGoal): StoredGoal => ({ name: g.name, date: g.
 export const normSlot = (s: StoredSlot): StoredSlot => ({ weekday: s.weekday, max_minutes: s.max_minutes,
   sports: s.sports.map(sport), start: isoTime(s.start), role: s.role ?? "core" });
 
+/** A fixed day as codec.py stores it: the sport and the minutes only when set. */
+const normDay = (h: FixedDay): FixedDay => ({ weekday: h.weekday, ...(h.sport ? { sport: sport(h.sport) } : {}),
+  ...(h.minutes ? { minutes: h.minutes } : {}) });
+
 export function normRequest(r: StoredRequest): StoredRequest {
   const out: StoredRequest = {
     format: CODEC_FORMAT, start: r.start, sports: r.sports.map(sport), availability: r.availability.map(normSlot),
@@ -119,8 +143,13 @@ export function normRequest(r: StoredRequest): StoredRequest {
     roles: (r.roles ?? []).map((x) => ({ sport: sport(x.sport), role: x.role ?? "main", share: x.share ?? 0 })),
   };
   if (r.strength_sessions) out.strength_sessions = r.strength_sessions;
-  if (r.hard_days?.length)
-    out.hard_days = r.hard_days.map((h) => (h.sport ? { weekday: h.weekday, sport: sport(h.sport) } : { weekday: h.weekday }));
+  if (r.hard_days?.length) out.hard_days = r.hard_days.map(normDay);
+  const c = choices(r);
+  const o = choices(out);
+  if (c.quality_sessions) o.quality_sessions = c.quality_sessions;
+  if (c.easy_days?.length) o.easy_days = c.easy_days.map(normDay);
+  if (c.second_long) o.second_long = true;
+  if (c.easy_weeks?.length) o.easy_weeks = [...c.easy_weeks];
   return out;
 }
 

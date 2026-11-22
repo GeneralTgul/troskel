@@ -258,6 +258,23 @@ def build(template_id: str, *, minutes: int | None = None, step: int = 0) -> lis
     return [Part("steady", minutes * MIN, "Z2", rpe)]
 
 
+def fill_out(parts: list[Part], minutes: int) -> list[Part]:
+    """The parts with ``minutes`` of easy time added: half (in whole minutes) to the warm-up, the rest to the
+    cool-down; all of it to the one a workout has, and nothing to a workout with neither. A group session's
+    quality workout filled out towards the group's length (engine, HardDay.minutes)."""
+    warm = next((i for i, p in enumerate(parts) if p.kind == "warmup"), None)
+    cool = next((i for i in reversed(range(len(parts))) if parts[i].kind == "cooldown"), None)
+    if minutes <= 0 or (warm is None and cool is None):
+        return list(parts)
+    first = 0 if warm is None else minutes if cool is None else minutes // 2
+    out = list(parts)
+    if warm is not None and first:
+        out[warm] = replace(out[warm], duration_s=out[warm].duration_s + first * MIN)
+    if cool is not None and minutes - first:
+        out[cool] = replace(out[cool], duration_s=out[cool].duration_s + (minutes - first) * MIN)
+    return out
+
+
 # ---- the guide to a workout: how it should feel, tips, and drills for the technique swim
 # The texts are plan.tip.<id> and plan.drill.<id>; a tip can serve several templates. The app's box for the day and
 # the athlete's printout read them from here (the app's port: app/src/engine/library.ts, checked with the fixtures).

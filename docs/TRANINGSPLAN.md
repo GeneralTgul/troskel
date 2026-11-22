@@ -15,6 +15,7 @@ Allt som är märkt *(ej verifierat)* är skrivet ur minnet.
   - [Nivåerna](#nivåerna)
   - [Intensitetsfördelningen](#intensitetsfördelningen)
   - [Flera idrotter](#flera-idrotter)
+  - [Coachens val](#coachens-val)
   - [Delmål och planer utan mål](#delmål-och-planer-utan-mål)
   - [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp)
   - [Omtest och omläggning](#omtest-och-omläggning)
@@ -63,6 +64,7 @@ Kommandot gör ett schema för demolöparen (aldrig en riktig person): PDF, kale
 | Två pass samma dag: en andra tid på en veckodag ger ett lugnt pass i en annan idrott | Byggt, se [Två pass samma dag](#två-pass-samma-dag) |
 | Ett mindre långpass i en stödjande idrott varannan vecka | Byggt, se [Flera idrotter](#flera-idrotter) |
 | Återhämtning efter ett lopp: lugna dagar efter ett A-lopp som inte är schemats mål, efter ett långt B-lopp och efter ett lopp strax före schemat | Byggt, se [Återhämtning efter ett lopp](#återhämtning-efter-ett-lopp) |
+| Coachens val: antalet kvalitetspass, gruppassets längd, fasta lugna dagar, två långa pass i rad och coachens lätta veckor | Byggt i motorn och i appens motor, se [Coachens val](#coachens-val). Formuläret i programmet har dem inte än, och ett schema med ett val skickas som hela schemat i stället för den korta länken |
 | Passkort | Inte byggt |
 
 ## 1. Datamodellen
@@ -78,6 +80,10 @@ PlanRequest                      det idrottaren och coachen anger
   roles: [SportRole]             idrotterna med roll och andel; tomt i scheman sparade före flera idrotter
   strength_sessions: int         styrkepass i veckan, 0–3 (coachen anger); sparas bara när det är satt
   hard_days: [HardDay]           fasta hårda dagar (coachen anger); sparas bara när de finns
+  quality_sessions: int          coachens val: kvalitetspass i en belastningsvecka, 1–3; 0 = motorns antal
+  easy_days: [HardDay]           coachens val: fasta lugna dagar, till exempel gruppens lugna pass
+  second_long: bool              coachens val: ett långt lugnt pass i den stödjande idrotten dagen efter långpasset
+  easy_weeks: [date]             coachens val: veckor som ska vara lätta (en dag i veckan räcker)
   goals: [Goal]                  tomt = plan utan tävlingsmål
   duration_weeks: int | None     längden när inget A-mål finns (förval 12)
   level: "beginner" | "recreational" | "trained" | "high"
@@ -88,9 +94,10 @@ Slot                             ett tillfälle i veckan
   sports: [str]                  vad som går att träna då
   role: "core" | "extra"         bara kärnplatser fylls
 
-HardDay                          en fast hård dag, till exempel ett gruppass
+HardDay                          en fast dag, hård eller lugn, till exempel ett gruppass
   weekday: int                   0 = måndag
-  sport: str                     kvalitetspassets idrott; "" = motorn väljer
+  sport: str                     passets idrott; "" = motorn väljer
+  minutes: int                   gruppassets längd; 0 = mallens egen
 
 SportRole                        en idrott i planen
   sport: str                     "run", "bike", "skierg", "ski" eller "swim" (models.PLAN_SPORTS)
@@ -166,7 +173,7 @@ En `Capacity` med `source` `"self"` (`models.SELF`, `Capacity.own_values`) är i
 | `plans` | En rad per idrottare (`athlete_id` är unik): `session_id` (testet schemat bygger på), `request_json` (tillgänglighet, mål, delmål, längd, nivå, veckovolym och testets trösklar), `plan_json` (schemat som det byggdes: block, veckor, pass och loggen över tidigare tester), `health_json` (hälsodeklarationens rutor och datum), `engine_version`, `created`, `updated` |
 | `plan_events` | Loggen: tid, händelse (`saved`, `changed`, `retest`, `renewed`, `phone`) och detaljer, till exempel vilka två tester ett omtest gick mellan |
 
-- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass. Idrotternas roller sparas under `roles` i det som angavs. Ett schema som sparades före dem saknar fältet och läses utan roller, alltså med idrotterna i `sports`. En passdels band (`band`) sparas bara på delar som har ett, så övriga pass sparas som förut och äldre scheman läses utan band. De fasta hårda dagarna sparas under `hard_days` (`{"weekday": 3, "sport": "ski"}`, utan `sport` när motorn väljer) bara när de finns.
+- **Schemat sparas som det byggdes** (`plan/codec.py` gör om det till JSON och tillbaka). Det byggs inte om när det läses, så ett sparat schema ändras inte av en ny programversion. `engine_version` säger vilka regler som byggde det, eller som senast förnyade det. Formatet är 2: `horizon` och skissveckorna (`sketch`) sparas med schemat. Ett schema i format 1 saknar dem och läses som ett schema där alla veckor har pass. Idrotternas roller sparas under `roles` i det som angavs. Ett schema som sparades före dem saknar fältet och läses utan roller, alltså med idrotterna i `sports`. En passdels band (`band`) sparas bara på delar som har ett, så övriga pass sparas som förut och äldre scheman läses utan band. De fasta hårda dagarna sparas under `hard_days` (`{"weekday": 3, "sport": "ski"}`, utan `sport` när motorn väljer) bara när de finns. [Coachens val](#coachens-val) sparas på samma sätt, vart och ett bara när det är satt: `quality_sessions`, `easy_days`, `second_long`, `easy_weeks` och `minutes` på en fast dag.
 - **Namnet sparas inte i schemat.** Det läses från idrottarens rad när schemat öppnas.
 - **Målen följer testet.** När schemat öppnas räknas trösklarna om ur testet det bygger på, så att ett rättat laktatvärde slår igenom. Är testet borttaget gäller trösklarna som sparades med schemat.
 - **Radering:** raderna följer idrottaren (`ON DELETE CASCADE`) och skrivs över som övriga uppgifter. Tas testet bort ligger schemat kvar utan test. Schemat är med i utdraget (*Exportera allt*). PDF:en och kalenderfilen registreras som sparade filer, så att raderingen hittar dem.
@@ -306,6 +313,18 @@ En veckodag kan ha en andra plats (`periodize.second_slots`): en kärnplats till
 - **Hårda dagar:** aldrig två hårda pass samma dag, och en dag med två pass är hård om något av dem är hårt. Styrkan räknar en dag med två pass som en hård dag när den väljer dagar.
 
 **Inte byggt:** belastningen som tak för veckan.
+
+### Coachens val
+
+Fem val i det coachen anger (`PlanRequest`). Alla är av som förval: utan dem blir schemat exakt det som motorn gav förut, och därför har motorn kvar version 9. De kom ur jämförelsen mellan motorns schema och ett handskrivet säsongsprogram för en skidåkare med gruppträning: kvalitetspass också i grunden, gruppens pass med sina längder, långpass två dagar i rad på helgen och en lätt vecka över julen.
+
+- **Antalet kvalitetspass** (`quality_sessions`, 1–3): en belastningsvecka får så många i alla block, också i grundblocket, men högst hälften av veckans pass. Reglerna ovan gäller ändå: aldrig två hårda dagar i rad, aldrig dagen före långpasset, inte runt ett lopp och högst en fjärdedel av tiden över LT1. Får passen inte plats blir de färre. Grundblocket tar nästa familj i sin ordning (fartlek, backe, tröskel), uppbyggnaden backe som tredje pass och toppen backe (långt mål) eller fartlek. Lätta veckor, testveckor, nedtrappningen och loppveckan har kvar sitt enda pass. De fasta hårda dagarna väljs först, som förut.
+- **Gruppassets längd** (`HardDay.minutes`): kvalitetspasset på en fast hård dag fylls ut mot gruppens längd med lugn tid, hälften före och hälften efter (uppvärmningen och nedjoggen blir längre, intervallerna är mallens). Utfyllnaden delar veckans lugna minuter med de lugna passen, så en liten vecka får ett kortare gruppass och en full vecka hela längden. Ett test behåller sin längd, och loppveckans fartpass fylls inte ut.
+- **Fasta lugna dagar** (`easy_days`): gruppens lugna pass. Dagen är alltid en av veckans dagar med pass, aldrig hård och aldrig långpass, och passet är ett lugnt pass och inte ett återhämtningspass, också dagen efter en hård dag. Med en idrott blir passet i den idrotten när platsen tillåter den. Med en längd växer passet mot den, först bland de lugna passen (dubbel vikt när minuterna delas), också förbi nivåns längsta lugna pass. Gränserna runt ett lopp och i loppveckan gäller. Står en fast hård dag på samma veckodag vinner den.
+- **Två långa pass i rad** (`second_long`): varje belastningsvecka, lätt vecka och testvecka med ett långpass får dagen efter ett långt lugnt pass i den första stödjande idrotten, när den dagens plats tillåter idrotten. Det är högst tre fjärdedelar av långpasset, nivåns längsta lugna pass, platsens längd och idrottens del av veckan, och i en lätt vecka eller testvecka tre fjärdedelar av den senaste belastningsveckans. Blir det kortare än 60 minuter planeras dagen som förut. Dagen är då ingen hård dag, dagen efter räknas som dagen efter ett långpass, och det mindre långpasset varannan vecka används inte. Ligger långpasset på söndagen hamnar passet på måndagen veckan efter. Nedtrappningen och loppveckan har inget.
+- **Coachens lätta veckor** (`easy_weeks`, till exempel julen eller en resa): en belastningsvecka som coachen pekar ut blir lätt. En av de räknade lätta veckorna inom två veckor (en vecka för nybörjarens 2+1) blir då belastning i stället: den som ger kortast rad av belastningsveckor, sedan den närmaste, sedan den senare. Ingen flyttas om raden skulle bli mer än en vecka längre än nivåns. Första veckan, nedtrappningen och en testvecka i en plan utan mål ändras aldrig, och omtestet läggs efter flytten.
+
+**I appen:** appens motor har samma regler (`app/src/engine`), kontrollerade mot `app/test/fixtures/choices.json.gz` som `tests/plan/choices_fixtures.py` skriver. Appens läsare av den korta länken läser inte valen än (`link.APP_LACKS`), så ett schema med ett val skickas som hela schemat (format 1), som appen läser som det är. Det betyder en längre länk och en tätare QR-kod; filen `.troskel` är som förut.
 
 ### Delmål och planer utan mål
 

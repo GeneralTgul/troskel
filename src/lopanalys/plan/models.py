@@ -27,6 +27,7 @@ PLAN_SPORTS = (RUNNING, Sport.BIKE.value, Sport.SKIERG.value, "ski", SWIM)
 # (PlanRequest.strength_sessions) on top of the endurance time, and never made up for when missed.
 STRENGTH = "strength"
 MAX_STRENGTH = 3
+MAX_QUALITY = 3                # the most quality sessions a week the coach can ask for (PlanRequest.quality_sessions)
 # Capacity.source of the athlete's own values, typed in the app without a test (#777).
 SELF = "self"
 # A sport without its own test borrows the zones of another: skis and roller skis take the SkiErg's.
@@ -135,6 +136,9 @@ class HardDay:
     when the day's slot allows it."""
     weekday: int                     # 0 = Monday
     sport: str = ""
+    # The group session's length in minutes (0: the template's own). A hard day's quality session is filled out to
+    # it with easy time before and after; a fixed easy day's workout (``PlanRequest.easy_days``) is that long.
+    minutes: int = 0
 
 
 @dataclass(frozen=True)
@@ -175,6 +179,17 @@ class PlanRequest:
     roles: tuple[SportRole, ...] = ()          # () : ``sports``, the first (or the A goal's) as the main sport
     strength_sessions: int = 0                 # strength sessions a week, 0-3 (MAX_STRENGTH), set by the coach
     hard_days: tuple[HardDay, ...] = ()        # fixed hard days (a group session), set by the coach
+    # The coach's choices below are all off by default: a request without them gives the plan it gave before.
+    quality_sessions: int = 0                  # quality sessions in a load week, 1-3 (MAX_QUALITY); 0: the engine's
+    easy_days: tuple[HardDay, ...] = ()        # fixed easy days (the group's easy session): never hard, never cut
+                                               # to a recovery workout, ``minutes`` long when given
+    second_long: bool = False                  # a long, easy workout in the first supporting sport the day after
+                                               # the long run, every week with a long run
+    easy_weeks: tuple[date, ...] = ()          # weeks the coach makes easy (any day of the week): a holiday, a trip
+
+    @property
+    def quality_count(self) -> int:
+        return max(0, min(MAX_QUALITY, self.quality_sessions or 0))
 
     @property
     def strength_count(self) -> int:

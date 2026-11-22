@@ -87,7 +87,15 @@ def _short_link(plan) -> tuple[str, dict]:
 
 @pytest.mark.parametrize("name", sorted(c.CASES))
 def test_the_short_link_gives_the_same_plan(name):
-    url, stored = _short_link(build_plan(c.CASES[name], plan_id="p1", today=c.START))
+    plan = build_plan(c.CASES[name], plan_id="p1", today=c.START)
+    if link.app_lacks(codec.request_to_dict(plan.request)):
+        # A choice the app's short link does not read yet: the link holds the whole plan (link.APP_LACKS).
+        stored = link.stored_plan(plan)
+        assert link.short_plan(stored) is None and link.link_payload(stored)["format"] == link.FORMAT
+        short = link._pack(stored)        # the short payload itself carries the choices and gives the plan back
+        assert link.expand(json.loads(json.dumps(short))) == json.loads(json.dumps(stored))
+        return
+    url, stored = _short_link(plan)
     payload = link.read_link(url)
     assert payload["format"] == link.SHORT_FORMAT and "plan" not in payload and payload["v"] == link.ENGINE_VERSION
     assert link.expand(payload) == json.loads(json.dumps(stored))

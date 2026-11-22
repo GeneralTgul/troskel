@@ -42,6 +42,11 @@ KIND = "troskel.plan"
 FORMAT = 1
 SHORT_FORMAT = 2              # the request instead of the workouts: the app builds the plan (short_plan)
 FILE_SUFFIX = ".troskel"
+# The coach's choices in the request that the app's reader of the short link (app/src/model/short.ts) does not
+# unpack yet: a plan with one of them is sent whole (format 1), which the app reads as it is. The app's engine has
+# the rules (app/src/engine), so this goes when short.ts reads the keys ``q``, ``ed``, ``sl``, ``ew`` and a fixed
+# day's minutes (``pack_request``).
+APP_LACKS = ("quality_sessions", "easy_days", "second_long", "easy_weeks")
 _TARGET_FIELDS = ("hr_low", "hr_high", "speed_low_kmh", "speed_high_kmh", "estimated", "speed_low_approx",
                   "speed_high_approx", "speed_from_hr")
 
@@ -164,9 +169,27 @@ def pack_request(r: dict[str, Any]) -> dict[str, Any]:
                               ("recent_weekly_minutes", "m", None), ("strength_sessions", "st", None)):
         if r.get(k, default) != default:
             out[short] = r[k]
-    if r.get("hard_days"):        # the fixed hard days: [weekday] or [weekday, sport]
-        out["hd"] = [[h["weekday"], h["sport"]] if h.get("sport") else [h["weekday"]] for h in r["hard_days"]]
+    if r.get("hard_days"):        # the fixed hard days: [weekday], [weekday, sport] or [weekday, sport, minutes]
+        out["hd"] = [_pack_day(h) for h in r["hard_days"]]
+    # The coach's choices (APP_LACKS): each only when set.
+    if r.get("quality_sessions"):
+        out["q"] = r["quality_sessions"]
+    if r.get("easy_days"):
+        out["ed"] = [_pack_day(h) for h in r["easy_days"]]
+    if r.get("second_long"):
+        out["sl"] = 1
+    if r.get("easy_weeks"):
+        out["ew"] = list(r["easy_weeks"])
     return out
+
+
+def _pack_day(h: dict[str, Any]) -> list[Any]:
+    return _trim([h["weekday"], h.get("sport") or "", h.get("minutes") or 0], ("", 0))
+
+
+def _unpack_day(h: list[Any]) -> dict[str, Any]:
+    return {"weekday": h[0], **({"sport": h[1]} if len(h) > 1 and h[1] else {}),
+            **({"minutes": h[2]} if len(h) > 2 and h[2] else {})}
 
 
 def unpack_request(d: dict[str, Any]) -> dict[str, Any]:
@@ -185,7 +208,15 @@ def unpack_request(d: dict[str, Any]) -> dict[str, Any]:
     if d.get("st"):
         out["strength_sessions"] = d["st"]
     if d.get("hd"):
-        out["hard_days"] = [{"weekday": h[0], **({"sport": h[1]} if len(h) > 1 and h[1] else {})} for h in d["hd"]]
+        out["hard_days"] = [_unpack_day(h) for h in d["hd"]]
+    if d.get("q"):
+        out["quality_sessions"] = d["q"]
+    if d.get("ed"):
+        out["easy_days"] = [_unpack_day(h) for h in d["ed"]]
+    if d.get("sl"):
+        out["second_long"] = True
+    if d.get("ew"):
+        out["easy_weeks"] = list(d["ew"])
     return out
 
 
@@ -263,9 +294,18 @@ def expand(payload: dict[str, Any]) -> dict[str, Any]:
             "targets_log": [{"until": u, "sport": s, "targets": unpack_targets(ts)} for u, s, ts in payload.get("tl", [])]}
 
 
+def app_lacks(request: dict[str, Any]) -> bool:
+    """True for a request with a choice the app's short link cannot carry yet (``APP_LACKS``)."""
+    return (any(request.get(k) for k in APP_LACKS)
+            or any(h.get("minutes") for h in request.get("hard_days") or []))
+
+
 def short_plan(stored: dict[str, Any]) -> dict[str, Any] | None:
     """The short payload (format 2) of a whole one from ``stored_plan``, or None when the engine would not build
-    the same plan from it (then the link holds the whole plan)."""
+    the same plan from it (then the link holds the whole plan), or when the request holds a choice the app's
+    short link does not read yet (``app_lacks``)."""
+    if app_lacks(stored["request"]):
+        return None
     try:
         short = _pack(stored)
         same = expand(json.loads(_json(short))) == json.loads(_json(stored))
@@ -315,6 +355,6 @@ def plan_file(stored: dict[str, Any]) -> bytes:
     return json.dumps(stored, ensure_ascii=False, indent=1).encode("utf-8") + b"\n"
 
 
-__all__ = ["APP_URL", "FILE_SUFFIX", "FORMAT", "KIND", "SHORT_FORMAT", "decode", "encode", "expand", "link_payload",
+__all__ = ["APP_LACKS", "APP_URL", "FILE_SUFFIX", "FORMAT", "KIND", "SHORT_FORMAT", "app_lacks", "decode", "encode", "expand", "link_payload",
            "pack_request", "pack_targets", "plan_file", "plan_link", "read_link", "short_plan", "stored_plan",
            "unpack_request", "unpack_targets", "zone_targets"]
