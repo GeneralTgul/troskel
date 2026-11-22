@@ -269,6 +269,7 @@ class NewTestView(QWidget):
             rows = self.ctx.store.athletes(self.a_search.text())
         except Exception:
             rows = []
+        shown = False
         for a in rows:
             it = QListWidgetItem()
             it.setData(Qt.ItemDataRole.UserRole, a)
@@ -278,7 +279,12 @@ class NewTestView(QWidget):
             if self.athlete and a.id == self.athlete.id:
                 self.athlete = a        # the saved row: a consent saved while the wizard is open counts
                 self.a_list.setCurrentItem(it)
+                shown = True
         self.a_list.blockSignals(False)
+        if not shown and hasattr(self, "stack") and self.stack.currentIndex() == 0:
+            # On the athlete step the chosen one is the one marked: a search that hides the athlete
+            # must not leave Nästa open for somebody the coach no longer sees.
+            self.athlete = None
         self._update_nav()
 
     def _athlete_chosen(self, it: QListWidgetItem | None, *_: Any) -> None:
@@ -289,6 +295,9 @@ class NewTestView(QWidget):
         """Start the wizard for this athlete (from Idrottare)."""
         self.reset()
         self.athlete = a
+        self.a_search.blockSignals(True)
+        self.a_search.clear()           # an old search must not hide (and so unchoose) this athlete
+        self.a_search.blockSignals(False)
         self._fill_athletes()
         self.go(1)
 
