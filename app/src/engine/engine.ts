@@ -8,7 +8,7 @@ import type {
 } from "../model/types";
 import * as library from "./library";
 import {
-  BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, type FixedDay, RUNNING, STRENGTH, WEEKDAY_KEYS, capacityFor, choices,
+  BORROWS, DEFAULT_SYSTEM, CODEC_FORMAT, EASY_ZONES, type FixedDay, RUNNING, STRENGTH, WEEKDAY_KEYS, capacityFor,
   estimated, mainSport, minutes, note, ownCapacity, planRoles, qualityAsked, roleWeight, sketchOf, speedFromHr,
   strengthCount, weekMinutes, zoneSeconds,
 } from "./models";
@@ -231,17 +231,16 @@ class Filler {
     this.longSlot = longSlot(this.slots, this.main);
     this.longCap = longCap(request);
     this.seconds = secondSlots(request, this.slots);
-    const chosen = choices(request);
-    for (const h of chosen.hard_days ?? [])
+    for (const h of request.hard_days ?? [])
       if (h.weekday >= 0 && h.weekday <= 6 && !this.hard.has(h.weekday)) {
         this.hard.set(h.weekday, h.sport ?? "");
         if ((h.minutes ?? 0) > 0) this.hardMinutes.set(h.weekday, h.minutes!);
       }
     [...this.hard.keys()].forEach((wd, i) => this.hardRank.set(wd, i));
-    for (const h of chosen.easy_days ?? [])
+    for (const h of request.easy_days ?? [])
       if (h.weekday >= 0 && h.weekday <= 6 && !this.hard.has(h.weekday) && !this.easy.has(h.weekday)) this.easy.set(h.weekday, h);
     this.support = this.roles.slice(1).find((r) => r.role === "support")?.sport ?? null;
-    const pairWd = chosen.second_long && this.support ? mod(this.longSlot.weekday + 1, 7) : null;
+    const pairWd = request.second_long && this.support ? mod(this.longSlot.weekday + 1, 7) : null;
     this.pairWd = pairWd !== null && this.hard.has(pairWd) ? null : pairWd; // a fixed hard day there wins
     const own = new Map<number, StoredSlot>();
     for (const s of request.availability)
@@ -337,7 +336,7 @@ class Filler {
       && !this.easy.has(s.weekday) && !(pair && s.weekday === this.pairWd));
     const fixedHard = [...new Set([...raceDays, ...(wantLong ? [longWd] : [])])].sort((a, b) => a - b);
     const supportLong = wantLong && spec.kind === "load" && (spec.block === "base" || spec.block === "build")
-      && !spec.goals.length && st.support_i % 2 === 0 && !choices(this.request).second_long ? this.support : null;
+      && !spec.goals.length && st.support_i % 2 === 0 && !this.request.second_long ? this.support : null;
 
     let result: Assembled | null = null;
     const asked = qualityAsked(this.request);

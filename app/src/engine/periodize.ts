@@ -3,7 +3,7 @@
  * lopanalys/plan/periodize.py; the rules are in its docstring and in docs/TRANINGSPLAN.md.
  */
 import type { IsoDate, StoredBlock, StoredGoal, StoredNote, StoredRequest, StoredSlot } from "../model/types";
-import { LEVELS, PlanError, choices, mainSport, note, planSports } from "./models";
+import { LEVELS, PlanError, mainSport, note, planSports } from "./models";
 import { addDays, daysBetween, floordiv, minBy, round, sortedBy, weekday } from "./py";
 
 export const DEFAULT_WEEKS = 12;
@@ -150,8 +150,7 @@ export function longSlot(all: StoredSlot[], main: string): StoredSlot {
 /** periodize.fixed_minutes: weekday -> the length the coach gave the day's group session. */
 export function fixedMinutes(r: StoredRequest): Map<number, number> {
   const out = new Map<number, number>();
-  const c = choices(r);
-  for (const h of [...(c.hard_days ?? []), ...(c.easy_days ?? [])])
+  for (const h of [...(r.hard_days ?? []), ...(r.easy_days ?? [])])
     if ((h.minutes ?? 0) > 0 && h.weekday >= 0 && h.weekday <= 6)
       out.set(h.weekday, Math.max(out.get(h.weekday) ?? 0, h.minutes!));
   return out;
@@ -173,7 +172,7 @@ export function weekCapacity(r: StoredRequest, sport: string | null = null): num
     ...seconds.map((s) => Math.min(s.max_minutes, easyMax)),
   ].sort((a, b) => b - a);
   let total = held.slice(0, level.max_sessions).reduce((a, b) => a + b, 0);
-  const most = choices(r).max_weekly_minutes ?? 0; // the coach's ceiling for the week
+  const most = r.max_weekly_minutes ?? 0; // the coach's ceiling for the week
   if (sport === null && most > 0) total = Math.min(total, Math.max(MIN_WEEK, most));
   return total;
 }
@@ -289,7 +288,7 @@ export function periodize(r: StoredRequest): Skeleton {
   // ---- load, easy, test, taper and race weeks
   const period = level.load_weeks + 1;
   const kinds: string[] = Array(n).fill("load");
-  const marked = (choices(r).easy_weeks ?? []).filter((d) => d >= start).map((d) => floordiv(daysBetween(start, d), 7) + 1);
+  const marked = (r.easy_weeks ?? []).filter((d) => d >= start).map((d) => floordiv(daysBetween(start, d), 7) + 1);
   if (goal) {
     const taperFirst = blocks.find((b) => b.kind === "taper")!.first_week;
     for (let w = 2; w < taperFirst; w++) if ((taperFirst - w) % period === 0) kinds[w - 1] = "easy";

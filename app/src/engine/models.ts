@@ -4,7 +4,7 @@
  * the stored shapes of model/types.ts directly, so what it builds is the stored plan as Python writes it.
  */
 import type {
-  StoredCapacity, StoredEdit, StoredGoal, StoredNote, StoredPart, StoredPlanBody, StoredRequest, StoredSketch,
+  StoredCapacity, StoredEdit, StoredGoal, StoredHardDay, StoredNote, StoredPart, StoredPlanBody, StoredRequest, StoredSketch,
   StoredRole, StoredSlot, StoredWeek, StoredWorkout,
 } from "../model/types";
 import { round, round2 } from "./py";
@@ -30,23 +30,9 @@ export const CODEC_FORMAT = 2;
 /** The most quality sessions a week the coach can ask for (models.MAX_QUALITY). */
 export const MAX_QUALITY = 3;
 /** A fixed hard or easy day (models.HardDay): `minutes` is the group session's length, 0 or none for the template's. */
-export interface FixedDay { weekday: number; sport?: string; minutes?: number }
-/**
- * The coach's choices in the request (models.PlanRequest: quality_sessions, easy_days, second_long, easy_weeks,
- * max_weekly_minutes and a fixed hard day's minutes), all off by default. The stored request's type (model/types.ts) does not name them
- * yet: the engine reads them through `choices`, and `normRequest` keeps them.
- */
-export interface Choices {
-  quality_sessions?: number;
-  easy_days?: FixedDay[];
-  second_long?: boolean;
-  easy_weeks?: string[];
-  max_weekly_minutes?: number;
-  hard_days?: FixedDay[];
-}
-export const choices = (r: StoredRequest) => r as Omit<StoredRequest, "hard_days"> & Choices;
+export type FixedDay = StoredHardDay;
 /** PlanRequest.quality_count. */
-export const qualityAsked = (r: StoredRequest) => Math.max(0, Math.min(MAX_QUALITY, choices(r).quality_sessions || 0));
+export const qualityAsked = (r: StoredRequest) => Math.max(0, Math.min(MAX_QUALITY, r.quality_sessions || 0));
 
 /** A plan the engine cannot make, with the text key of the reason (plan.error.*) and its values. */
 export class PlanError extends Error {
@@ -145,13 +131,12 @@ export function normRequest(r: StoredRequest): StoredRequest {
   };
   if (r.strength_sessions) out.strength_sessions = r.strength_sessions;
   if (r.hard_days?.length) out.hard_days = r.hard_days.map(normDay);
-  const c = choices(r);
-  const o = choices(out);
-  if (c.quality_sessions) o.quality_sessions = c.quality_sessions;
-  if (c.easy_days?.length) o.easy_days = c.easy_days.map(normDay);
-  if (c.second_long) o.second_long = true;
-  if (c.easy_weeks?.length) o.easy_weeks = [...c.easy_weeks];
-  if (c.max_weekly_minutes) o.max_weekly_minutes = c.max_weekly_minutes;
+  // The coach's choices (docs/TRANINGSPLAN.md, *Coachens val*), each only when set.
+  if (r.quality_sessions) out.quality_sessions = r.quality_sessions;
+  if (r.easy_days?.length) out.easy_days = r.easy_days.map(normDay);
+  if (r.second_long) out.second_long = true;
+  if (r.easy_weeks?.length) out.easy_weeks = [...r.easy_weeks];
+  if (r.max_weekly_minutes) out.max_weekly_minutes = r.max_weekly_minutes;
   return out;
 }
 

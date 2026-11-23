@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { ENGINE_VERSION, buildPlan, engine, rollForward } from "../src/engine";
-import { choices, normRequest } from "../src/engine/models";
+import { normRequest } from "../src/engine/models";
 import { coachEasy, fixedMinutes, weekCapacity } from "../src/engine/periodize";
 import type { StoredPlan, StoredPlanBody, StoredRequest, StoredSlot } from "../src/model/types";
 
@@ -27,7 +27,7 @@ const fx: Fixtures = JSON.parse(
 describe("the coach's choices against Python", () => {
   it("has the same version and cases with every choice", () => {
     expect(ENGINE_VERSION).toBe(fx.engine_version);
-    const all = fx.build.map((c) => choices(c.request));
+    const all = fx.build.map((c) => c.request);
     expect(all.some((r) => r.quality_sessions)).toBe(true);
     expect(all.some((r) => r.easy_days?.length)).toBe(true);
     expect(all.some((r) => r.second_long)).toBe(true);
