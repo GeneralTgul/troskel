@@ -43,7 +43,8 @@ DEMO_TEST_DATES = (datetime(2026, 4, 14, 8, 30, tzinfo=timezone.utc),
 VIEWS = ("idrottare", "installningar", "installningar-las", "installningar-epost", "testerna", "testerna-cykel",
          "historik", "simtest",
          "jamforelse", "resultat-laktat", "resultat-zoner", "resultat-klocka", "resultat-vo2max", "skicka",
-         "traningsschema", "traningsschema-idrotter", "traningsschema-harda-pass", "traningsschema-mal", "till-appen",
+         "traningsschema", "traningsschema-idrotter", "traningsschema-harda-pass", "traningsschema-coachens-val",
+         "traningsschema-mal", "till-appen",
          "nytt-test-idrottare", "nytt-test-testtyp", "protokoll-laktat", "protokoll-maxpuls",
          "protokoll-lopteknik", "nytt-test-kamera", "nytt-test-band-och-puls", "nytt-test-kontroll",
          "nytt-test-kontroll-utan-kamera",
@@ -554,6 +555,21 @@ class Studio:
         bar = v.form_scroll.verticalScrollBar()
         top = v.hard_days[0].mapTo(v.form_scroll.widget(), v.hard_days[0].rect().topLeft()).y()
         bar.setValue(top - 330)          # the days above the field
+        self.wait(300)
+        return self.win
+
+    def traningsschema_coachens_val(self) -> Any:
+        """*Coachens val* opened under the fixed hard days: two quality sessions and Saturday as a fixed easy day."""
+        v = self._plan()
+        v.choices_btn.click()
+        v.quality.setCurrentIndex(v.quality.findData(2))
+        v.easy_days[0].setCurrentIndex(v.easy_days[0].findData(5))
+        v.easy_minutes[0].setText("60")
+        assert v.preview(), v.error.text()
+        self.wait(100)
+        bar = v.form_scroll.verticalScrollBar()
+        top = v.choices_btn.mapTo(v.form_scroll.widget(), v.choices_btn.rect().topLeft()).y()
+        bar.setValue(top - 20)
         self.wait(300)
         return self.win
 

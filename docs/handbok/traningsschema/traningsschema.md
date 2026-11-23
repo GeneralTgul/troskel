@@ -9,6 +9,7 @@
 - [Fyll i formuläret](#fyll-i-formuläret)
   - [Flera idrotter](#flera-idrotter)
   - [Fasta hårda pass](#fasta-hårda-pass)
+  - [Coachens val](#coachens-val)
   - [Simtestet (CSS)](#simtestet-css)
   - [Vad testet ger schemat](#vad-testet-ger-schemat)
 - [Förhandsvisa schemat](#förhandsvisa-schemat)
@@ -46,7 +47,8 @@ Har idrottaren redan ett schema visas det. Annars är formuläret tomt, och det 
 | | Klockslag | Valfritt. Passet får den tiden i kalenderfilen, annars blir det en heldagshändelse |
 | | Idrotterna den dagen | Bara med flera idrotter: *Alla* eller de idrotter som går den dagen, till exempel bara cykel en dag utan löpband |
 | | *+* (en andra tid samma dag) | Bara med flera idrotter: en rad till under dagen, *Andra passet*, med egna minuter, klockslag och idrotter. Båda tiderna behöver ett klockslag, och de ska vara olika. *−* tar bort den andra tiden, se [Två pass samma dag](#två-pass-samma-dag) |
-| | *Fasta hårda pass* | Upp till två veckodagar med ett hårt pass som alltid ligger fast, till exempel gruppens intervaller på torsdagen, var och en med en idrott eller *Valfri idrott*, se [Fasta hårda pass](#fasta-hårda-pass) |
+| | *Fasta hårda pass* | Upp till två veckodagar med ett hårt pass som alltid ligger fast, till exempel gruppens intervaller på torsdagen, var och en med en idrott eller *Valfri idrott* och gruppassets längd i minuter, se [Fasta hårda pass](#fasta-hårda-pass) |
+| | *Coachens val* | Stängt och av som förval: antalet kvalitetspass, fasta lugna pass, två långa pass i rad, lätta veckor och mest tid i veckan, se [Coachens val](#coachens-val) |
 | *Mål* | *Schemat slutar med ett mål (lopp)* | Namn, datum, distans och måltid. Schemat räknas bakåt från loppet. Ett lopp som tar mer än fyra timmar, till exempel Vasaloppet, ger längre långpass än nivåns tak, upp till 4:30, se [Blocken](../../TRANINGSPLAN.md#blocken) |
 | | *Lägg till delmål* | Ett *Delmål* (till exempel ett seedningslopp) får en lättare vecka runt sig, och ett långt delmål (ett halvmaraton eller längre i löpning) lugna dagar efter sig. Ett *Träningslopp* ersätter ett av veckans hårda pass. Ett delmål strax före startdatumet, till exempel förra schemats mål, ger schemat lugna dagar i början, se [Återhämtning efter ett lopp](../../TRANINGSPLAN.md#återhämtning-efter-ett-lopp) |
 | | *Inget mål: ange längd* | Antal veckor, minst 4. Schemat slutar med ett nytt test |
@@ -85,17 +87,34 @@ Med flera idrotter kan en veckodag ha två tider: tryck *+* bredvid dagen och fy
 
 ### Fasta hårda pass
 
-Under dagarna anger du upp till två dagar med ett hårt pass som alltid ligger fast, till exempel *Torsdag* och *Skidor* för gruppens kvalitetspass och *Måndag* och *Löpning* för intervallerna på löpbandet. *Ingen dag* är förvalt.
+Under dagarna anger du upp till två dagar med ett hårt pass som alltid ligger fast, till exempel *Torsdag* och *Skidor* för gruppens kvalitetspass och *Måndag* och *Löpning* för intervallerna på löpbandet. *Ingen dag* är förvalt. Idrotten och minuterna går att välja när dagen är vald.
 
 - **Veckans kvalitetspass läggs där först.** En vecka med ett kvalitetspass, som i grunden, tar den första dagen. En vecka med två tar båda, när de har en dag emellan.
 - **Passet blir i dagens idrott** när dagen tillåter den. Med *Valfri idrott* väljer schemat idrotten som för andra pass. En idrott som inte är med i schemat räknas som *Valfri idrott*.
 - **Aldrig två hårda dagar i rad, och aldrig dagen före långpasset.** Ligger en fast dag så blir den ett lugnt pass den veckan. Detsamma gäller dagarna runt ett lopp.
 - **Dagen efter** blir ett återhämtningspass, som efter andra hårda pass.
+- **Gruppassets längd:** med minuter fylls passet ut mot gruppens längd med lugn tid, hälften före och hälften efter. Intervallerna är mallens. En liten vecka kan ge ett kortare pass. Tomt ger passets egen längd.
 - **Schemat vet inte vad gruppen gör.** Passet kommer ur programmets mallar (tröskel, fartlek, intervaller) och visar zon och ansträngning som vanligt. Idrottaren kör gruppens pass och tar med sig zonerna.
 
 ![Fasta hårda pass under dagarna: tisdagen vald som fast hård dag med valfri idrott](images/harda-pass.png)
 
 Regeln står i [Träningsplanen → Intensitetsfördelningen](../../TRANINGSPLAN.md#intensitetsfördelningen).
+
+### Coachens val
+
+Under de fasta hårda passen ligger gruppen *Coachens val*, stängd och med allt avstängt. Tryck på rubriken för att öppna den. Utan val blir schemat som förut. Har ett sparat schema något val öppnas gruppen av sig själv, och rubriken säger hur många av de fem som är valda. Allt sparas med schemat och läses tillbaka när schemat öppnas, så att det finns kvar när du ändrar något annat och sparar igen.
+
+| Fält | Vad det gör |
+|---|---|
+| *Kvalitetspass i en belastningsvecka* | *Motorns antal* eller 1–3 pass. En belastningsvecka får så många, också i grundblocket, men högst hälften av veckans pass. Lätta veckor, testveckor och nedtrappningen har kvar ett |
+| *Fasta lugna pass* | Upp till två veckodagar med ett lugnt pass som alltid ligger fast, till exempel gruppens lugna pass, var och en med en idrott och en längd. Dagen blir aldrig hård, aldrig långpass och aldrig ett återhämtningspass. En fast hård dag samma veckodag vinner |
+| *Två långa pass i rad* | Dagen efter långpasset ett långt lugnt pass i den första stödjande idrotten. Kräver en stödjande idrott och en plats som tillåter den |
+| *Lätta veckor* | *Lägg till lätt vecka* och ett datum i veckan, till exempel julen eller en resa. Veckan blir lätt, och en lätt vecka i närheten blir belastning i stället. Krysset tar bort veckan |
+| *Mest tid i veckan* | Ett tak i minuter, minst 60. Veckotiden växer mot taket i stället för mot det dagarna rymmer. Tomt betyder inget tak |
+
+![Coachens val öppet: två kvalitetspass och lördagen som fast lugn dag på 60 minuter](images/coachens-val.png)
+
+Reglerna står i [Träningsplanen → Coachens val](../../TRANINGSPLAN.md#coachens-val).
 
 ### Simtestet (CSS)
 

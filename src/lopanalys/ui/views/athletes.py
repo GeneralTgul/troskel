@@ -96,10 +96,11 @@ class NumberEdit(SelectAllEdit):
     2026-11-14). The limits are checked when the form is saved, with a message.
     """
 
-    def __init__(self, unit: str, decimals: int = 0, parent: QWidget | None = None) -> None:
+    def __init__(self, unit: str, decimals: int = 0, parent: QWidget | None = None, *, digits: int = 3) -> None:
+        """``digits``: the most digits before the decimal sign (three: up to 999)."""
         super().__init__(parent)
         self.unit, self.decimals = unit, decimals
-        pattern = r"\d{0,3}([.,]\d?)?" if decimals else r"\d{0,3}"
+        pattern = rf"\d{{0,{digits}}}([.,]\d?)?" if decimals else rf"\d{{0,{digits}}}"
         self.setValidator(QRegularExpressionValidator(QRegularExpression(pattern), self))
         self.setTextMargins(0, 0, self.fontMetrics().horizontalAdvance(unit) + 6, 0)
 

@@ -20,7 +20,10 @@ allow some of the sports only: the button beside the day says which, *Alla* by d
 sessions a week (0-3) on top of the endurance time, placed by the engine. With more than one sport a weekday can have
 a second time (the *+* beside the day): a second slot with its own minutes, clock time and sports, which the engine
 uses for a second, easy workout in another sport (plan.periodize.second_slots). Under the days, *Fasta hårda pass* gives
-up to two weekdays (each with a sport, or any) where the week's quality sessions go first (PlanRequest.hard_days).
+up to two weekdays (each with a sport, or any, and the group session's minutes) where the week's quality sessions go
+first (PlanRequest.hard_days). Below it the closed group *Coachens val* holds the engine's other choices, all off until
+the coach sets them: the number of quality sessions, fixed easy days, two long workouts in a row, the coach's easy weeks
+and the most minutes a week. Every field is read back from a saved plan, so saving it again keeps the choices.
 
 The form follows the athlete form: fields start empty, *Spara* is always visible below the
 scroll area, and unsaved changes are asked about before they are thrown away.
@@ -44,7 +47,9 @@ from lopanalys.core.models import Athlete
 from lopanalys.plan import RUNNING, Capacity, Goal, HardDay, Plan, PlanRequest, Slot, SportRole, build_plan
 from lopanalys.plan import rolling
 from lopanalys.plan.engine import horizon_for
-from lopanalys.plan.models import BORROWS, LEVELS, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, SWIM, WEEKDAY_KEYS, ZONES
+from lopanalys.plan.models import (BORROWS, LEVELS, MAX_QUALITY, MAX_STRENGTH, PLAN_SPORTS, ROLE_SHARE, ROLES, SWIM,
+                                   WEEKDAY_KEYS, ZONES)
+from lopanalys.plan.periodize import MIN_WEEK
 from lopanalys.plan.resolve import targets
 from lopanalys.plan.text import hours, start_line
 from lopanalys.ui import services, theme
@@ -59,6 +64,9 @@ log = logging.getLogger(__name__)
 MIN_SLOT, MAX_SLOT = 20, 480      # minutes in one day
 MAX_WEEKS = 104
 HARD_DAYS = 2                     # fixed hard days in the form (PlanRequest.hard_days)
+EASY_DAYS = 2                     # fixed easy days in the form (PlanRequest.easy_days)
+CHOICES = 5                       # the choices in *Coachens val* (PlanRequest.quality_sessions ... max_weekly_minutes)
+MAX_WEEK = 1800                   # the coach's most minutes a week (PlanRequest.max_weekly_minutes), 30 hours
 SHARES = tuple(range(10, 101, 10))   # a sport's share of the weekly time, in tens of percent
 _TIME_RE = re.compile(r"^(\d{1,2})(?:[:.]?(\d{2}))?$")
 
@@ -113,6 +121,31 @@ class MilestoneRow(QWidget):
 
     def snapshot(self) -> tuple:
         return (self.name.text().strip(), self.date.text().strip(), self.km.value(), self.kind.currentData())
+
+
+class EasyWeekRow(QWidget):
+    """One of the coach's easy weeks (PlanRequest.easy_weeks): any day of the week, and a button that removes it."""
+
+    changed = Signal()
+    removed = Signal(object)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        h = QHBoxLayout(self)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(8)
+        self.date = DateField(plan=True)
+        rm = QToolButton()
+        rm.setIcon(theme.icon("x", "muted"))
+        rm.setToolTip(t("ui.plan.easy_week_remove"))
+        rm.setCursor(Qt.CursorShape.PointingHandCursor)
+        rm.clicked.connect(lambda: self.removed.emit(self))
+        h.addWidget(self.date, 1)
+        h.addWidget(rm)
+        self.date.edit.textChanged.connect(self.changed)
+
+    def snapshot(self) -> str:
+        return self.date.text().strip()
 
 
 def _basis_text(cap: Capacity | None, sport: str) -> str:
@@ -479,32 +512,10 @@ class PlanView(QWidget):
         dg.setColumnStretch(2, 3)
         dg.setColumnStretch(3, 3)
         v.addLayout(dg)
-        # Fixed hard days (a group session): a weekday and the sport of its quality session.
-        hw = QWidget()
-        hg = QGridLayout(hw)
-        hg.setContentsMargins(0, 0, 0, 0)
-        hg.setHorizontalSpacing(12)
-        hg.setVerticalSpacing(8)
-        self.hard_days: list[QComboBox] = []
-        self.hard_sports: list[QComboBox] = []
-        for n in range(HARD_DAYS):
-            d = QComboBox()
-            d.setObjectName(f"hard_day_{n + 1}")
-            d.addItem(t("ui.plan.hard_day_none"), None)
-            for i, key in enumerate(WEEKDAY_KEYS):
-                d.addItem(t(f"ui.plan.day.{key}"), i)
-            sp = QComboBox()
-            sp.setObjectName(f"hard_sport_{n + 1}")
-            sp.addItem(t("ui.plan.hard_sport_any"), "")
-            for x in PLAN_SPORTS:
-                sp.addItem(t(f"plan.sport.{x}"), x)
-            sp.setEnabled(False)
-            d.currentIndexChanged.connect(lambda *_, d=d, sp=sp: sp.setEnabled(d.currentData() is not None))
-            hg.addWidget(d, n, 0)
-            hg.addWidget(sp, n, 1)
-            self.hard_days.append(d)
-            self.hard_sports.append(sp)
+        # Fixed hard days (a group session): a weekday, the sport of its quality session and the group's length.
+        hw, self.hard_days, self.hard_sports, self.hard_minutes = self._fixed_days("hard", HARD_DAYS)
         v.addWidget(field(t("ui.plan.hard_days"), hw, t("ui.plan.hard_days_hint")))
+        self._build_choices(v)
 
         v.addSpacing(6)
         v.addWidget(label(t("ui.plan.sec.goal"), "SectionTitle"))
@@ -566,11 +577,137 @@ class PlanView(QWidget):
         v.addStretch(1)
 
         for w in (self.recent, self.goal_name, self.goal_date.edit, self.goal_km, self.goal_target, self.weeks,
-                  self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2):
+                  self.start.edit, *self.minutes, *self.clocks, *self.minutes2, *self.clocks2, *self.hard_minutes,
+                  *self.easy_minutes, self.max_week):
             w.textChanged.connect(self._changed)
-        for cb in (self.test, self.level, self.strength, *self.hard_days, *self.hard_sports):
+        for cb in (self.test, self.level, self.strength, *self.hard_days, *self.hard_sports, self.quality,
+                   *self.easy_days, *self.easy_sports):
             cb.currentIndexChanged.connect(self._changed)
+        self.second_long.toggled.connect(self._changed)
         self.mode.currentIndexChanged.connect(self._mode_changed)
+
+    def _fixed_days(self, kind: str, n_rows: int) -> tuple[QWidget, list[QComboBox], list[QComboBox], list[NumberEdit]]:
+        """Rows of fixed days (``kind`` "hard" or "easy"): a weekday or none, the sport or any, and the minutes of the
+        group's session (empty: the template's own). The sport and the minutes are asked once a day is chosen."""
+        w = QWidget()
+        g = QGridLayout(w)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setHorizontalSpacing(12)
+        g.setVerticalSpacing(8)
+        days: list[QComboBox] = []
+        sports: list[QComboBox] = []
+        minutes: list[NumberEdit] = []
+        for n in range(n_rows):
+            d = QComboBox()
+            d.setObjectName(f"{kind}_day_{n + 1}")
+            d.addItem(t("ui.plan.hard_day_none"), None)
+            for i, key in enumerate(WEEKDAY_KEYS):
+                d.addItem(t(f"ui.plan.day.{key}"), i)
+            sp = QComboBox()
+            sp.setObjectName(f"{kind}_sport_{n + 1}")
+            sp.addItem(t("ui.plan.hard_sport_any"), "")
+            for x in PLAN_SPORTS:
+                sp.addItem(t(f"plan.sport.{x}"), x)
+            m = NumberEdit("min")
+            m.setObjectName(f"{kind}_minutes_{n + 1}")
+            m.setPlaceholderText(t("ui.plan.fixed_minutes_placeholder"))
+            m.setToolTip(t("ui.plan.fixed_minutes_tip"))
+            for x in (sp, m):
+                x.setEnabled(False)
+            d.currentIndexChanged.connect(lambda *_, d=d, sp=sp, m=m: [x.setEnabled(d.currentData() is not None)
+                                                                       for x in (sp, m)])
+            g.addWidget(d, n, 0)
+            g.addWidget(sp, n, 1)
+            g.addWidget(m, n, 2)
+            days.append(d)
+            sports.append(sp)
+            minutes.append(m)
+        g.setColumnStretch(0, 3)
+        g.setColumnStretch(1, 3)
+        g.setColumnStretch(2, 2)
+        return w, days, sports, minutes
+
+    def _build_choices(self, v: QVBoxLayout) -> None:
+        """*Coachens val* (PlanRequest's choices, docs/TRANINGSPLAN.md#coachens-val): closed by default, every choice
+        off, and opened when the plan read in has one."""
+        self.choices_btn = QToolButton()
+        self.choices_btn.setObjectName("choices_toggle")
+        self.choices_btn.setCheckable(True)
+        self.choices_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.choices_btn.setArrowType(Qt.ArrowType.RightArrow)
+        self.choices_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.choices_btn.setStyleSheet("QToolButton { border: none; font-weight: 600; padding: 0; }")
+        self.choices_btn.toggled.connect(self._choices_toggled)
+        v.addWidget(self.choices_btn)
+        self.choices_box = QWidget()
+        cv = QVBoxLayout(self.choices_box)
+        cv.setContentsMargins(0, 0, 0, 0)
+        cv.setSpacing(14)
+        cv.addWidget(label(t("ui.plan.choices_hint"), "Hint", wrap=True))
+        self.quality = QComboBox()
+        self.quality.setObjectName("quality_sessions")
+        for n in range(MAX_QUALITY + 1):
+            self.quality.addItem(t("ui.plan.quality_auto") if n == 0 else t("ui.plan.strength_n", n=n), n)
+        cv.addWidget(field(t("ui.plan.quality"), self.quality, t("ui.plan.quality_hint")))
+        ew, self.easy_days, self.easy_sports, self.easy_minutes = self._fixed_days("easy", EASY_DAYS)
+        cv.addWidget(field(t("ui.plan.easy_days"), ew, t("ui.plan.easy_days_hint")))
+        self.second_long = QCheckBox(t("ui.plan.second_long"))
+        self.second_long.setObjectName("second_long")
+        cv.addWidget(self.second_long)
+        cv.addWidget(label(t("ui.plan.second_long_hint"), "Hint", wrap=True))
+        ewk = QWidget()
+        wv = QVBoxLayout(ewk)
+        wv.setContentsMargins(0, 0, 0, 0)
+        wv.setSpacing(8)
+        self.easy_week_lay = QVBoxLayout()
+        self.easy_week_lay.setSpacing(8)
+        wv.addLayout(self.easy_week_lay)
+        self.add_easy_week_btn = button(t("ui.plan.easy_week_add"), "plus", kind="ghost")
+        self.add_easy_week_btn.clicked.connect(lambda: self.add_easy_week())
+        wv.addWidget(self.add_easy_week_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        self.easy_weeks: list[EasyWeekRow] = []
+        cv.addWidget(field(t("ui.plan.easy_weeks"), ewk, t("ui.plan.easy_weeks_hint")))
+        self.max_week = NumberEdit(t("ui.plan.unit.min_week"), digits=4)
+        self.max_week.setObjectName("max_weekly_minutes")
+        cv.addWidget(field(t("ui.plan.max_week"), self.max_week,
+                           t("ui.plan.max_week_hint", lo=MIN_WEEK)))
+        v.addWidget(self.choices_box)
+        self.choices_box.hide()
+        self._choices_title()
+
+    def _choices_toggled(self, on: bool) -> None:
+        self.choices_btn.setArrowType(Qt.ArrowType.DownArrow if on else Qt.ArrowType.RightArrow)
+        self.choices_box.setVisible(on)
+
+    def _choices_set(self) -> int:
+        """How many of the coach's choices (CHOICES) the form has set, shown in the group's title."""
+        return sum((bool(self.quality.currentData()),
+                    any(d.currentData() is not None for d in self.easy_days),
+                    self.second_long.isChecked(),
+                    any(r.snapshot() for r in self.easy_weeks),
+                    bool(self.max_week.value())))
+
+    def _choices_title(self) -> None:
+        n = self._choices_set()
+        self.choices_btn.setText(t("ui.plan.choices_n", n=n, total=CHOICES) if n else t("ui.plan.choices"))
+
+    def add_easy_week(self, day: date | None = None) -> EasyWeekRow:
+        r = EasyWeekRow()
+        if day is not None:
+            r.date.set_date(day)
+        r.changed.connect(self._changed)
+        r.removed.connect(self._remove_easy_week)
+        self.easy_weeks.append(r)
+        self.easy_week_lay.addWidget(r)
+        theme.polish_inputs(r)
+        self._changed()
+        return r
+
+    def _remove_easy_week(self, r: EasyWeekRow) -> None:
+        self.easy_weeks.remove(r)
+        self.easy_week_lay.removeWidget(r)
+        r.deleteLater()
+        self._changed()
 
     def _build_overview(self, v: QVBoxLayout) -> None:
         v.setSpacing(14)
@@ -642,7 +779,9 @@ class PlanView(QWidget):
         return (self.test.currentData(), self.level.currentData(), self.recent.value(),
                 tuple(r.snapshot() for r in self.sport_rows.values()),
                 tuple(r.test_id() for r in self.sport_rows.values()), self.strength.currentData(),
-                tuple((d.currentData(), s.currentData()) for d, s in zip(self.hard_days, self.hard_sports)),
+                self._fixed_snapshot(self.hard_days, self.hard_sports, self.hard_minutes),
+                self.quality.currentData(), self._fixed_snapshot(self.easy_days, self.easy_sports, self.easy_minutes),
+                self.second_long.isChecked(), tuple(r.snapshot() for r in self.easy_weeks), self.max_week.value(),
                 tuple((m.value(), c.text().strip(), d.chosen()) for m, c, d in zip(self.minutes, self.clocks,
                                                                                   self.day_sports)),
                 tuple((m.value(), c.text().strip(), d.chosen()) if self._second_on(i) else None
@@ -650,6 +789,10 @@ class PlanView(QWidget):
                 self.mode.currentData(), self.goal_name.text().strip(), self.goal_date.text().strip(),
                 self.goal_km.value(), self.goal_target.text().strip(), tuple(r.snapshot() for r in self.milestones),
                 self.weeks.value(), self.start.text().strip())
+
+    @staticmethod
+    def _fixed_snapshot(days: list[QComboBox], sports: list[QComboBox], minutes: list[NumberEdit]) -> tuple:
+        return tuple((d.currentData(), s.currentData(), m.value()) for d, s, m in zip(days, sports, minutes))
 
     def _health(self) -> tuple:
         return tuple(cb.isChecked() for cb in self.health.values())
@@ -694,6 +837,7 @@ class PlanView(QWidget):
         if self._filling:
             return
         self.cancel_btn.setEnabled(self.dirty())
+        self._choices_title()
         self.stale.setVisible(self.plan is not None and self._inputs() != self._plan_snap)
         self._health_text()
 
@@ -889,11 +1033,16 @@ class PlanView(QWidget):
         for d in self.day_sports + self.day_sports2:
             d.set_chosen(())
         self.strength.setCurrentIndex(max(0, self.strength.findData(req.strength_count if req else 0)))
-        given = list(req.hard_days[:HARD_DAYS]) if req else []
-        for n, (d, sp) in enumerate(zip(self.hard_days, self.hard_sports)):
-            h = given[n] if n < len(given) else None
-            d.setCurrentIndex(max(0, d.findData(h.weekday)) if h else 0)
-            sp.setCurrentIndex(max(0, sp.findData(h.sport)) if h else 0)
+        self._fill_fixed(req.hard_days if req else (), self.hard_days, self.hard_sports, self.hard_minutes)
+        self._fill_fixed(req.easy_days if req else (), self.easy_days, self.easy_sports, self.easy_minutes)
+        self.quality.setCurrentIndex(max(0, self.quality.findData(req.quality_count if req else 0)))
+        self.second_long.setChecked(bool(req and req.second_long))
+        for r in list(self.easy_weeks):
+            self._remove_easy_week(r)
+        for day in (req.easy_weeks if req else ()):
+            self.add_easy_week(day)
+        self.max_week.setValue(req.max_weekly_minutes if req else 0)
+        self.choices_btn.setChecked(self._choices_set() > 0)
         self._sport_basis(req, session_id)
         if req is None:
             self.test.setCurrentIndex(max(0, self.test.findData(session_id)) if session_id else 0)
@@ -944,6 +1093,15 @@ class PlanView(QWidget):
         self._fill_banner()
         self._refresh_mail()
         self._changed()
+
+    @staticmethod
+    def _fill_fixed(given: tuple[HardDay, ...], days: list[QComboBox], sports: list[QComboBox],
+                    minutes: list[NumberEdit]) -> None:
+        for n, (d, sp, m) in enumerate(zip(days, sports, minutes)):
+            h = given[n] if n < len(given) else None
+            d.setCurrentIndex(max(0, d.findData(h.weekday)) if h else 0)
+            sp.setCurrentIndex(max(0, sp.findData(h.sport)) if h else 0)
+            m.setValue(h.minutes if h else 0)
 
     def _refresh_mail(self) -> None:
         """*Skicka till idrottaren*: grey with the reason when nothing can be mailed, and when it was last sent."""
@@ -1161,15 +1319,47 @@ class PlanView(QWidget):
             return self._fail(t("ui.err.db", detail=str(e)))
         recent = self.recent.value()
         roles = tuple(self.sport_rows[sp].value() for sp in sports)
-        hard: list[HardDay] = []
-        for d, sp in zip(self.hard_days, self.hard_sports):
-            wd = d.currentData()
-            if wd is not None and wd not in [h.weekday for h in hard]:
-                hard.append(HardDay(wd, sp.currentData() if sp.currentData() in sports else ""))
+        hard = self._collect_fixed(self.hard_days, self.hard_sports, self.hard_minutes, sports)
+        easy = self._collect_fixed(self.easy_days, self.easy_sports, self.easy_minutes, sports)
+        if hard is None or easy is None:
+            return None
+        easy_weeks: list[date] = []
+        for r in self.easy_weeks:
+            if not r.snapshot():
+                continue                         # an empty row is no week
+            try:
+                d = r.date.date()
+            except ValueError:
+                d = None
+            if d is None:
+                return self._fail(t("ui.plan.err_easy_week", text=r.snapshot()))
+            if d not in easy_weeks:
+                easy_weeks.append(d)
+        most = self.max_week.value()
+        if most is not None and not MIN_WEEK <= most <= MAX_WEEK:
+            return self._fail(t("ui.plan.err_max_week", lo=MIN_WEEK, hi=MAX_WEEK))
         return PlanRequest(a.name, start_day, tuple(slots), tuple(caps), sports, goals=tuple(goals),
                            duration_weeks=weeks, level=level, recent_weekly_minutes=int(recent) if recent else None,
                            roles=roles if len(roles) > 1 or roles[0].sport != RUNNING else (),
-                           strength_sessions=self.strength.currentData() or 0, hard_days=tuple(hard))
+                           strength_sessions=self.strength.currentData() or 0, hard_days=hard,
+                           quality_sessions=self.quality.currentData() or 0, easy_days=easy,
+                           second_long=self.second_long.isChecked(), easy_weeks=tuple(easy_weeks),
+                           max_weekly_minutes=int(most) if most else 0)
+
+    def _collect_fixed(self, days: list[QComboBox], sports_: list[QComboBox], minutes: list[NumberEdit],
+                       sports: tuple[str, ...]) -> tuple[HardDay, ...] | None:
+        """The fixed days of one kind, each weekday once; None (with a message) for minutes out of range."""
+        out: list[HardDay] = []
+        for d, sp, m in zip(days, sports_, minutes):
+            wd = d.currentData()
+            if wd is None or wd in [h.weekday for h in out]:
+                continue
+            v = m.value()
+            if v is not None and not MIN_SLOT <= v <= MAX_SLOT:
+                return self._fail(t("ui.plan.err_fixed_minutes", day=t(f"ui.plan.day.{WEEKDAY_KEYS[wd]}"),
+                                    lo=MIN_SLOT, hi=MAX_SLOT))
+            out.append(HardDay(wd, sp.currentData() if sp.currentData() in sports else "", int(v) if v else 0))
+        return tuple(out)
 
     def _session_id(self) -> int | None:
         """The running test the plan is built on; none when running is not in the plan."""
