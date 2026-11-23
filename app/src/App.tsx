@@ -214,6 +214,8 @@ export function App(props: AppProps) {
     const kept = other || demo ? { marks: {}, extras: store.log().extras } : store.log();
     accept(c.plan, false, keepTab);
     onLog(mergeLog(keepFor(kept, c.plan), c.log));
+    // The copy's plan is rebuilt without its dates that do not work: they come back with it (#846).
+    if (c.off.length) store.setUnavailable(c.off.filter((d) => d > today));
     if (c.times) store.setTimes(c.times);
     setPending(c.times ?? store.times());
     setToast(t("ui.copy.restored"));
@@ -315,7 +317,8 @@ export function App(props: AppProps) {
     : undefined;
 
   // The plan to the coach (#781): the plan as the phone has it, what is ticked off and the sessions outside it.
-  const toCoach = () => athletePayload(stored!, log, auto, pending, today);
+  // The dates that do not work go along (#846): the plan is rebuilt without them, and the next rebuild drops them again.
+  const toCoach = () => athletePayload(stored!, log, auto, pending, today, store.unavailable());
   const share = stored && !demo ? {
     file: props.download
       ? async () => { const p = toCoach(); return (await props.download!(athleteFileName(p), athleteFile(p), "application/json")) !== false; }

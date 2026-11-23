@@ -4,8 +4,8 @@
  *
  * The payload is `troskel.athlete`, format 1: the whole stored plan as the phone has it (format 1, with the athlete's
  * times and what the app's engine rebuilt), what is ticked off (the athlete's own marks and the ones the health data
- * gave, marked `auto`), the sessions outside the plan, the times still waiting under "Mina tider", and the day of the
- * export. The nights (sleep, resting heart rate, HRV) and the watch's workouts stay on the phone.
+ * gave, marked `auto`), the sessions outside the plan, the times still waiting under "Mina tider", the dates that do not
+ * work that the plan was last rebuilt with (`off`, store.unavailable, #846), and the day of the export. The nights (sleep, resting heart rate, HRV) and the watch's workouts stay on the phone.
  *
  * It goes as a `.troskel` file (the JSON as text) or as a link `<app>#a=<data>`, coded as the plan's link
  * (deflate + base64url). Nothing is sent by the app: the athlete chooses whom to give the file or the link to.
@@ -36,12 +36,17 @@ export interface AthletePayload {
   extras: Extra[];
   /** The times the athlete saved under "Mina tider" that the plan is not built on yet (PendingTimes). */
   times?: PendingTimes;
+  /** The dates that do not work that the stored plan was last rebuilt with under "Mina tider" (store.unavailable): their
+   * workouts are dropped from `plan` already, and the next rebuild (on the phone or in Tröskel) must drop them again
+   * (#846). Missing when there are none; an older app or Tröskel reads the payload as before without them. */
+  off?: IsoDate[];
 }
 
 /** What the phone gives the coach. `log` is the athlete's own log (store.log()), `auto` what the health data ticked
- * off (health.autoMarks); a mark the athlete set wins, as in the views. */
+ * off (health.autoMarks); a mark the athlete set wins, as in the views. `off`: the dates the plan was rebuilt without
+ * (store.unavailable); the ones that have passed are left out. */
 export function athletePayload(stored: StoredPlan, log: TrainingLog, auto: AutoResult | null, pending: PendingTimes | null,
-  today: IsoDate): AthletePayload {
+  today: IsoDate, off: IsoDate[] = []): AthletePayload {
   const marks: Record<string, SharedMark> = {};
   const plain = (m: Mark): Mark => (m.minutes != null ? { status: m.status, minutes: m.minutes } : { status: m.status });
   for (const [k, m] of Object.entries(auto?.marks ?? {})) marks[k] = { ...plain(m), auto: true };
@@ -50,6 +55,8 @@ export function athletePayload(stored: StoredPlan, log: TrainingLog, auto: AutoR
     kind: ATHLETE_KIND, format: ATHLETE_FORMAT, exported: today, plan: stored, marks, extras: [...log.extras],
   };
   if (pending) out.times = pending;
+  const later = off.filter((d) => d > today).sort();
+  if (later.length) out.off = later;
   return out;
 }
 

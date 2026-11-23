@@ -491,6 +491,10 @@ class Plan:
     # The day of the athlete's next test, chosen by the coach in Tröskel (#778); None: the default, 8 to 12 weeks after
     # the test (plan.next_test). After it the targets fit worse and worse, and new targets need a new test.
     next_test: date | None = None
+    # The dates that do not work for the athlete (*Dagar som inte går* in the app, #846): the plan was rebuilt without
+    # their workouts, and *Förnya*, a new test and the coach's form drop them again in the weeks they detail (races
+    # stay; rolling.without_off_days).
+    unavailable: tuple[date, ...] = ()
 
     def title(self, workout: Workout) -> str:
         """The workout's title in this plan: with the sport first when the plan has several (Workout.title_in)."""

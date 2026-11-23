@@ -16,6 +16,8 @@ The rules (docs/TRANINGSPLAN.md, "Det rullande schemat"):
   - A new test moves only the targets (resolve.retest); the workouts follow the same path.
   - The athlete's changes of single workouts (``Plan.edits``, #777) are laid on the weeks again (plan.edits), so a
     workout moved or shortened in a new week keeps the change.
+  - The dates that do not work for the athlete (``Plan.unavailable``, #846) get no workouts in a new week (a race
+    stays), as the app's renewal of its own plan (app/src/model/request.ts renewOwn).
 """
 from __future__ import annotations
 
@@ -52,6 +54,15 @@ def renew_soon(plan: Plan, today: date, days: int = 7) -> bool:
     return (plan.detailed_until.sunday - today).days < days
 
 
+def without_off_days(week: Week, days: tuple[date, ...] | list[date]) -> Week:
+    """``week`` without its workouts on the dates that do not work (``Plan.unavailable``); a race stays, as in the
+    app's ``rebuild`` (app/src/engine/index.ts). The same week when none of them falls in it."""
+    off = set(days)
+    if not off or not any(w.date in off and w.goal is None for w in week.workouts):
+        return week
+    return replace(week, workouts=[w for w in week.workouts if w.goal is not None or w.date not in off])
+
+
 def roll_forward(plan: Plan, today: date) -> Plan:
     """The stored plan with the weeks up to four weeks from ``today`` detailed. Everything else is kept:
     the request (form, test), the blocks, the notes, the detailed weeks, the sketch of the rest.
@@ -63,8 +74,8 @@ def roll_forward(plan: Plan, today: date) -> Plan:
     filled = fill_weeks(plan.request, skeleton_of(plan), plan.id)
     weeks: list[Week] = []
     for old, fresh in zip(plan.weeks, filled):
-        weeks.append(fresh if plan.horizon < old.index <= new else old)
+        weeks.append(without_off_days(fresh, plan.unavailable) if plan.horizon < old.index <= new else old)
     return apply_edits(replace(plan, weeks=weeks, horizon=new, engine_version=ENGINE_VERSION))
 
 
-__all__ = ["due", "renew_soon", "roll_forward", "skeleton_of"]
+__all__ = ["due", "renew_soon", "roll_forward", "skeleton_of", "without_off_days"]

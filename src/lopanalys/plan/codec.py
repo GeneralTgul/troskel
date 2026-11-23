@@ -24,7 +24,8 @@ and a fixed day's ``minutes``) are stored the same way: each only when it is set
 
 The athlete's changes of single workouts (``Plan.edits``, #777) are stored under ``edits`` as
 ``{"key": ..., "date": ..., "minutes": ...}`` (a field only when set), only when there are any. The day of the next
-test the coach chose (``Plan.next_test``, #778) is stored under ``next_test``, only when set.
+test the coach chose (``Plan.next_test``, #778) is stored under ``next_test``, only when set. The dates that do not work
+for the athlete (``Plan.unavailable``, #846) are stored under ``unavailable`` as ISO days, only when there are any.
 
 ``Anchors`` is stored field by field without its lactate curve (``source``); the plan uses the
 default zone system, which needs the thresholds only. A zones test's ``SpeedLine`` is stored with it.
@@ -190,6 +191,7 @@ def plan_to_dict(p: Plan) -> dict[str, Any]:
         "horizon": p.horizon,
         **({"edits": [edit_to_dict(e) for e in p.edits]} if p.edits else {}),
         **({"next_test": _d(p.next_test)} if p.next_test else {}),
+        **({"unavailable": [_d(d) for d in p.unavailable]} if p.unavailable else {}),
     }
 
 
@@ -232,7 +234,7 @@ def plan_from_dict(d: dict[str, Any], request: PlanRequest) -> Plan:
                 [_note_from_dict(n) for n in d.get("notes", [])], d.get("zone_system", DEFAULT_SYSTEM),
                 {_sport(k): _pd(v) for k, v in d.get("based_on", {}).items()}, d.get("status", "draft"), log,
                 d.get("horizon"), tuple(edit_from_dict(e) for e in d.get("edits", [])),
-                _pd(d.get("next_test")))
+                _pd(d.get("next_test")), tuple(sorted(date.fromisoformat(x) for x in d.get("unavailable", []))))
 
 
 __all__ = ["FORMAT", "capacity_from_dict", "capacity_to_dict", "edit_from_dict", "edit_to_dict", "plan_from_dict", "plan_to_dict", "request_from_dict",

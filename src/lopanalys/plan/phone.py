@@ -4,8 +4,13 @@ The app's *Send the plan to your coach* (app/src/model/share.ts) gives a ``.tros
 ``<app>#a=<data>`` with the payload ``troskel.athlete`` (format 1): the whole stored plan as the phone has it
 (``link.stored_plan``'s format 1, with the athlete's times and what the app's engine rebuilt), the marks
 (``{"status": "done" | "partial" | "missed", "minutes"?, "auto"?}`` per workout key, ``auto`` when the health data
-ticked it off), the sessions outside the plan, the times still waiting under *Mina tider* and the day of the export.
-The nights and the watch's workouts never leave the phone.
+ticked it off), the sessions outside the plan, the times still waiting under *Mina tider*, the dates that do not work
+that the plan on the phone was last rebuilt without (``off``, #846; only when there are any, so an older app's payload
+reads as before) and the day of the export. The nights and the watch's workouts never leave the phone.
+
+The dates that do not work stay with the plan Tröskel saves (``Plan.unavailable``): the waiting times' own list when
+times wait (the app's *Mina tider* starts from ``off`` and the athlete may have taken a day away), else ``off``. *Förnya*,
+a new test and the coach's form then drop their workouts again in the weeks they detail (rolling.without_off_days).
 
 The athlete's own values (#777: thresholds, max HR, FTP, CSS typed into the app without a test) come in the
 request's capacity with ``source`` ``"self"`` (``models.SELF``) and are read as they are: Tröskel works their targets
@@ -53,6 +58,7 @@ class PhonePlan:
     marks: dict[str, dict[str, Any]] = field(default_factory=dict)
     extras: list[dict[str, Any]] = field(default_factory=list)
     times: dict[str, Any] | None = None       # PendingTimes: {"slots", "unavailable", "saved", "kept"?}
+    off: tuple[str, ...] = ()                  # the dates the phone's plan was rebuilt without (store.unavailable)
 
     @property
     def plan_id(self) -> str:
@@ -73,7 +79,7 @@ class PhonePlan:
     def log(self) -> dict[str, Any]:
         """The log as Tröskel keeps it in the plan's event log (``phone``)."""
         return {"exported": self.exported.isoformat(), "marks": self.marks, "extras": self.extras,
-                **({"times": self.times} if self.times else {})}
+                **({"times": self.times} if self.times else {}), **({"off": list(self.off)} if self.off else {})}
 
 
 _LINK = re.compile(r"[#&]a=([A-Za-z0-9_-]+)")
@@ -125,7 +131,16 @@ def read(text: str) -> PhonePlan:
              for k, m in (d.get("marks") or {}).items() if isinstance(m, dict) and m.get("status") in STATUSES}
     extras = [x for x in d.get("extras") or [] if isinstance(x, dict) and isinstance(x.get("date"), str)]
     times = d.get("times") if isinstance(d.get("times"), dict) and isinstance(d["times"].get("slots"), list) else None
-    return PhonePlan(stored, exported, marks, extras, times)
+    off = tuple(sorted({x for x in d.get("off") or [] if isinstance(x, str) and _is_day(x)}))
+    return PhonePlan(stored, exported, marks, extras, times, off)
+
+
+def _is_day(s: str) -> bool:
+    try:
+        date.fromisoformat(s)
+    except ValueError:
+        return False
+    return len(s) == 10
 
 
 def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: list[str], from_day: str) -> dict[str, Any]:
@@ -136,8 +151,9 @@ def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: li
     ``from_day`` is kept as it was saved; in the week of ``from_day`` the workouts before it are kept (with
     their status) and the rest are new. The horizon of a rolling plan stays: the weeks after it are sketches
     of the new plan. On the dates in ``unavailable`` the workouts are dropped (races stay). The athlete's changes of
-    single workouts (``plan.edits``, #777) are laid on the new weeks again (edits.apply_edits). Raises ValueError
-    when the engine cannot make a plan."""
+    single workouts (``plan.edits``, #777) are laid on the new weeks again (edits.apply_edits). The dates are not
+    written into the plan here, as the app's ``rebuild`` does not (the app keeps them beside it); ``to_plan`` keeps
+    them as ``Plan.unavailable``. Raises ValueError when the engine cannot make a plan."""
     day = date.fromisoformat(from_day)
     off = {date.fromisoformat(d) for d in unavailable}
     request = codec.request_from_dict({**stored["request"], "availability": slots}, stored["athlete"])
@@ -163,15 +179,17 @@ def rebuild(stored: dict[str, Any], slots: list[dict[str, Any]], unavailable: li
 def to_plan(phone: PhonePlan, athlete_name: str = "", today: date | None = None) -> Plan:
     """The phone's plan as Tröskel saves it: the times that wait on the phone laid on it from tomorrow (as the app's
     *Spara* would), and what is ticked off as the workouts' status (done, missed; a partly done workout stays
-    planned, its minutes are in the log). The targets are not taken from the phone: Tröskel works them out from
-    the tests, as for its own plans."""
+    planned, its minutes are in the log). The dates that do not work from tomorrow on stay with the plan
+    (``Plan.unavailable``, #846). The targets are not taken from the phone: Tröskel works them out from the tests, as
+    for its own plans."""
     stored = phone.stored
+    frm = (today or date.today()).toordinal() + 1
+    days = phone.times.get("unavailable", []) if phone.times else phone.off
+    later = sorted({d for d in days if isinstance(d, str) and _is_day(d) and date.fromisoformat(d).toordinal() >= frm})
     if phone.times:
-        frm = (today or date.today()).toordinal() + 1
-        later = [d for d in phone.times.get("unavailable", []) if date.fromisoformat(d).toordinal() >= frm]
         stored = rebuild(stored, phone.times["slots"], later, date.fromordinal(frm).isoformat())
     req = codec.request_from_dict(stored["request"], athlete_name or stored.get("athlete") or "")
-    plan = codec.plan_from_dict(stored["plan"], req)
+    plan = replace(codec.plan_from_dict(stored["plan"], req), unavailable=tuple(date.fromisoformat(d) for d in later))
     status = {"done": "done", "missed": "missed"}
 
     def marked(w: Any) -> Any:
