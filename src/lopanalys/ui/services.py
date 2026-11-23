@@ -1630,9 +1630,16 @@ def save_plan(store: Store, athlete: Athlete, plan: Any, session_id: int | None,
 
 def with_saved_edits(saved: Any, plan: Any) -> Any:
     """The coach's plan from the form with the athlete's changes of single workouts (#777) from the saved plan of the
-    same id: the moved and shortened workouts stay when the coach changes the form, as in the app (``keptEdits``)."""
-    from lopanalys.plan import edits
-    if saved is None or saved.id != plan.id or not saved.edits:
+    same id: the moved and shortened workouts stay when the coach changes the form, as in the app (``keptEdits``).
+    The athlete's dates that do not work (``Plan.unavailable``, #846) stay too, and the new plan has no workouts on
+    them (a race stays)."""
+    from lopanalys.plan import edits, rolling
+    if saved is None or saved.id != plan.id or not (saved.edits or saved.unavailable):
+        return plan
+    if saved.unavailable:
+        plan = dataclass_replace(plan, unavailable=saved.unavailable,
+                                 weeks=[rolling.without_off_days(w, saved.unavailable) for w in plan.weeks])
+    if not saved.edits:
         return plan
     return edits.apply_edits(dataclass_replace(plan, edits=edits.merged(plan.edits, saved.edits)))
 

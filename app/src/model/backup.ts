@@ -1,8 +1,8 @@
 /**
  * The athlete's own copy (#790): the app has no cloud, so a copy is what moves the plan to a new phone or brings it
  * back after the browser emptied its storage. The copy is the payload the coach gets (#781, share.ts): the stored
- * plan with its edits, own values and times, what is ticked off, the sessions outside the plan and the times still
- * waiting under "Mina tider". The same file or link reads back into the app with *Öppna en fil* or *Klistra in en
+ * plan with its edits, own values and times, what is ticked off, the sessions outside the plan, the times still
+ * waiting under "Mina tider" and the dates that do not work the plan was rebuilt without (`off`, #846). The same file or link reads back into the app with *Öppna en fil* or *Klistra in en
  * länk*, and Tröskel reads it as before. The health data (the nights, the watch's workouts) is not in it: the watch
  * gives it again.
  *
@@ -20,11 +20,13 @@ import type { PendingTimes } from "./storage";
 import { checkTimes } from "./times";
 import type { IsoDate, StoredPlan } from "./types";
 
-/** A copy read back: the plan, the log (the watch's marks become the athlete's) and the waiting times. */
+/** A copy read back: the plan, the log (the watch's marks become the athlete's), the waiting times and the dates
+ * that do not work (store.unavailable; empty in a copy from an app before #846). */
 export interface Restored {
   plan: StoredPlan;
   log: TrainingLog;
   times: PendingTimes | null;
+  off: IsoDate[];
   exported: IsoDate | null;
 }
 
@@ -41,7 +43,8 @@ function restored(v: unknown): Restored {
   const plan = checkPlan(p.plan);
   const log = checkLog({ marks: p.marks, extras: p.extras });
   const times = checkTimes(p.times);
-  return { plan, log, times, exported: typeof p.exported === "string" ? p.exported : null };
+  const off = Array.isArray(p.off) ? p.off.filter((d): d is IsoDate => typeof d === "string" && /^\d{4}-\d\d-\d\d$/.test(d)) : [];
+  return { plan, log, times, off, exported: typeof p.exported === "string" ? p.exported : null };
 }
 
 /** A copy in a text (the `.troskel` file of share.athleteFile, or a text holding share.athleteLink); null when the
