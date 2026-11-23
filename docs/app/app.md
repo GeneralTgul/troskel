@@ -49,6 +49,8 @@ Appen visar ett färdigt träningsschema från Tröskel. Den har fem vyer:
 
 Zonfärgerna är desamma som i Tröskel och på klockan: grå, blå, grön, orange och röd för zon 1 till 5. Appen följer telefonens språk (svenska eller engelska) och telefonens ljusa eller mörka läge. På en surfplatta i liggande läge står menyn till vänster och vyerna i två kolumner. Från 900 punkters bredd står loppen och veckan i siffror i en högerkolumn bredvid veckan. På en smal telefon (ned till 320 punkter) står menyns fem namn på en rad, och ett mål som inte får plats bredvid ett annat får en egen rad.
 
+Android-appens **bakåtknapp och bakåtgest** (#846, `app/src/model/back.ts`) stänger det som öppnades sist: dagens ruta under *Veckan*, QR-läsaren, *Gör ett schema själv*, *Ändra mina värden* och *Ta emot ett nytt schema*. En annan vy än *I dag* går tillbaka till *I dag*, och på *I dag* (eller välkomstsidan) läggs appen i bakgrunden, som Android-appar gör på sin första sida. Knappen läses med `@capacitor/app`, bara i Android-appen. I webbläsaren och på iPhone gör appen inget eget med bakåt. Provet står i `app/test/back.test.tsx`.
+
 *Lägg passen i kalendern* (under *Veckan* och *Schemat*) laddar ner en kalenderfil med passen från i dag. Filen är samma som den Tröskel gör, och passen har samma nycklar, så att en ny fil uppdaterar passen i stället för att lägga in dem två gånger.
 
 ### Spara en fil

@@ -3,6 +3,7 @@ import { render } from "preact";
 import { App, TABS, type Tab } from "./App";
 import { engine } from "./engine";
 import { storageState } from "./model/backup";
+import { listenBack } from "./model/back";
 import { healthConnectPlugin } from "./model/healthconnect";
 import { setupOffline } from "./model/offline";
 import { saveFile } from "./model/save";
@@ -40,3 +41,9 @@ addEventListener("load", () => void setupOffline({
   workers: "serviceWorker" in navigator ? navigator.serviceWorker : undefined,
   caches: "caches" in globalThis ? caches : undefined,
 }));
+
+// Android's back button closes the day sheet, the QR scanner and the forms, and else puts the app in the background
+// (model/back.ts). iOS has no back button, and the browser keeps its own.
+if (Capacitor.getPlatform() === "android") {
+  void import("@capacitor/app").then(({ App: CapApp }) => listenBack(CapApp)).catch(() => {});
+}
