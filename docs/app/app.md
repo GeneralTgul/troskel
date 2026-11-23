@@ -141,7 +141,7 @@ Appens planmotor bygger schemat i telefonen, med ett eget id (`app-` och åtta t
 
 Begäran följer reglerna i coachens formulär (`collect` i `src/lopanalys/ui/views/plan.py`), så att schemat blir det Tröskel hade gjort av samma svar och går att läsa in i Tröskel med *Läs in från appen* ([Från idrottare till coach](#från-idrottare-till-coach)). Samma formulär byggs i Python i `app/scripts/make_fixtures.py` (`form_request`, `form_from_plan`), och `app/test/request.test.tsx` jämför appens begäran och schema med Pythons (`app/test/fixtures/request.json.gz`).
 
-Formuläret har inte en andra tid samma dag, fasta hårda pass eller andelar per idrott. Ett schema från Tröskel som har dem tappar dem när idrottaren gör ett nytt schema av det.
+Formuläret har inte en andra tid samma dag eller andelar per idrott. Ett schema från Tröskel som har dem tappar dem när idrottaren gör ett nytt schema av det. Coachens val ([Coachens val](../TRANINGSPLAN.md#coachens-val): fasta hårda och lugna pass, kvalitetspassen, två långa pass i rad, lätta veckor och mest tid i veckan) har inga fält, men följer med från schemat formuläret fylldes i ur: ett fast pass bara medan dess dag är på, en lätt vecka bara från den nya starten (`app/src/model/request.ts`, `kept`).
 
 ### Egna värden
 
