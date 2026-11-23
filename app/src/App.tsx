@@ -16,6 +16,7 @@ import { keptTimes } from "./model/times";
 import { keptOwnValues } from "./model/values";
 import type { PendingTimes, Store } from "./model/storage";
 import type { StoredPlan } from "./model/types";
+import { useBack } from "./model/back";
 import { canKeepAwake, idleTimer, keepAwake, WALL_IDLE_MS } from "./model/wall";
 import { About } from "./views/About";
 import { Overview } from "./views/Overview";
@@ -402,6 +403,12 @@ export function App(props: AppProps) {
   else body = null;
 
   const showTabs = !!stored && !qr && !welcome && !request;
+  // Android's back button (model/back.ts): the last one opened closes first, and another tab goes back to *I dag*.
+  useBack(showTabs && tab !== "today", () => { setTab("today"); setValues(false); });
+  useBack(showTabs && tab === "plan" && values, () => setValues(false));
+  useBack(!!stored && welcome && !qr && !request, () => setWelcome(false));
+  useBack(!!request && !qr, () => setRequest(null));
+  useBack(qr, () => setQr(false));
   return (
     <div class={`app ${showTabs ? "has-tabs" : ""}`} lang={lang}>
       {showTabs ? (

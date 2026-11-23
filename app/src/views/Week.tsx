@@ -7,6 +7,7 @@ import { dayState, extrasOn, markOf, type DayState } from "../model/log";
 import { Extras, SeasonStrip, StatusPicker, WeekNumbers, type LogProps, NO_LOG, ignore } from "./log";
 import { adjustable } from "../model/adjust";
 import { AdjustBox } from "./Adjust";
+import { useBack } from "../model/back";
 import { clock, dayLabel, shownZone, SportIcon, workoutColor, WorkoutCard, zoneColor } from "./parts";
 
 /** The colour of a day's card: that of its first workout that has one (a zone, or a test), so that strength before
@@ -17,11 +18,12 @@ export function dayColor(ws: StoredWorkout[]): string {
 }
 
 /** One day on top of the week: its workouts as big cards with the box for the day, the marks and the sessions
- * outside the plan. A tap on the background, Escape or *Close* closes it. */
+ * outside the plan. A tap on the background, Escape, *Close* or Android's back button closes it. */
 function DaySheet({ stored, day, today, log, onLog, onClose, onPlan }: {
   stored: StoredPlan; day: IsoDate; today: IsoDate; onClose: () => void; onPlan?: (p: StoredPlan) => void;
 } & LogProps) {
   const close = useRef<HTMLButtonElement>(null);
+  useBack(true, onClose);
   useEffect(() => {
     close.current?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
